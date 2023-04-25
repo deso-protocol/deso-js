@@ -1,0 +1,41 @@
+{
+  "name": "deso-protocol",
+  "version": "1.1.14",
+  "description": "Client side typescript/javascript SDK for building web3 applications for the DeSo blockchain.",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc && cp {package.json,README.md} ./lib",
+    "test": "test",
+    "prepare": "husky install",
+    "precommit": "lint-staged"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deso-protocol/deso-js.git"
+  },
+  "keywords": [
+    "\"blockchain\""
+  ],
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/deso-protocol/deso-js/issues"
+  },
+  "homepage": "https://github.com/deso-protocol/deso-js#readme",
+  "devDependencies": {
+    "eslint": "^8.39.0",
+    "husky": "^8.0.0",
+    "lint-staged": "^13.2.1",
+    "prettier": "^2.8.8",
+    "typescript": "^5.0.4"
+  },
+  "lint-staged": {
+    "{libs,apps}/**/*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.yml": [
+      "prettier --write"
+    ]
+  }
+}

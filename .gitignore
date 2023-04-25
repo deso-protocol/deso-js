@@ -1,0 +1,10 @@
+# Dependencies
+node_modules
+
+# Build output
+lib
+
+# IDE
+.idea
+.settings
+.vscode
