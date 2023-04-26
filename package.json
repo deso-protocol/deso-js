@@ -9,7 +9,7 @@
   "scripts": {
     "build": "tsc",
     "test": "jest",
-    "prepare": "husky install",
+    "prepare": "[[ $HUSKY != 0 ]] && husky install",
     "precommit": "lint-staged && npm run test"
   },
   "keywords": [
