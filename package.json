@@ -4,7 +4,8 @@
   "license": "MIT",
   "description": "Client side typescript/javascript SDK for building web3 applications for the DeSo blockchain.",
   "type": "module",
-  "main": "index.js",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
   "scripts": {
     "build": "tsc",
     "test": "jest",

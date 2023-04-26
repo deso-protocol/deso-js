@@ -21,6 +21,7 @@ npm ci
 npm version --no-git-tag-version $NEW_VERSION
 npm run build
 cp {package.json,README.md} ./lib
+cd ./lib
 
 # If the version is a pre-release (beta), publish with the --tag flag.
 if [[ $NPM_PRERELEASE_TAG == beta ]]; then
