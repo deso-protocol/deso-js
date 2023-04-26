@@ -17,7 +17,9 @@ NPM_PRERELEASE_TAG=$(echo $NEW_VERSION | cut -d '-' -f 2 | cut -d '.' -f 1)
 echo "Preparing to release $NEW_VERSION"
 echo "Pre-release tag: $NPM_PRERELEASE_TAG"
 
-npm ci
+# skip setting up husky
+npm set-script prepare ""
+npm ci --only=production
 npm version --no-git-tag-version $NEW_VERSION
 npm run build
 cp {package.json,README.md} ./lib
