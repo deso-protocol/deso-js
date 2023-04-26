@@ -2,7 +2,7 @@
   "compilerOptions": {
     "declaration": true,
     "target": "ES6",
-    "module": "ESNext",
+    "module": "ES6",
     "lib": ["ES6", "DOM"],
     "moduleResolution": "node",
     "inlineSources": true,
