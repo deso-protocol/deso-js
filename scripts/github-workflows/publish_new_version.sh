@@ -37,7 +37,7 @@ fi
 
 RELEASE_VERSION=$(grep version package.json | awk -F \" '{print $4}')
 echo "::notice::New version successfully released: $RELEASE_VERSION"
-git add package.json
+git add package.json package-lock.json
 git commit -m "ci: automated release version $RELEASE_VERSION"
 git pull --rebase origin main
 git push origin HEAD:main
