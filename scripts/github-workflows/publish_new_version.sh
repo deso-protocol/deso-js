@@ -20,7 +20,7 @@ echo "Pre-release tag: $NPM_PRERELEASE_TAG"
 npm ci --ignore-scripts
 npm version --no-git-tag-version $NEW_VERSION
 npm run build
-cp {package.json,README.md} ./lib
+cp {package.json,README.md,LICENSE} ./lib
 cd ./lib
 
 # If the version is a pre-release (beta), publish with the --tag flag.
