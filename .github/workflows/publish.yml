@@ -8,6 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NODE_AUTH_TOKEN: ${{secrets.NPM_AUTH_TOKEN}}
+      HUSKY: 0
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
