@@ -10,7 +10,7 @@ set -e
 #
 # For a pre-release, use the following format:
 # <version-number>-beta.<pre-release-version>
-# example: 0.0.1-beta.0
+# example: v0.0.1-beta.0
 NEW_VERSION=$(git describe --tags --abbrev=0)
 NPM_PRERELEASE_TAG=$(echo $NEW_VERSION | cut -d '-' -f 2 | cut -d '.' -f 1)
 
@@ -18,7 +18,7 @@ echo "Preparing to release $NEW_VERSION"
 echo "Pre-release tag: $NPM_PRERELEASE_TAG"
 
 npm ci
-npm version $NEW_VERSION
+npm version --no-git-tag-version $NEW_VERSION
 npm run build
 cp {package.json,README.md} ./lib
 
