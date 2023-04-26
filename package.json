@@ -6,7 +6,7 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "build": "tsc && cp {package.json,README.md} ./lib",
+    "build": "tsc",
     "test": "jest",
     "prepare": "husky install",
     "precommit": "lint-staged && npm run test"
