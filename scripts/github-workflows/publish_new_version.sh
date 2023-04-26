@@ -14,8 +14,8 @@ set -e
 NEW_VERSION=$(git describe --tags --abbrev=0)
 NPM_PRERELEASE_TAG=$(echo $NEW_VERSION | cut -d '-' -f 2 | cut -d '.' -f 1)
 
-echo "Preparing to release deso-protocol@$NEW_VERSION"
-echo "Pre-relesae tag: $NPM_PRERELEASE_TAG"
+echo "Preparing to release $NEW_VERSION"
+echo "Pre-release tag: $NPM_PRERELEASE_TAG"
 
 npm ci
 npm version $NEW_VERSION
@@ -38,6 +38,6 @@ fi
 RELEASE_VERSION=$(grep version package.json | awk -F \" '{print $4}')
 echo "::notice::New version successfully released: $RELEASE_VERSION"
 git add package.json
-git commit -m "ci: automated release version v$RELEASE_VERSION"
+git commit -m "ci: automated release version $RELEASE_VERSION"
 git pull --rebase origin main
 git push origin HEAD:main
