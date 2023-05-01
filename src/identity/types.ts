@@ -3,6 +3,7 @@ import {
   AccessGroupMemberLimitMapItem,
   AssociationLimitMapItem,
   TransactionSpendingLimitResponse,
+  TransactionType,
 } from '../backend-types';
 export type Network = 'mainnet' | 'testnet';
 
@@ -35,7 +36,9 @@ export interface IdentityDerivePayload {
 
 export interface TransactionSpendingLimitResponseOptions {
   GlobalDESOLimit?: number;
-  TransactionCountLimitMap?: { [key: string]: number | 'UNLIMITED' };
+  TransactionCountLimitMap?: Partial<
+    Record<TransactionType, number | 'UNLIMITED'>
+  >;
   CreatorCoinOperationLimitMap?: {
     [key: string]: { [key: string]: number | 'UNLIMITED' };
   };

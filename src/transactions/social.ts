@@ -13,25 +13,28 @@ import {
   SendNewMessageResponse,
   SubmitPostRequest,
   SubmitPostResponse,
+  TransactionType,
   UpdateProfileRequest,
   UpdateProfileResponse,
 } from '../backend-types';
-import { checkPartyAccessGroups, PartialWithRequiredFields } from '../data';
+import { PartialWithRequiredFields, checkPartyAccessGroups } from '../data';
 import {
-  bs58PublicKeyToCompressedBytes,
-  encodeUTF8ToBytes,
-  identity,
   TransactionExtraDataKV,
   TransactionMetadataFollow,
   TransactionMetadataLike,
   TransactionMetadataNewMessage,
   TransactionMetadataSubmitPost,
   TransactionMetadataUpdateProfile,
+  bs58PublicKeyToCompressedBytes,
+  encodeUTF8ToBytes,
+  identity,
   uvarint64ToBuf,
 } from '../identity';
+import { guardTxPermission } from '../identity/permissions-utils';
 import { constructBalanceModelTx, handleSignAndSubmit } from '../internal';
 import {
   ConstructedAndSubmittedTx,
+  TxRequestOptions,
   TypeWithOptionalFeesAndExtraData,
 } from '../types';
 /**
@@ -80,12 +83,18 @@ export type SubmitPostRequestParams = TypeWithOptionalFeesAndExtraData<
     'UpdaterPublicKeyBase58Check' | 'BodyObj'
   >
 >;
-export const submitPost = (
+export const submitPost = async (
   params: SubmitPostRequestParams,
-  options?: RequestOptions
+  options?: TxRequestOptions
 ): Promise<
   ConstructedAndSubmittedTx<SubmitPostResponse | ConstructedTransactionResponse>
 > => {
+  if (options?.checkPermissions !== false) {
+    await guardTxPermission(TransactionType.SubmitPost, {
+      fallbackTxLimitCount: options?.txLimitCount,
+    });
+  }
+
   return handleSignAndSubmit('api/v0/submit-post', params, {
     ...options,
     constructionFunction: constructSubmitPost,
