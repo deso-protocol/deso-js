@@ -6,6 +6,7 @@ import {
   CreateFollowTxnStatelessResponse,
   CreateLikeStatelessRequest,
   CreateLikeStatelessResponse,
+  DeSoBodySchema,
   RequestOptions,
   SendDiamondsRequest,
   SendDiamondsResponse,
@@ -44,23 +45,10 @@ import {
   TxRequestOptions,
   TypeWithOptionalFeesAndExtraData,
 } from '../types';
-/**
- * https://docs.deso.org/deso-backend/construct-transactions/social-transactions-api#update-profile
- */
-export const updateProfile = async (
-  params: TypeWithOptionalFeesAndExtraData<UpdateProfileRequest>,
-  options?: RequestOptions
-): Promise<
-  ConstructedAndSubmittedTx<
-    UpdateProfileResponse | ConstructedTransactionResponse
-  >
-> => {
-  return handleSignAndSubmit('api/v0/update-profile', params, options);
-};
 
-export const constructUpdateProfileTransaction = (
+const buildUpdateProfileMetadata = (
   params: TypeWithOptionalFeesAndExtraData<UpdateProfileRequest>
-): Promise<ConstructedTransactionResponse> => {
+) => {
   const metadata = new TransactionMetadataUpdateProfile();
   // TODO: this is broken.
   metadata.profilePublicKey =
@@ -74,30 +62,36 @@ export const constructUpdateProfileTransaction = (
   metadata.newCreatorBasisPoints = params.NewCreatorBasisPoints;
   metadata.newStakeMultipleBasisPoints = params.NewStakeMultipleBasisPoints;
   metadata.isHidden = params.IsHidden;
-  return constructBalanceModelTx(params.UpdaterPublicKeyBase58Check, metadata, {
-    ExtraData: params.ExtraData,
-    MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
-    TransactionFees: params.TransactionFees,
-  });
+
+  return metadata;
+};
+
+export const constructUpdateProfileTransaction = (
+  params: TypeWithOptionalFeesAndExtraData<UpdateProfileRequest>
+): Promise<ConstructedTransactionResponse> => {
+  return constructBalanceModelTx(
+    params.UpdaterPublicKeyBase58Check,
+    buildUpdateProfileMetadata(params),
+    {
+      ExtraData: params.ExtraData,
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+    }
+  );
 };
 
 /**
- * https://docs.deso.org/deso-backend/construct-transactions/social-transactions-api#submit-post
+ * https://docs.deso.org/deso-backend/construct-transactions/social-transactions-api#update-profile
  */
-export type SubmitPostRequestParams = TypeWithOptionalFeesAndExtraData<
-  PartialWithRequiredFields<
-    SubmitPostRequest,
-    'UpdaterPublicKeyBase58Check' | 'BodyObj'
-  >
->;
-export const submitPost = async (
-  params: SubmitPostRequestParams,
+export const updateProfile = async (
+  params: TypeWithOptionalFeesAndExtraData<UpdateProfileRequest>,
   options?: TxRequestOptions
 ): Promise<
-  ConstructedAndSubmittedTx<SubmitPostResponse | ConstructedTransactionResponse>
+  ConstructedAndSubmittedTx<
+    UpdateProfileResponse | ConstructedTransactionResponse
+  >
 > => {
-  const metadata = buildSubmitPostMetadata(params);
-  const extraDataKVs = buildSubmitPostConsensusKVs(params);
+  const metadata = buildUpdateProfileMetadata(params);
   const txConstructionParams: [
     string,
     TransactionMetadataRecord,
@@ -107,7 +101,6 @@ export const submitPost = async (
     metadata,
     {
       ExtraData: params.ExtraData,
-      ConsensusExtraDataKVs: extraDataKVs,
       MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
       TransactionFees: params.TransactionFees,
     },
@@ -116,27 +109,30 @@ export const submitPost = async (
   const txWithFee = getTxnWithFee(...txConstructionParams);
 
   if (options?.checkPermissions !== false) {
-    await guardTxPermission(TransactionType.SubmitPost, {
+    await guardTxPermission(TransactionType.UpdateProfile, {
       fallbackTxLimitCount: options?.txLimitCount,
       txAmountDESONanos:
         txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
     });
   }
 
-  return handleSignAndSubmit('api/v0/submit-post', params, {
-    ...options,
-    constructionFunction: () =>
-      constructBalanceModelTx(...txConstructionParams),
-  });
+  return handleSignAndSubmit('api/v0/update-profile', params, options);
 };
 
 const buildSubmitPostMetadata = (params: SubmitPostRequestParams) => {
   const metadata = new TransactionMetadataSubmitPost();
-  const BodyObj = Object(params.BodyObj) as { [k: string]: string };
-  Object.keys(BodyObj).forEach(
-    (key) => (!BodyObj[key] || !BodyObj[key].length) && delete BodyObj[key]
-  );
-  metadata.body = encodeUTF8ToBytes(JSON.stringify(BodyObj));
+  const BodyObjCopy: Partial<DeSoBodySchema> = {};
+  Object.keys(params.BodyObj).forEach((k) => {
+    const key = k as keyof DeSoBodySchema;
+    const value = params.BodyObj[key] as string & string[];
+    if (!value) return;
+    if (Array.isArray(value) && value.length > 0) {
+      BodyObjCopy[key] = value;
+    } else {
+      BodyObjCopy[key] = value;
+    }
+  });
+  metadata.body = encodeUTF8ToBytes(JSON.stringify(BodyObjCopy));
   metadata.creatorBasisPoints = 1000;
   metadata.stakeMultipleBasisPoints = 12500;
   metadata.timestampNanos = Math.ceil(
@@ -189,6 +185,54 @@ export const constructSubmitPost = (
       TransactionFees: params.TransactionFees,
     }
   );
+};
+
+/**
+ * https://docs.deso.org/deso-backend/construct-transactions/social-transactions-api#submit-post
+ */
+export type SubmitPostRequestParams = TypeWithOptionalFeesAndExtraData<
+  PartialWithRequiredFields<
+    SubmitPostRequest,
+    'UpdaterPublicKeyBase58Check' | 'BodyObj'
+  >
+>;
+export const submitPost = async (
+  params: SubmitPostRequestParams,
+  options?: TxRequestOptions
+): Promise<
+  ConstructedAndSubmittedTx<SubmitPostResponse | ConstructedTransactionResponse>
+> => {
+  const metadata = buildSubmitPostMetadata(params);
+  const extraDataKVs = buildSubmitPostConsensusKVs(params);
+  const txConstructionParams: [
+    string,
+    TransactionMetadataRecord,
+    BalanceModelTransactionFields
+  ] = [
+    params.UpdaterPublicKeyBase58Check,
+    metadata,
+    {
+      ExtraData: params.ExtraData,
+      ConsensusExtraDataKVs: extraDataKVs,
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+    },
+  ];
+
+  const txWithFee = getTxnWithFee(...txConstructionParams);
+
+  if (options?.checkPermissions !== false) {
+    await guardTxPermission(TransactionType.SubmitPost, {
+      fallbackTxLimitCount: options?.txLimitCount,
+      txAmountDESONanos:
+        txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
+    });
+  }
+
+  return handleSignAndSubmit('api/v0/submit-post', params, {
+    ...options,
+    constructionFunction: constructSubmitPost,
+  });
 };
 
 /**
