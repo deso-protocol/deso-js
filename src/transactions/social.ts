@@ -23,6 +23,7 @@ import {
   TransactionMetadataFollow,
   TransactionMetadataLike,
   TransactionMetadataNewMessage,
+  TransactionMetadataRecord,
   TransactionMetadataSubmitPost,
   TransactionMetadataUpdateProfile,
   bs58PublicKeyToCompressedBytes,
@@ -31,7 +32,13 @@ import {
   uvarint64ToBuf,
 } from '../identity';
 import { guardTxPermission } from '../identity/permissions-utils';
-import { constructBalanceModelTx, handleSignAndSubmit } from '../internal';
+import {
+  BalanceModelTransactionFields,
+  constructBalanceModelTx,
+  getTxnWithFees as getTxnWithFee,
+  handleSignAndSubmit,
+  sumTransactionFees,
+} from '../internal';
 import {
   ConstructedAndSubmittedTx,
   TxRequestOptions,
@@ -89,21 +96,41 @@ export const submitPost = async (
 ): Promise<
   ConstructedAndSubmittedTx<SubmitPostResponse | ConstructedTransactionResponse>
 > => {
+  const metadata = buildSubmitPostMetadata(params);
+  const extraDataKVs = buildSubmitPostConsensusKVs(params);
+  const txConstructionParams: [
+    string,
+    TransactionMetadataRecord,
+    BalanceModelTransactionFields
+  ] = [
+    params.UpdaterPublicKeyBase58Check,
+    metadata,
+    {
+      ExtraData: params.ExtraData,
+      ConsensusExtraDataKVs: extraDataKVs,
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+    },
+  ];
+
+  const txWithFee = getTxnWithFee(...txConstructionParams);
+
   if (options?.checkPermissions !== false) {
     await guardTxPermission(TransactionType.SubmitPost, {
       fallbackTxLimitCount: options?.txLimitCount,
+      txAmountDESONanos:
+        txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
     });
   }
 
   return handleSignAndSubmit('api/v0/submit-post', params, {
     ...options,
-    constructionFunction: constructSubmitPost,
+    constructionFunction: () =>
+      constructBalanceModelTx(...txConstructionParams),
   });
 };
 
-export const constructSubmitPost = (
-  params: SubmitPostRequestParams
-): Promise<ConstructedTransactionResponse> => {
+const buildSubmitPostMetadata = (params: SubmitPostRequestParams) => {
   const metadata = new TransactionMetadataSubmitPost();
   const BodyObj = Object(params.BodyObj) as { [k: string]: string };
   Object.keys(BodyObj).forEach(
@@ -118,7 +145,13 @@ export const constructSubmitPost = (
   metadata.isHidden = !!params.IsHidden;
   metadata.parentStakeId = hexToBytes(params.ParentStakeID || '');
   metadata.postHashToModify = hexToBytes(params.PostHashHexToModify || '');
+
+  return metadata;
+};
+
+const buildSubmitPostConsensusKVs = (params: SubmitPostRequestParams) => {
   const extraDataKVs: TransactionExtraDataKV[] = [];
+
   if (params.RepostedPostHashHex) {
     extraDataKVs.push(
       new TransactionExtraDataKV(
@@ -139,12 +172,23 @@ export const constructSubmitPost = (
       )
     );
   }
-  return constructBalanceModelTx(params.UpdaterPublicKeyBase58Check, metadata, {
-    ExtraData: params.ExtraData,
-    ConsensusExtraDataKVs: extraDataKVs,
-    MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
-    TransactionFees: params.TransactionFees,
-  });
+
+  return extraDataKVs;
+};
+
+export const constructSubmitPost = (
+  params: SubmitPostRequestParams
+): Promise<ConstructedTransactionResponse> => {
+  return constructBalanceModelTx(
+    params.UpdaterPublicKeyBase58Check,
+    buildSubmitPostMetadata(params),
+    {
+      ExtraData: params.ExtraData,
+      ConsensusExtraDataKVs: buildSubmitPostConsensusKVs(params),
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+    }
+  );
 };
 
 /**
@@ -157,10 +201,16 @@ export type CreateFollowTxnRequestParams = TypeWithOptionalFeesAndExtraData<
   >
 >;
 
-export const updateFollowingStatus = (
+export const updateFollowingStatus = async (
   params: CreateFollowTxnRequestParams,
-  options?: RequestOptions
+  options?: TxRequestOptions
 ): Promise<ConstructedAndSubmittedTx<CreateFollowTxnStatelessResponse>> => {
+  if (options?.checkPermissions !== false) {
+    await guardTxPermission(TransactionType.Follow, {
+      fallbackTxLimitCount: options?.txLimitCount,
+    });
+  }
+
   return handleSignAndSubmit('api/v0/create-follow-txn-stateless', params, {
     ...options,
     constructionFunction: constructFollowTransaction,
@@ -191,8 +241,14 @@ export const constructFollowTransaction = (
  */
 export const sendDiamonds = async (
   params: TypeWithOptionalFeesAndExtraData<SendDiamondsRequest>,
-  options?: RequestOptions
+  options?: TxRequestOptions
 ): Promise<ConstructedAndSubmittedTx<SendDiamondsResponse>> => {
+  if (options?.checkPermissions !== false) {
+    await guardTxPermission(TransactionType.BasicTransfer, {
+      fallbackTxLimitCount: options?.txLimitCount,
+    });
+  }
+
   return handleSignAndSubmit('api/v0/send-diamonds', params, options);
 };
 
