@@ -7,13 +7,13 @@ import {
   CreateLikeStatelessRequest,
   CreateLikeStatelessResponse,
   DeSoBodySchema,
-  RequestOptions,
   SendDiamondsRequest,
   SendDiamondsResponse,
   SendNewMessageRequest,
   SendNewMessageResponse,
   SubmitPostRequest,
   SubmitPostResponse,
+  TransactionFee,
   TransactionType,
   UpdateProfileRequest,
   UpdateProfileResponse,
@@ -24,7 +24,6 @@ import {
   TransactionMetadataFollow,
   TransactionMetadataLike,
   TransactionMetadataNewMessage,
-  TransactionMetadataRecord,
   TransactionMetadataSubmitPost,
   TransactionMetadataUpdateProfile,
   bs58PublicKeyToCompressedBytes,
@@ -34,9 +33,8 @@ import {
 } from '../identity';
 import { guardTxPermission } from '../identity/permissions-utils';
 import {
-  BalanceModelTransactionFields,
   constructBalanceModelTx,
-  getTxnWithFees as getTxnWithFee,
+  getTxnWithFees as getTxWithFee,
   handleSignAndSubmit,
   sumTransactionFees,
 } from '../internal';
@@ -91,22 +89,15 @@ export const updateProfile = async (
     UpdateProfileResponse | ConstructedTransactionResponse
   >
 > => {
-  const metadata = buildUpdateProfileMetadata(params);
-  const txConstructionParams: [
-    string,
-    TransactionMetadataRecord,
-    BalanceModelTransactionFields
-  ] = [
+  const txWithFee = getTxWithFee(
     params.UpdaterPublicKeyBase58Check,
-    metadata,
+    buildUpdateProfileMetadata(params),
     {
       ExtraData: params.ExtraData,
       MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
       TransactionFees: params.TransactionFees,
-    },
-  ];
-
-  const txWithFee = getTxnWithFee(...txConstructionParams);
+    }
+  );
 
   if (options?.checkPermissions !== false) {
     await guardTxPermission(TransactionType.UpdateProfile, {
@@ -116,7 +107,10 @@ export const updateProfile = async (
     });
   }
 
-  return handleSignAndSubmit('api/v0/update-profile', params, options);
+  return handleSignAndSubmit('api/v0/update-profile', params, {
+    ...options,
+    constructionFunction: constructUpdateProfileTransaction,
+  });
 };
 
 const buildSubmitPostMetadata = (params: SubmitPostRequestParams) => {
@@ -202,24 +196,16 @@ export const submitPost = async (
 ): Promise<
   ConstructedAndSubmittedTx<SubmitPostResponse | ConstructedTransactionResponse>
 > => {
-  const metadata = buildSubmitPostMetadata(params);
-  const extraDataKVs = buildSubmitPostConsensusKVs(params);
-  const txConstructionParams: [
-    string,
-    TransactionMetadataRecord,
-    BalanceModelTransactionFields
-  ] = [
+  const txWithFee = getTxWithFee(
     params.UpdaterPublicKeyBase58Check,
-    metadata,
+    buildSubmitPostMetadata(params),
     {
       ExtraData: params.ExtraData,
-      ConsensusExtraDataKVs: extraDataKVs,
+      ConsensusExtraDataKVs: buildSubmitPostConsensusKVs(params),
       MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
       TransactionFees: params.TransactionFees,
-    },
-  ];
-
-  const txWithFee = getTxnWithFee(...txConstructionParams);
+    }
+  );
 
   if (options?.checkPermissions !== false) {
     await guardTxPermission(TransactionType.SubmitPost, {
@@ -249,9 +235,21 @@ export const updateFollowingStatus = async (
   params: CreateFollowTxnRequestParams,
   options?: TxRequestOptions
 ): Promise<ConstructedAndSubmittedTx<CreateFollowTxnStatelessResponse>> => {
+  const txWithFee = getTxWithFee(
+    params.FollowerPublicKeyBase58Check,
+    buildFollowMetadata(params),
+    {
+      ExtraData: params.ExtraData,
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+    }
+  );
+
   if (options?.checkPermissions !== false) {
     await guardTxPermission(TransactionType.Follow, {
       fallbackTxLimitCount: options?.txLimitCount,
+      txAmountDESONanos:
+        txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
     });
   }
 
@@ -261,17 +259,21 @@ export const updateFollowingStatus = async (
   });
 };
 
-export const constructFollowTransaction = (
-  params: CreateFollowTxnRequestParams
-): Promise<ConstructedTransactionResponse> => {
+const buildFollowMetadata = (params: CreateFollowTxnRequestParams) => {
   const metadata = new TransactionMetadataFollow();
   metadata.followedPublicKey = bs58PublicKeyToCompressedBytes(
     params.FollowedPublicKeyBase58Check
   );
   metadata.isUnfollow = !!params.IsUnfollow;
+  return metadata;
+};
+
+export const constructFollowTransaction = (
+  params: CreateFollowTxnRequestParams
+): Promise<ConstructedTransactionResponse> => {
   return constructBalanceModelTx(
     params.FollowerPublicKeyBase58Check,
-    metadata,
+    buildFollowMetadata(params),
     {
       ExtraData: params.ExtraData,
       MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
@@ -287,11 +289,12 @@ export const sendDiamonds = async (
   params: TypeWithOptionalFeesAndExtraData<SendDiamondsRequest>,
   options?: TxRequestOptions
 ): Promise<ConstructedAndSubmittedTx<SendDiamondsResponse>> => {
-  if (options?.checkPermissions !== false) {
-    await guardTxPermission(TransactionType.BasicTransfer, {
-      fallbackTxLimitCount: options?.txLimitCount,
-    });
-  }
+  // TODO: check permissions once we can calculate the fee appropriately
+  // if (options?.checkPermissions !== false) {
+  //   await guardTxPermission(TransactionType.BasicTransfer, {
+  //     fallbackTxLimitCount: options?.txLimitCount,
+  //   });
+  // }
 
   return handleSignAndSubmit('api/v0/send-diamonds', params, options);
 };
@@ -323,26 +326,68 @@ export type CreateLikeTransactionParams = TypeWithOptionalFeesAndExtraData<
 >;
 export const updateLikeStatus = async (
   params: CreateLikeTransactionParams,
-  options?: RequestOptions
+  options?: TxRequestOptions
 ): Promise<ConstructedAndSubmittedTx<CreateLikeStatelessResponse>> => {
+  const txWithFee = getTxWithFee(
+    params.ReaderPublicKeyBase58Check,
+    buildLikeMetadata(params),
+    {
+      ExtraData: params.ExtraData,
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+    }
+  );
+
+  if (options?.checkPermissions !== false) {
+    await guardTxPermission(TransactionType.Like, {
+      fallbackTxLimitCount: options?.txLimitCount,
+      txAmountDESONanos:
+        txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
+    });
+  }
+
   return handleSignAndSubmit('api/v0/create-like-stateless', params, {
     ...options,
     constructionFunction: constructLikeTransaction,
   });
 };
 
-export const constructLikeTransaction = (
-  params: CreateLikeTransactionParams
-): Promise<ConstructedTransactionResponse> => {
+const buildLikeMetadata = (params: CreateLikeTransactionParams) => {
   const metadata = new TransactionMetadataLike();
   metadata.likedPostHash = hexToBytes(params.LikedPostHashHex);
   metadata.isUnlike = !!params.IsUnlike;
-  return constructBalanceModelTx(params.ReaderPublicKeyBase58Check, metadata, {
-    ExtraData: params.ExtraData,
-    MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
-    TransactionFees: params.TransactionFees,
-  });
+  return metadata;
 };
+
+export const constructLikeTransaction = (
+  params: CreateLikeTransactionParams
+): Promise<ConstructedTransactionResponse> => {
+  return constructBalanceModelTx(
+    params.ReaderPublicKeyBase58Check,
+    buildLikeMetadata(params),
+    {
+      ExtraData: params.ExtraData,
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+    }
+  );
+};
+
+enum NewMessageType {
+  DM = 0,
+  Group = 1,
+}
+
+enum NewMessageOperation {
+  Create = 0,
+  Update = 1,
+}
+
+interface NewMessageTxOptions {
+  type: NewMessageType;
+  operation: NewMessageOperation;
+  timestampNanos?: number;
+}
 
 /**
  * https://docs.deso.org/deso-backend/construct-transactions/social-transactions-api#send-direct-message
@@ -353,25 +398,53 @@ type SendNewMessageParams = TypeWithOptionalFeesAndExtraData<
 >;
 export const sendDMMessage = async (
   params: SendNewMessageParams,
-  options?: RequestOptions
+  options?: TxRequestOptions
 ): Promise<
   ConstructedAndSubmittedTx<
     SendNewMessageResponse | ConstructedTransactionResponse
   >
 > => {
+  const txWithFee = getTxWithFee(
+    params.SenderAccessGroupOwnerPublicKeyBase58Check,
+    buildNewMessageMetadata(params, {
+      type: NewMessageType.DM,
+      operation: NewMessageOperation.Create,
+    }),
+    {
+      ExtraData: params.ExtraData,
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+    }
+  );
+
+  if (options?.checkPermissions !== false) {
+    await guardTxPermission(TransactionType.NewMessage, {
+      fallbackTxLimitCount: options?.txLimitCount,
+      txAmountDESONanos:
+        txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
+    });
+  }
+
   return handleSignAndSubmit('api/v0/send-dm-message', params, {
     ...options,
     constructionFunction: constructSendDMTransaction,
   });
 };
 
-export const constructSendDMTransaction = (
-  params: SendNewMessageParams
-): Promise<ConstructedTransactionResponse> => {
+const buildNewMessageMetadata = (
+  params: SendNewMessageParams,
+  {
+    type,
+    operation,
+    timestampNanos = Math.ceil(
+      1e6 * (globalThis.performance.timeOrigin + globalThis.performance.now())
+    ),
+  }: NewMessageTxOptions
+) => {
   const metadata = new TransactionMetadataNewMessage();
   metadata.encryptedText = encodeUTF8ToBytes(params.EncryptedMessageText);
-  metadata.newMessageOperation = 0;
-  metadata.newMessageType = 0;
+  metadata.newMessageOperation = operation;
+  metadata.newMessageType = type;
   metadata.recipientAccessGroupKeyname = encodeUTF8ToBytes(
     params.RecipientAccessGroupKeyName
   );
@@ -390,12 +463,20 @@ export const constructSendDMTransaction = (
   metadata.senderAccessGroupPublicKey = bs58PublicKeyToCompressedBytes(
     params.SenderAccessGroupPublicKeyBase58Check
   );
-  metadata.timestampNanos = Math.ceil(
-    1e6 * (globalThis.performance.timeOrigin + globalThis.performance.now())
-  );
+  metadata.timestampNanos = timestampNanos;
+
+  return metadata;
+};
+
+export const constructSendDMTransaction = (
+  params: SendNewMessageParams
+): Promise<ConstructedTransactionResponse> => {
   return constructBalanceModelTx(
     params.SenderAccessGroupOwnerPublicKeyBase58Check,
-    metadata,
+    buildNewMessageMetadata(params, {
+      type: NewMessageType.DM,
+      operation: NewMessageOperation.Create,
+    }),
     {
       ExtraData: params.ExtraData,
       MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
@@ -409,12 +490,34 @@ export const constructSendDMTransaction = (
  */
 export const updateDMMessage = async (
   params: TypeWithOptionalFeesAndExtraData<SendNewMessageRequest>,
-  options?: RequestOptions
+  options?: TxRequestOptions
 ): Promise<
   ConstructedAndSubmittedTx<
     SendNewMessageResponse | ConstructedTransactionResponse
   >
 > => {
+  const txWithFee = getTxWithFee(
+    params.SenderAccessGroupOwnerPublicKeyBase58Check,
+    buildNewMessageMetadata(params, {
+      type: NewMessageType.DM,
+      operation: NewMessageOperation.Update,
+      timestampNanos: parseInt(params.TimestampNanosString),
+    }),
+    {
+      ExtraData: params.ExtraData,
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+    }
+  );
+
+  if (options?.checkPermissions !== false) {
+    await guardTxPermission(TransactionType.NewMessage, {
+      fallbackTxLimitCount: options?.txLimitCount,
+      txAmountDESONanos:
+        txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
+    });
+  }
+
   return handleSignAndSubmit('api/v0/update-dm-message', params, {
     ...options,
     constructionFunction: constructUpdateDMTransaction,
@@ -424,32 +527,13 @@ export const updateDMMessage = async (
 export const constructUpdateDMTransaction = (
   params: TypeWithOptionalFeesAndExtraData<SendNewMessageRequest>
 ): Promise<ConstructedTransactionResponse> => {
-  const metadata = new TransactionMetadataNewMessage();
-  metadata.encryptedText = encodeUTF8ToBytes(params.EncryptedMessageText);
-  metadata.newMessageOperation = 1;
-  metadata.newMessageType = 0;
-  metadata.recipientAccessGroupKeyname = encodeUTF8ToBytes(
-    params.RecipientAccessGroupKeyName
-  );
-  metadata.recipientAccessGroupOwnerPublicKey = bs58PublicKeyToCompressedBytes(
-    params.RecipientAccessGroupOwnerPublicKeyBase58Check
-  );
-  metadata.recipientAccessGroupPublicKey = bs58PublicKeyToCompressedBytes(
-    params.RecipientAccessGroupPublicKeyBase58Check
-  );
-  metadata.senderAccessGroupKeyName = encodeUTF8ToBytes(
-    params.SenderAccessGroupKeyName
-  );
-  metadata.senderAccessGroupOwnerPublicKey = bs58PublicKeyToCompressedBytes(
-    params.SenderAccessGroupOwnerPublicKeyBase58Check
-  );
-  metadata.senderAccessGroupPublicKey = bs58PublicKeyToCompressedBytes(
-    params.SenderAccessGroupPublicKeyBase58Check
-  );
-  metadata.timestampNanos = parseInt(params.TimestampNanosString);
   return constructBalanceModelTx(
     params.SenderAccessGroupOwnerPublicKeyBase58Check,
-    metadata,
+    buildNewMessageMetadata(params, {
+      type: NewMessageType.DM,
+      operation: NewMessageOperation.Update,
+      timestampNanos: parseInt(params.TimestampNanosString),
+    }),
     {
       ExtraData: params.ExtraData,
       MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
@@ -463,12 +547,33 @@ export const constructUpdateDMTransaction = (
  */
 export const sendGroupChatMessage = async (
   params: SendNewMessageParams,
-  options?: RequestOptions
+  options?: TxRequestOptions
 ): Promise<
   ConstructedAndSubmittedTx<
     SendNewMessageResponse | ConstructedTransactionResponse
   >
 > => {
+  const txWithFee = getTxWithFee(
+    params.SenderAccessGroupOwnerPublicKeyBase58Check,
+    buildNewMessageMetadata(params, {
+      type: NewMessageType.Group,
+      operation: NewMessageOperation.Create,
+    }),
+    {
+      ExtraData: params.ExtraData,
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+    }
+  );
+
+  if (options?.checkPermissions !== false) {
+    await guardTxPermission(TransactionType.NewMessage, {
+      fallbackTxLimitCount: options?.txLimitCount,
+      txAmountDESONanos:
+        txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
+    });
+  }
+
   return handleSignAndSubmit('api/v0/send-group-chat-message', params, {
     ...options,
     constructionFunction: constructSendGroupChatMessageTransaction,
@@ -478,34 +583,12 @@ export const sendGroupChatMessage = async (
 export const constructSendGroupChatMessageTransaction = (
   params: SendNewMessageParams
 ): Promise<ConstructedTransactionResponse> => {
-  const metadata = new TransactionMetadataNewMessage();
-  metadata.encryptedText = encodeUTF8ToBytes(params.EncryptedMessageText);
-  metadata.newMessageOperation = 0;
-  metadata.newMessageType = 1;
-  metadata.recipientAccessGroupKeyname = encodeUTF8ToBytes(
-    params.RecipientAccessGroupKeyName
-  );
-  metadata.recipientAccessGroupOwnerPublicKey = bs58PublicKeyToCompressedBytes(
-    params.RecipientAccessGroupOwnerPublicKeyBase58Check
-  );
-  metadata.recipientAccessGroupPublicKey = bs58PublicKeyToCompressedBytes(
-    params.RecipientAccessGroupPublicKeyBase58Check
-  );
-  metadata.senderAccessGroupKeyName = encodeUTF8ToBytes(
-    params.SenderAccessGroupKeyName
-  );
-  metadata.senderAccessGroupOwnerPublicKey = bs58PublicKeyToCompressedBytes(
-    params.SenderAccessGroupOwnerPublicKeyBase58Check
-  );
-  metadata.senderAccessGroupPublicKey = bs58PublicKeyToCompressedBytes(
-    params.SenderAccessGroupPublicKeyBase58Check
-  );
-  metadata.timestampNanos = Math.ceil(
-    1e6 * (globalThis.performance.timeOrigin + globalThis.performance.now())
-  );
   return constructBalanceModelTx(
     params.SenderAccessGroupOwnerPublicKeyBase58Check,
-    metadata,
+    buildNewMessageMetadata(params, {
+      type: NewMessageType.Group,
+      operation: NewMessageOperation.Create,
+    }),
     {
       ExtraData: params.ExtraData,
       MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
@@ -528,13 +611,65 @@ interface SendMessageParams {
   AccessGroup?: string;
   ExtraData?: { [key: string]: string };
   MinFeeRateNanosPerKB?: number;
+  TransactionFees?: TransactionFee[];
 }
 export const sendMessage = async (
   params: SendMessageParams,
-  options?: RequestOptions & { sendMessageUnencrypted?: boolean }
+  options?: TxRequestOptions & { sendMessageUnencrypted?: boolean }
 ) => {
   if (!params.AccessGroup) {
     params.AccessGroup = 'default-key';
+  }
+
+  const txWithFee = getTxWithFee(
+    params.SenderPublicKeyBase58Check,
+    buildNewMessageMetadata(
+      {
+        // NOTE: some of these fields we don't *actually* know without making an
+        // api call to get them, but for the purpose of estimating the fees, we
+        // can just use dummy values.
+        SenderAccessGroupOwnerPublicKeyBase58Check:
+          params.SenderPublicKeyBase58Check,
+        SenderAccessGroupPublicKeyBase58Check:
+          params.SenderPublicKeyBase58Check,
+        SenderAccessGroupKeyName: params.AccessGroup,
+        RecipientAccessGroupOwnerPublicKeyBase58Check:
+          params.RecipientPublicKeyBase58Check,
+        RecipientAccessGroupPublicKeyBase58Check:
+          params.RecipientPublicKeyBase58Check,
+        RecipientAccessGroupKeyName: params.AccessGroup,
+        // NOTE: We are calculating the fee in order to determine whether or not
+        // we should prompt the user to re-approve the derived key used for
+        // signing transactions. We *must* do this before executing any async
+        // code, otherwise popup blockers will generally block the popup.
+        // Encrypting the message is an async operation, so we must use the
+        // plain text message for the fee calculation which is not exactly
+        // right, but it should be close. We may need to revisit this, however,
+        // and include a buffer in the fee calculation.
+        EncryptedMessageText: params.Message,
+
+        MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+        TransactionFees: params.TransactionFees,
+        ExtraData: params.ExtraData,
+      },
+      {
+        type: NewMessageType.Group,
+        operation: NewMessageOperation.Create,
+      }
+    ),
+    {
+      ExtraData: params.ExtraData,
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+    }
+  );
+
+  if (options?.checkPermissions !== false) {
+    await guardTxPermission(TransactionType.NewMessage, {
+      fallbackTxLimitCount: options?.txLimitCount,
+      txAmountDESONanos:
+        txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
+    });
   }
 
   const {
@@ -588,12 +723,34 @@ export const sendMessage = async (
  */
 export const updateGroupChatMessage = async (
   params: TypeWithOptionalFeesAndExtraData<SendNewMessageRequest>,
-  options?: RequestOptions
+  options?: TxRequestOptions
 ): Promise<
   ConstructedAndSubmittedTx<
     SendNewMessageResponse | ConstructedTransactionResponse
   >
 > => {
+  const txWithFee = getTxWithFee(
+    params.SenderAccessGroupOwnerPublicKeyBase58Check,
+    buildNewMessageMetadata(params, {
+      type: NewMessageType.Group,
+      operation: NewMessageOperation.Update,
+      timestampNanos: parseInt(params.TimestampNanosString),
+    }),
+    {
+      ExtraData: params.ExtraData,
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+    }
+  );
+
+  if (options?.checkPermissions !== false) {
+    await guardTxPermission(TransactionType.NewMessage, {
+      fallbackTxLimitCount: options?.txLimitCount,
+      txAmountDESONanos:
+        txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
+    });
+  }
+
   return handleSignAndSubmit('api/v0/update-group-chat-message', params, {
     ...options,
     constructionFunction: constructUpdateGroupChatMessageTransaction,
@@ -603,32 +760,14 @@ export const updateGroupChatMessage = async (
 export const constructUpdateGroupChatMessageTransaction = (
   params: TypeWithOptionalFeesAndExtraData<SendNewMessageRequest>
 ): Promise<ConstructedTransactionResponse> => {
-  const metadata = new TransactionMetadataNewMessage();
-  metadata.encryptedText = encodeUTF8ToBytes(params.EncryptedMessageText);
-  metadata.newMessageOperation = 1;
-  metadata.newMessageType = 1;
-  metadata.recipientAccessGroupKeyname = encodeUTF8ToBytes(
-    params.RecipientAccessGroupKeyName
-  );
-  metadata.recipientAccessGroupOwnerPublicKey = bs58PublicKeyToCompressedBytes(
-    params.RecipientAccessGroupOwnerPublicKeyBase58Check
-  );
-  metadata.recipientAccessGroupPublicKey = bs58PublicKeyToCompressedBytes(
-    params.RecipientAccessGroupPublicKeyBase58Check
-  );
-  metadata.senderAccessGroupKeyName = encodeUTF8ToBytes(
-    params.SenderAccessGroupKeyName
-  );
-  metadata.senderAccessGroupOwnerPublicKey = bs58PublicKeyToCompressedBytes(
-    params.SenderAccessGroupOwnerPublicKeyBase58Check
-  );
-  metadata.senderAccessGroupPublicKey = bs58PublicKeyToCompressedBytes(
-    params.SenderAccessGroupPublicKeyBase58Check
-  );
-  metadata.timestampNanos = parseInt(params.TimestampNanosString);
   return constructBalanceModelTx(
     params.SenderAccessGroupOwnerPublicKeyBase58Check,
-    metadata,
+
+    buildNewMessageMetadata(params, {
+      type: NewMessageType.Group,
+      operation: NewMessageOperation.Update,
+      timestampNanos: parseInt(params.TimestampNanosString),
+    }),
     {
       ExtraData: params.ExtraData,
       MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
