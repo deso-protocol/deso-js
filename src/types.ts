@@ -1,4 +1,8 @@
-import { SubmitTransactionResponse, TransactionFee } from './backend-types';
+import {
+  RequestOptions,
+  SubmitTransactionResponse,
+  TransactionFee,
+} from './backend-types';
 export interface OptionalFeesAndExtraData {
   MinFeeRateNanosPerKB?: number;
   TransactionFees?: TransactionFee[] | null;
@@ -16,3 +20,8 @@ export interface ConstructedAndSubmittedTx<T> {
   // This will be null if the broadcast option is set to false.
   submittedTransactionResponse: SubmitTransactionResponse | null;
 }
+
+export type TxRequestOptions = RequestOptions & {
+  txLimitCount?: number;
+  checkPermissions?: boolean;
+};

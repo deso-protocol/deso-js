@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-types */
+import { type TransactionType } from '../backend-types/deso-types-custom';
+
 // this file was automatically generated, DO NOT EDIT
 export type DB = any;
 
@@ -70,7 +72,7 @@ export interface AncestralRecordValue {
 
 // struct2ts:types/generated/types.AncestralCache
 export interface AncestralCache {
-  AncestralRecordsMap: { [key: string]: AncestralRecordValue };
+  AncestralRecordsMap: Record<string, AncestralRecordValue>;
 }
 
 // struct2ts:types/generated/types.SnapshotOperation
@@ -201,7 +203,7 @@ export interface MessageEntry {
   SenderMessagingGroupKeyName: number[];
   RecipientMessagingPublicKey: number[];
   RecipientMessagingGroupKeyName: number[];
-  ExtraData: { [key: string]: number };
+  ExtraData: Record<string, number>;
 }
 
 // struct2ts:types/generated/types.MessagingGroupMember
@@ -217,7 +219,7 @@ export interface MessagingGroupEntry {
   MessagingPublicKey: number[];
   MessagingGroupKeyName: number[];
   MessagingGroupMembers: MessagingGroupMember[] | null;
-  ExtraData: { [key: string]: number };
+  ExtraData: Record<string, number>;
 }
 
 // struct2ts:types/generated/types.PGMessage
@@ -227,7 +229,7 @@ export interface PGMessage {
   RecipientPublicKey: number[] | null;
   EncryptedText: number[] | null;
   TimestampNanos: number;
-  ExtraData: { [key: string]: number };
+  ExtraData: Record<string, number>;
 }
 
 // struct2ts:types/generated/types.FollowEntry
@@ -249,7 +251,7 @@ export interface NFTEntry {
   IsPending: boolean;
   IsBuyNow: boolean;
   BuyNowPriceNanos: number;
-  ExtraData: { [key: string]: number };
+  ExtraData: Record<string, number>;
 }
 
 // struct2ts:types/generated/types.NFTBidEntry
@@ -308,9 +310,9 @@ export interface PostEntry {
   HasUnlockable: boolean;
   NFTRoyaltyToCreatorBasisPoints: number;
   NFTRoyaltyToCoinBasisPoints: number;
-  AdditionalNFTRoyaltiesToCreatorsBasisPoints: { [key: string]: number };
-  AdditionalNFTRoyaltiesToCoinsBasisPoints: { [key: string]: number };
-  PostExtraData: { [key: string]: number };
+  AdditionalNFTRoyaltiesToCreatorsBasisPoints: Record<string, number>;
+  AdditionalNFTRoyaltiesToCoinsBasisPoints: Record<string, number>;
+  PostExtraData: Record<string, number>;
 }
 
 // struct2ts:types/generated/types.PKIDEntry
@@ -339,7 +341,7 @@ export interface ProfileEntry {
   IsHidden: boolean;
   CreatorCoinEntry: CoinEntry;
   DAOCoinEntry: CoinEntry;
-  ExtraData: { [key: string]: number };
+  ExtraData: Record<string, number>;
 }
 
 // struct2ts:types/generated/types.BalanceEntry
@@ -353,11 +355,11 @@ export interface BalanceEntry {
 // struct2ts:types/generated/types.TransactionSpendingLimit
 export interface TransactionSpendingLimit {
   GlobalDESOLimit: number;
-  TransactionCountLimitMap: { [key: number]: number };
-  CreatorCoinOperationLimitMap: { [key: string]: number };
-  DAOCoinOperationLimitMap: { [key: string]: number };
-  NFTOperationLimitMap: { [key: string]: number };
-  DAOCoinLimitOrderLimitMap: { [key: string]: number };
+  TransactionCountLimitMap: Record<number, number>;
+  CreatorCoinOperationLimitMap: Record<string, number>;
+  DAOCoinOperationLimitMap: Record<string, number>;
+  NFTOperationLimitMap: Record<string, number>;
+  DAOCoinLimitOrderLimitMap: Record<string, number>;
 }
 
 // struct2ts:types/generated/types.DerivedKeyEntry
@@ -366,7 +368,7 @@ export interface DerivedKeyEntry {
   DerivedPublicKey: number[];
   ExpirationBlock: number;
   OperationType: number;
-  ExtraData: { [key: string]: number };
+  ExtraData: Record<string, number>;
   TransactionSpendingLimitTracker: TransactionSpendingLimit | null;
   Memo: number[] | null;
 }
@@ -540,7 +542,7 @@ export interface MsgDeSoTxn {
   TxOutputs: DeSoOutput[] | null;
   TxnMeta: any;
   PublicKey: string | null;
-  ExtraData: { [key: string]: string };
+  ExtraData: Record<string, string>;
   Signature: Signature | null;
   TxnTypeJSON: number;
 }
@@ -640,7 +642,7 @@ export interface DeSoParams {
   MaxStakeMultipleBasisPoints: number;
   MaxCreatorBasisPoints: number;
   MaxNFTRoyaltyBasisPoints: number;
-  ParamUpdaterPublicKeys: { [key: string]: boolean };
+  ParamUpdaterPublicKeys: Record<string, boolean>;
   SeedTxns: string[] | null;
   SeedBalances: DeSoOutput[] | null;
   CreatorCoinTradeFeeBasisPoints: number;
@@ -655,42 +657,35 @@ export interface DeSoParams {
 // struct2ts:types/generated/types.UtxoView
 export interface UtxoView {
   NumUtxoEntries: number;
-  UtxoKeyToUtxoEntry: { [key: string]: UtxoEntry };
-  PublicKeyToDeSoBalanceNanos: { [key: string]: number };
+  UtxoKeyToUtxoEntry: Record<string, UtxoEntry>;
+  PublicKeyToDeSoBalanceNanos: Record<string, number>;
   NanosPurchased: number;
   USDCentsPerBitcoin: number;
   GlobalParamsEntry: GlobalParamsEntry | null;
-  BitcoinBurnTxIDs: { [key: BlockHash]: boolean };
-  ForbiddenPubKeyToForbiddenPubKeyEntry: {
-    [key: PkMapKey]: ForbiddenPubKeyEntry;
-  };
-  MessageKeyToMessageEntry: { [key: string]: MessageEntry };
-  MessagingGroupKeyToMessagingGroupEntry: {
-    [key: string]: MessagingGroupEntry;
-  };
-  MessageMap: { [key: BlockHash]: PGMessage };
-  FollowKeyToFollowEntry: { [key: string]: FollowEntry };
-  NFTKeyToNFTEntry: { [key: string]: NFTEntry };
-  NFTBidKeyToNFTBidEntry: { [key: string]: NFTBidEntry };
-  NFTKeyToAcceptedNFTBidHistory: { [key: string]: NFTBidEntry };
-  DiamondKeyToDiamondEntry: { [key: string]: DiamondEntry };
-  LikeKeyToLikeEntry: { [key: string]: LikeEntry };
-  RepostKeyToRepostEntry: { [key: string]: RepostEntry };
-  PostHashToPostEntry: { [key: BlockHash]: PostEntry };
-  PublicKeyToPKIDEntry: { [key: PkMapKey]: PKIDEntry };
-  PKIDToPublicKey: { [key: string]: PKIDEntry };
-  ProfilePKIDToProfileEntry: { [key: string]: ProfileEntry };
-  ProfileUsernameToProfileEntry: { [key: UsernameMapKey]: ProfileEntry };
-  HODLerPKIDCreatorPKIDToBalanceEntry: {
-    [key: string]: BalanceEntry;
-  };
-  HODLerPKIDCreatorPKIDToDAOCoinBalanceEntry: {
-    [key: string]: BalanceEntry;
-  };
-  DerivedKeyToDerivedEntry: { [key: string]: DerivedKeyEntry };
-  DAOCoinLimitOrderMapKeyToDAOCoinLimitOrderEntry: {
-    [key: string]: DAOCoinLimitOrderEntry;
-  };
+  BitcoinBurnTxIDs: Record<BlockHash, boolean>;
+  ForbiddenPubKeyToForbiddenPubKeyEntry: Record<PkMapKey, ForbiddenPubKeyEntry>;
+  MessageKeyToMessageEntry: Record<string, MessageEntry>;
+  MessagingGroupKeyToMessagingGroupEntry: Record<string, MessagingGroupEntry>;
+  MessageMap: Record<BlockHash, PGMessage>;
+  FollowKeyToFollowEntry: Record<string, FollowEntry>;
+  NFTKeyToNFTEntry: Record<string, NFTEntry>;
+  NFTBidKeyToNFTBidEntry: Record<string, NFTBidEntry>;
+  NFTKeyToAcceptedNFTBidHistory: Record<string, NFTBidEntry>;
+  DiamondKeyToDiamondEntry: Record<string, DiamondEntry>;
+  LikeKeyToLikeEntry: Record<string, LikeEntry>;
+  RepostKeyToRepostEntry: Record<string, RepostEntry>;
+  PostHashToPostEntry: Record<BlockHash, PostEntry>;
+  PublicKeyToPKIDEntry: Record<PkMapKey, PKIDEntry>;
+  PKIDToPublicKey: Record<string, PKIDEntry>;
+  ProfilePKIDToProfileEntry: Record<string, ProfileEntry>;
+  ProfileUsernameToProfileEntry: Record<UsernameMapKey, ProfileEntry>;
+  HODLerPKIDCreatorPKIDToBalanceEntry: Record<string, BalanceEntry>;
+  HODLerPKIDCreatorPKIDToDAOCoinBalanceEntry: Record<string, BalanceEntry>;
+  DerivedKeyToDerivedEntry: Record<string, DerivedKeyEntry>;
+  DAOCoinLimitOrderMapKeyToDAOCoinLimitOrderEntry: Record<
+    string,
+    DAOCoinLimitOrderEntry
+  >;
   TipHash: number[];
   Handle: DB | null;
   Postgres: Postgres | null;
@@ -756,7 +751,7 @@ export interface UtxoOperation {
   PrevRepostEntry: RepostEntry | null;
   PrevRepostCount: number;
   PrevCoinEntry: CoinEntry | null;
-  PrevCoinRoyaltyCoinEntries: { [key: string]: CoinEntry };
+  PrevCoinRoyaltyCoinEntries: Record<string, CoinEntry>;
   PrevTransactorBalanceEntry: BalanceEntry | null;
   PrevCreatorBalanceEntry: BalanceEntry | null;
   FounderRewardUtxoKey: UtxoKey | null;
@@ -781,7 +776,7 @@ export interface UtxoOperation {
   NFTBidAdditionalCoinRoyalties: PublicKeyRoyaltyPair[] | null;
   NFTBidAdditionalDESORoyalties: PublicKeyRoyaltyPair[] | null;
   PrevTransactorDAOCoinLimitOrderEntry: DAOCoinLimitOrderEntry | null;
-  PrevBalanceEntries: { [key: string]: string };
+  PrevBalanceEntries: Record<string, string>;
   PrevMatchingOrders: DAOCoinLimitOrderEntry[] | null;
   FilledDAOCoinLimitOrders: FilledDAOCoinLimitOrder[] | null;
 }
@@ -963,7 +958,7 @@ export interface DBPrefixes {
 // struct2ts:types/generated/types.DBStatePrefixes
 export interface DBStatePrefixes {
   Prefixes: DBPrefixes | null;
-  StatePrefixesMap: { [key: number]: boolean };
+  StatePrefixesMap: Record<number, boolean>;
   StatePrefixesList: number[] | null;
   TxIndexPrefixes: number[] | null;
 }
@@ -1092,8 +1087,8 @@ export interface NFTRoyaltiesMetadata {
   CreatorCoinRoyaltyNanos: number;
   CreatorRoyaltyNanos: number;
   CreatorPublicKeyBase58Check: string;
-  AdditionalCoinRoyaltiesMap: { [key: string]: number };
-  AdditionalDESORoyaltiesMap: { [key: string]: number };
+  AdditionalCoinRoyaltiesMap: Record<string, number>;
+  AdditionalDESORoyaltiesMap: Record<string, number>;
 }
 
 // struct2ts:types/generated/types.NFTBidTxindexMetadata
@@ -1135,8 +1130,8 @@ export interface BurnNFTTxindexMetadata {
 // struct2ts:types/generated/types.CreateNFTTxindexMetadata
 export interface CreateNFTTxindexMetadata {
   NFTPostHashHex: string;
-  AdditionalCoinRoyaltiesMap: { [key: string]: number };
-  AdditionalDESORoyaltiesMap: { [key: string]: number };
+  AdditionalCoinRoyaltiesMap: Record<string, number>;
+  AdditionalDESORoyaltiesMap: Record<string, number>;
 }
 
 // struct2ts:types/generated/types.UpdateNFTTxindexMetadata
@@ -1831,7 +1826,7 @@ export interface PGTransaction {
   BlockHash: number[];
   Type: number;
   PublicKey: number[] | null;
-  ExtraData: { [key: string]: number };
+  ExtraData: Record<string, number>;
   R: number[];
   S: number[];
   Outputs: PGTransactionOutput[] | null;
@@ -1889,7 +1884,7 @@ export interface PGProfile {
   DAOCoinCoinsInCirculationNanos: string;
   DAOCoinMintingDisabled: boolean;
   DAOCoinTransferRestrictionStatus: number;
-  ExtraData: { [key: string]: number };
+  ExtraData: Record<string, number>;
 }
 
 // struct2ts:types/generated/types.PGPost
@@ -1915,9 +1910,9 @@ export interface PGPost {
   Unlockable: boolean;
   CreatorRoyaltyBasisPoints: number;
   CoinRoyaltyBasisPoints: number;
-  AdditionalNFTRoyaltiesToCoinsBasisPoints: { [key: string]: number };
-  AdditionalNFTRoyaltiesToCreatorsBasisPoints: { [key: string]: number };
-  ExtraData: { [key: string]: number };
+  AdditionalNFTRoyaltiesToCoinsBasisPoints: Record<string, number>;
+  AdditionalNFTRoyaltiesToCreatorsBasisPoints: Record<string, number>;
+  ExtraData: Record<string, number>;
 }
 
 // struct2ts:types/generated/types.PGLike
@@ -1946,7 +1941,7 @@ export interface PGMessagingGroup {
   MessagingPublicKey: number[];
   MessagingGroupKeyName: number[];
   MessagingGroupMembers: number[] | null;
-  ExtraData: { [key: string]: number };
+  ExtraData: Record<string, number>;
 }
 
 // struct2ts:types/generated/types.PGCreatorCoinBalance
@@ -2019,7 +2014,7 @@ export interface PGNFT {
   IsPending: boolean;
   IsBuyNow: boolean;
   BuyNowPriceNanos: number;
-  ExtraData: { [key: string]: number };
+  ExtraData: Record<string, number>;
 }
 
 // struct2ts:types/generated/types.PGNFTBid
@@ -2038,7 +2033,7 @@ export interface PGDerivedKey {
   DerivedPublicKey: number[];
   ExpirationBlock: number;
   OperationType: number;
-  ExtraData: { [key: string]: number };
+  ExtraData: Record<string, number>;
   TransactionSpendingLimitTracker: TransactionSpendingLimit | null;
   Memo: number[] | null;
 }
@@ -2204,7 +2199,7 @@ export interface PostEntryResponse {
   InGlobalFeed: boolean | null;
   InHotFeed: boolean | null;
   IsPinned: boolean | null;
-  PostExtraData: { [key: string]: string };
+  PostExtraData: Record<string, string>;
   CommentCount: number;
   RepostCount: number;
   QuoteRepostCount: number;
@@ -2216,8 +2211,8 @@ export interface PostEntryResponse {
   HasUnlockable: boolean;
   NFTRoyaltyToCreatorBasisPoints: number;
   NFTRoyaltyToCoinBasisPoints: number;
-  AdditionalDESORoyaltiesMap: { [key: string]: number };
-  AdditionalCoinRoyaltiesMap: { [key: string]: number };
+  AdditionalDESORoyaltiesMap: Record<string, number>;
+  AdditionalCoinRoyaltiesMap: Record<string, number>;
   DiamondsFromSender: number;
   HotnessScore: number;
   PostMultiplier: number;
@@ -2275,7 +2270,7 @@ export interface ProfileEntryResponse {
   UsersThatHODL: BalanceEntryResponse[] | null;
   IsFeaturedTutorialWellKnownCreator: boolean;
   IsFeaturedTutorialUpAndComingCreator: boolean;
-  ExtraData: { [key: string]: string };
+  ExtraData: Record<string, string>;
 }
 
 // struct2ts:types/generated/types.TransactionFee
@@ -2293,7 +2288,7 @@ export interface AdminSetTransactionFeeForTransactionTypeRequest {
 
 // struct2ts:types/generated/types.AdminSetTransactionFeeForTransactionTypeResponse
 export interface AdminSetTransactionFeeForTransactionTypeResponse {
-  TransactionFeeMap: { [key: string]: TransactionFee };
+  TransactionFeeMap: Record<string, TransactionFee>;
 }
 
 // struct2ts:types/generated/types.AdminSetAllTransactionFeesRequest
@@ -2303,12 +2298,12 @@ export interface AdminSetAllTransactionFeesRequest {
 
 // struct2ts:types/generated/types.AdminSetAllTransactionFeesResponse
 export interface AdminSetAllTransactionFeesResponse {
-  TransactionFeeMap: { [key: string]: TransactionFee };
+  TransactionFeeMap: Record<string, TransactionFee>;
 }
 
 // struct2ts:types/generated/types.AdminGetTransactionFeeMapResponse
 export interface AdminGetTransactionFeeMapResponse {
-  TransactionFeeMap: { [key: string]: TransactionFee };
+  TransactionFeeMap: Record<string, TransactionFee>;
 }
 
 // struct2ts:types/generated/types.AdminAddExemptPublicKey
@@ -2319,7 +2314,7 @@ export interface AdminAddExemptPublicKey {
 
 // struct2ts:types/generated/types.AdminGetExemptPublicKeysResponse
 export interface AdminGetExemptPublicKeysResponse {
-  ExemptPublicKeyMap: { [key: string]: ProfileEntryResponse };
+  ExemptPublicKeyMap: Record<string, ProfileEntryResponse>;
 }
 
 // struct2ts:types/generated/types.AdminResetJumioRequest
@@ -2404,7 +2399,7 @@ export interface CountrySignUpBonusResponse {
 
 // struct2ts:types/generated/types.GetAllCountryLevelSignUpBonusResponse
 export interface GetAllCountryLevelSignUpBonusResponse {
-  SignUpBonusMetadata: { [key: string]: CountrySignUpBonusResponse };
+  SignUpBonusMetadata: Record<string, CountrySignUpBonusResponse>;
   DefaultSignUpBonusMetadata: CountryLevelSignUpBonus;
 }
 
@@ -2483,7 +2478,7 @@ export interface NodeControlResponse {
 
 // struct2ts:types/generated/types.AdminGetMempoolStatsResponse
 export interface AdminGetMempoolStatsResponse {
-  TransactionSummaryStats: { [key: string]: SummaryStats };
+  TransactionSummaryStats: Record<string, SummaryStats>;
 }
 
 // struct2ts:types/generated/types.AdminCreateReferralHashRequest
@@ -2691,11 +2686,11 @@ export interface UserMetadata {
   EmailVerified: boolean;
   PhoneNumber: string;
   PhoneNumberCountryCode: string;
-  MessageReadStateByContact: { [key: string]: number };
+  MessageReadStateByContact: Record<string, number>;
   NotificationLastSeenIndex: number;
   SatoshisBurnedSoFar: number;
   HasBurnedEnoughSatoshisToCreateProfile: boolean;
-  BlockedPublicKeys: { [key: string]: string };
+  BlockedPublicKeys: Record<string, string>;
   WhitelistPosts: boolean;
   JumioInternalReference: string;
   JumioFinishedTime: number;
@@ -2720,8 +2715,8 @@ export interface UserMetadata {
 
 // struct2ts:types/generated/types.AdminGetAllUserGlobalMetadataResponse
 export interface AdminGetAllUserGlobalMetadataResponse {
-  PubKeyToUserGlobalMetadata: { [key: string]: UserMetadata };
-  PubKeyToUsername: { [key: string]: string };
+  PubKeyToUserGlobalMetadata: Record<string, UserMetadata>;
+  PubKeyToUsername: Record<string, string>;
 }
 
 // struct2ts:types/generated/types.AdminGetUserGlobalMetadataRequest
@@ -2737,7 +2732,7 @@ export interface AdminGetUserGlobalMetadataResponse {
 
 // struct2ts:types/generated/types.VerifiedUsernameToPKID
 export interface VerifiedUsernameToPKID {
-  VerifiedUsernameToPKID: { [key: string]: PKID };
+  VerifiedUsernameToPKID: Record<string, PKID>;
 }
 
 // struct2ts:types/generated/types.VerificationUsernameAuditLog
@@ -2879,7 +2874,7 @@ export interface GetAppStateResponse {
   HasTwilioAPIKey: boolean;
   CreateProfileFeeNanos: number;
   CompProfileCreation: boolean;
-  DiamondLevelMap: { [key: number]: number };
+  DiamondLevelMap: Record<number, number>;
   HasWyreIntegration: boolean;
   HasJumioIntegration: boolean;
   BuyWithETH: boolean;
@@ -2889,9 +2884,9 @@ export interface GetAppStateResponse {
   JumioKickbackUSDCents: number;
   CountrySignUpBonus: CountryLevelSignUpBonus;
   DefaultFeeRateNanosPerKB: number;
-  TransactionFeeMap: { [key: string]: TransactionFee };
+  TransactionFeeMap: Record<string, TransactionFee>;
   BuyETHAddress: string;
-  Nodes: { [key: number]: DeSoNode };
+  Nodes: Record<number, DeSoNode>;
   USDCentsPerBitCloutExchangeRate: number;
   JumioBitCloutNanos: number;
 }
@@ -3025,7 +3020,7 @@ export interface TransactionResponse {
   TransactionType: string;
   BlockHashHex: string;
   TransactionMetadata: TransactionMetadata;
-  ExtraData: { [key: string]: string };
+  ExtraData: Record<string, string>;
 }
 
 // struct2ts:types/generated/types.APIBaseResponse
@@ -3320,7 +3315,7 @@ export interface AdminUpdateHotFeedAlgorithmRequest {
   InteractionCapTag: number;
   TimeDecayBlocks: number;
   TimeDecayBlocksTag: number;
-  TxnTypeMultiplierMap: { [key: number]: number };
+  TxnTypeMultiplierMap: Record<number, number>;
 }
 
 // struct2ts:types/generated/types.AdminGetHotFeedAlgorithmResponse
@@ -3329,7 +3324,7 @@ export interface AdminGetHotFeedAlgorithmResponse {
   InteractionCapTag: number;
   TimeDecayBlocks: number;
   TimeDecayBlocksTag: number;
-  TxnTypeMultiplierMap: { [key: number]: number };
+  TxnTypeMultiplierMap: Record<number, number>;
 }
 
 // struct2ts:types/generated/types.AdminUpdateHotFeedPostMultiplierRequest
@@ -3373,7 +3368,7 @@ export interface GetFullTikTokURLResponse {
 
 // struct2ts:types/generated/types.CFVideoDetailsResponse
 export interface CFVideoDetailsResponse {
-  result: { [key: string]: any };
+  result: Record<string, any>;
   success: boolean;
   errors: any;
   messages: any;
@@ -3385,7 +3380,7 @@ export interface GetVideoDimensionsResponse {
 }
 
 export interface EnableVideoDownloadResponse {
-  Default: { [k: string]: any };
+  Default: Record<string, any>;
 }
 
 // struct2ts:types/generated/types.GetMessagesStatelessRequest
@@ -3413,7 +3408,7 @@ export interface MessageEntryResponse {
   SenderMessagingGroupKeyName: string;
   RecipientMessagingPublicKey: string;
   RecipientMessagingGroupKeyName: string;
-  ExtraData: { [key: string]: string };
+  ExtraData: Record<string, string>;
 }
 
 // struct2ts:types/generated/types.MessageContactResponse
@@ -3438,14 +3433,14 @@ export interface MessagingGroupEntryResponse {
   MessagingGroupKeyName: string;
   MessagingGroupMembers: MessagingGroupMemberResponse[] | null;
   EncryptedKey: string;
-  ExtraData: { [key: string]: string };
+  ExtraData: Record<string, string>;
 }
 
 // struct2ts:types/generated/types.GetMessagesResponse
 export interface GetMessagesResponse {
-  PublicKeyToProfileEntry: { [key: string]: ProfileEntryResponse };
+  PublicKeyToProfileEntry: Record<string, ProfileEntryResponse>;
   OrderedContactsWithMessages: MessageContactResponse[] | null;
-  UnreadStateByContact: { [key: string]: boolean };
+  UnreadStateByContact: Record<string, boolean>;
   NumberOfUnreadThreads: number;
   MessagingGroups: MessagingGroupEntryResponse[] | null;
 }
@@ -3460,7 +3455,7 @@ export interface SendMessageStatelessRequest {
   TransactionFees: TransactionFee[] | null;
   SenderMessagingGroupKeyName: string;
   RecipientMessagingGroupKeyName: string;
-  ExtraData: { [key: string]: string };
+  ExtraData: Record<string, string>;
 }
 
 // struct2ts:types/generated/types.SendMessageStatelessResponse
@@ -3492,7 +3487,7 @@ export interface RegisterMessagingGroupKeyRequest {
   MessagingPublicKeyBase58Check: string;
   MessagingGroupKeyName: string;
   MessagingKeySignatureHex: string;
-  ExtraData: { [key: string]: string };
+  ExtraData: Record<string, string>;
   MinFeeRateNanosPerKB: number;
   TransactionFees: TransactionFee[] | null;
 }
@@ -3581,7 +3576,7 @@ export interface NFTEntryResponse {
   LowestBidAmountNanos: number;
   LastOwnerPublicKeyBase58Check: string | null;
   EncryptedUnlockableText: string | null;
-  ExtraData: { [key: string]: string };
+  ExtraData: Record<string, string>;
 }
 
 // struct2ts:types/generated/types.NFTCollectionResponse
@@ -3623,9 +3618,9 @@ export interface CreateNFTRequest {
   MinBidAmountNanos: number;
   IsBuyNow: boolean;
   BuyNowPriceNanos: number;
-  AdditionalDESORoyaltiesMap: { [key: string]: number };
-  AdditionalCoinRoyaltiesMap: { [key: string]: number };
-  ExtraData: { [key: string]: string };
+  AdditionalDESORoyaltiesMap: Record<string, number>;
+  AdditionalCoinRoyaltiesMap: Record<string, number>;
+  ExtraData: Record<string, string>;
   MinFeeRateNanosPerKB: number;
   TransactionFees: TransactionFee[] | null;
 }
@@ -3743,7 +3738,7 @@ export interface NFTEntryAndPostEntryResponse {
 
 // struct2ts:types/generated/types.GetNFTsForUserResponse
 export interface GetNFTsForUserResponse {
-  NFTsMap: { [key: string]: NFTEntryAndPostEntryResponse };
+  NFTsMap: Record<string, NFTEntryAndPostEntryResponse>;
 }
 
 // struct2ts:types/generated/types.GetNFTBidsForUserRequest
@@ -3755,10 +3750,11 @@ export interface GetNFTBidsForUserRequest {
 // struct2ts:types/generated/types.GetNFTBidsForUserResponse
 export interface GetNFTBidsForUserResponse {
   NFTBidEntries: NFTBidEntryResponse[] | null;
-  PublicKeyBase58CheckToProfileEntryResponse: {
-    [key: string]: ProfileEntryResponse;
-  };
-  PostHashHexToPostEntryResponse: { [key: string]: PostEntryResponse };
+  PublicKeyBase58CheckToProfileEntryResponse: Record<
+    string,
+    ProfileEntryResponse
+  >;
+  PostHashHexToPostEntryResponse: Record<string, PostEntryResponse>;
 }
 
 // struct2ts:types/generated/types.GetNFTBidsForNFTPostRequest
@@ -3783,7 +3779,7 @@ export interface GetNFTCollectionSummaryRequest {
 // struct2ts:types/generated/types.GetNFTCollectionSummaryResponse
 export interface GetNFTCollectionSummaryResponse {
   NFTCollectionResponse: NFTCollectionResponse | null;
-  SerialNumberToNFTEntryResponse: { [key: number]: NFTEntryResponse };
+  SerialNumberToNFTEntryResponse: Record<number, NFTEntryResponse>;
 }
 
 // struct2ts:types/generated/types.GetNFTEntriesForPostHashRequest
@@ -3886,7 +3882,7 @@ export interface GetNFTsCreatedByPublicKeyResponse {
 
 // struct2ts:types/generated/types.GetAcceptedBidHistoryResponse
 export interface GetAcceptedBidHistoryResponse {
-  AcceptedBidHistoryMap: { [key: number]: NFTBidEntryResponse };
+  AcceptedBidHistoryMap: Record<number, NFTBidEntryResponse>;
 }
 
 // struct2ts:types/generated/types.GetPostsStatelessRequest
@@ -4139,7 +4135,7 @@ export interface AdminRequest {
 export interface AmplitudeEvent {
   user_id: string;
   event_type: string;
-  event_properties: { [key: string]: any };
+  event_properties: Record<string, any>;
 }
 
 // struct2ts:types/generated/types.AmplitudeUploadRequestBody
@@ -4174,7 +4170,7 @@ export interface User {
   HasPhoneNumber: boolean;
   CanCreateProfile: boolean;
   // https://github.com/deso-protocol/backend/blob/983c803c2f3f441fb49e13c73cc27a26ecf52375/routes/global_state.go#L333
-  BlockedPubKeys: { [key: string]: {} };
+  BlockedPubKeys: Record<string, {}>;
   HasEmail: boolean;
   EmailVerified: boolean;
   JumioStartTime: number;
@@ -4229,7 +4225,7 @@ export interface UpdateProfileRequest {
   NewCreatorBasisPoints: number;
   NewStakeMultipleBasisPoints: number;
   IsHidden: boolean;
-  ExtraData: { [key: string]: string };
+  ExtraData: Record<string, string>;
   MinFeeRateNanosPerKB: number;
   TransactionFees: TransactionFee[] | null;
 }
@@ -4315,7 +4311,7 @@ export interface SubmitPostRequest {
   ParentStakeID: string;
   BodyObj: DeSoBodySchema;
   RepostedPostHashHex: string;
-  PostExtraData: { [key: string]: string };
+  PostExtraData: Record<string, string>;
   IsHidden: boolean;
   MinFeeRateNanosPerKB: number;
   TransactionFees: TransactionFee[] | null;
@@ -4533,13 +4529,11 @@ export interface AccessGroupMemberLimitMapItem {
 // struct2ts:types/generated/types.TransactionSpendingLimitResponse
 export interface TransactionSpendingLimitResponse {
   GlobalDESOLimit?: number;
-  TransactionCountLimitMap?: { [key: string]: number };
-  CreatorCoinOperationLimitMap?: { [key: string]: { [key: string]: number } };
-  DAOCoinOperationLimitMap?: { [key: string]: { [key: string]: number } };
-  NFTOperationLimitMap?: {
-    [key: string]: { [key: number]: { [key: string]: number } };
-  };
-  DAOCoinLimitOrderLimitMap?: { [key: string]: { [key: string]: number } };
+  TransactionCountLimitMap?: Partial<Record<TransactionType, number>>;
+  CreatorCoinOperationLimitMap?: Record<string, Record<string, number>>;
+  DAOCoinOperationLimitMap?: Record<string, Record<string, number>>;
+  NFTOperationLimitMap?: Record<string, Record<number, Record<string, number>>>;
+  DAOCoinLimitOrderLimitMap?: Record<string, Record<string, number>>;
   AssociationLimitMap?: AssociationLimitMapItem[];
   AccessGroupLimitMap?: AccessGroupLimitMapItem[];
   AccessGroupMemberLimitMap?: AccessGroupMemberLimitMapItem[];
@@ -4554,7 +4548,7 @@ export interface AuthorizeDerivedKeyRequest {
   AccessSignature: string;
   DeleteKey: boolean;
   DerivedKeySignature: boolean;
-  ExtraData: { [key: string]: string };
+  ExtraData: Record<string, string>;
   TransactionSpendingLimitHex: string;
   Memo: string;
   AppName: string;
@@ -4576,7 +4570,7 @@ export interface AuthorizeDerivedKeyResponse {
 // struct2ts:types/generated/types.AppendExtraDataRequest
 export interface AppendExtraDataRequest {
   TransactionHex: string;
-  ExtraData: { [key: string]: string };
+  ExtraData: Record<string, string>;
 }
 
 // struct2ts:types/generated/types.AppendExtraDataResponse
@@ -4633,7 +4627,7 @@ export interface GetUsersStatelessRequest {
 export interface GetUsersResponse {
   UserList: User[] | null;
   DefaultFeeRateNanosPerKB: number;
-  ParamUpdaters: { [key: string]: boolean };
+  ParamUpdaters: Record<string, boolean>;
 }
 
 // struct2ts:types/generated/types.GetUserMetadataRequest
@@ -4645,7 +4639,7 @@ export interface GetUserMetadataRequest {
 export interface GetUserMetadataResponse {
   HasPhoneNumber: boolean;
   CanCreateProfile: boolean;
-  BlockedPubKeys: { [key: string]: any };
+  BlockedPubKeys: Record<string, any>;
   HasEmail: boolean;
   EmailVerified: boolean;
   JumioFinishedTime: number;
@@ -4717,7 +4711,7 @@ export interface DiamondSenderSummaryResponse {
   ReceiverPublicKeyBase58Check: string;
   TotalDiamonds: number;
   HighestDiamondLevel: number;
-  DiamondLevelMap: { [key: number]: number };
+  DiamondLevelMap: Record<number, number>;
   ProfileEntryResponse: ProfileEntryResponse | null;
 }
 
@@ -4744,7 +4738,7 @@ export interface GetFollowsStatelessRequest {
 
 // struct2ts:types/generated/types.GetFollowsResponse
 export interface GetFollowsResponse {
-  PublicKeyToProfileEntry: { [key: string]: ProfileEntryResponse };
+  PublicKeyToProfileEntry: Record<string, ProfileEntryResponse>;
   NumFollowers: number;
 }
 
@@ -4765,7 +4759,7 @@ export interface UpdateUserGlobalMetadataRequest {
   UserPublicKeyBase58Check: string;
   JWT: string;
   Email: string;
-  MessageReadStateUpdatesByContact: { [key: string]: number };
+  MessageReadStateUpdatesByContact: Record<string, number>;
 }
 
 // struct2ts:types/generated/types.GetNotificationsCountRequest
@@ -4785,7 +4779,7 @@ export interface GetNotificationsRequest {
   PublicKeyBase58Check: string;
   FetchStartIndex: number;
   NumToFetch: number;
-  FilteredOutNotificationCategories: { [key: string]: boolean };
+  FilteredOutNotificationCategories: Record<string, boolean>;
 }
 
 // struct2ts:types/generated/types.TransactionMetadataResponse
@@ -4799,8 +4793,8 @@ export interface TransactionMetadataResponse {
 // struct2ts:types/generated/types.GetNotificationsResponse
 export interface GetNotificationsResponse {
   Notifications: TransactionMetadataResponse[] | null;
-  ProfilesByPublicKey: { [key: string]: ProfileEntryResponse };
-  PostsByHash: { [key: string]: PostEntryResponse };
+  ProfilesByPublicKey: Record<string, ProfileEntryResponse>;
+  PostsByHash: Record<string, PostEntryResponse>;
   LastSeenIndex: number;
 }
 
@@ -4823,7 +4817,7 @@ export interface BlockPublicKeyRequest {
 
 // struct2ts:types/generated/types.BlockPublicKeyResponse
 export interface BlockPublicKeyResponse {
-  BlockedPublicKeys: { [key: string]: string };
+  BlockedPublicKeys: Record<string, string>;
 }
 
 // struct2ts:types/generated/types.IsFollowingPublicKeyRequest
@@ -4861,14 +4855,14 @@ export interface UserDerivedKey {
   DerivedPublicKeyBase58Check: string;
   ExpirationBlock: number;
   IsValid: boolean;
-  ExtraData: { [key: string]: string };
+  ExtraData: Record<string, string>;
   TransactionSpendingLimit: TransactionSpendingLimitResponse | null;
   Memo: string;
 }
 
 // struct2ts:types/generated/types.GetUserDerivedKeysResponse
 export interface GetUserDerivedKeysResponse {
-  DerivedKeys: { [key: string]: UserDerivedKey };
+  DerivedKeys: Record<string, UserDerivedKey>;
 }
 
 // struct2ts:types/generated/types.GetTransactionSpendingLimitHexStringRequest
@@ -5111,7 +5105,7 @@ export interface CreateAccessGroupRequest {
   AccessGroupKeyName: string;
   MinFeeRateNanosPerKB: number;
   TransactionFees: TransactionFee[];
-  ExtraData: { [k: string]: string };
+  ExtraData: Record<string, string>;
 }
 
 export interface CreateAccessGroupResponse {
@@ -5128,7 +5122,7 @@ export interface AccessGroupMember {
   AccessGroupMemberKeyName: string;
 
   EncryptedKey: string;
-  ExtraData?: { [k: string]: string };
+  ExtraData?: Record<string, string>;
 }
 
 export interface AddAccessGroupMembersRequest {
@@ -5140,7 +5134,7 @@ export interface AddAccessGroupMembersRequest {
 
   MinFeeRateNanosPerKB: number;
   TransactionFees: TransactionFee[];
-  ExtraData: { [k: string]: string };
+  ExtraData: Record<string, string>;
 }
 
 export interface AddAccessGroupMembersResponse {
@@ -5155,14 +5149,14 @@ export interface AccessGroupMemberEntryResponse {
   AccessGroupMemberPublicKeyBase58Check: string;
   AccessGroupMemberKeyName: string;
   EncryptedKey: string;
-  ExtraData?: { [k: string]: string };
+  ExtraData?: Record<string, string>;
 }
 
 export interface AccessGroupEntryResponse {
   AccessGroupOwnerPublicKeyBase58Check: string;
   AccessGroupKeyName: string;
   AccessGroupPublicKeyBase58Check: string;
-  ExtraData?: { [k: string]: string };
+  ExtraData?: Record<string, string>;
   AccessGroupMemberEntryResponse: AccessGroupMemberEntryResponse | null;
 }
 
@@ -5213,13 +5207,15 @@ export interface GetPaginatedAccessGroupMembersRequest {
   MaxMembersToFetch: number;
 }
 
-export interface PublicKeyToProfileEntryResponseMap {
-  [k: string]: ProfileEntryResponse | null;
-}
+export type PublicKeyToProfileEntryResponseMap = Record<
+  string,
+  ProfileEntryResponse | null
+>;
 
-export interface PostHashHexToPostEntryResponseMap {
-  [k: string]: PostEntryResponse | null;
-}
+export type PostHashHexToPostEntryResponseMap = Record<
+  string,
+  PostEntryResponse | null
+>;
 
 export interface GetPaginatedAccessGroupMembersResponse {
   AccessGroupMembersBase58Check: string[];
@@ -5255,7 +5251,7 @@ export interface SendNewMessageRequest {
 
   MinFeeRateNanosPerKB: number;
   TransactionFees: TransactionFee[];
-  ExtraData: { [k: string]: string };
+  ExtraData: Record<string, string>;
 }
 
 export interface SendNewMessageResponse {
@@ -5290,7 +5286,7 @@ export interface MessageInfo {
   EncryptedText: string;
   TimestampNanos: number;
   TimestampNanosString: string;
-  ExtraData: { [k: string]: string };
+  ExtraData: Record<string, string>;
 }
 
 export interface GetPaginatedMessagesForDmThreadRequest {
@@ -5380,7 +5376,7 @@ export interface CreateAssociationRequest {
   AppPublicKeyBase58Check: string;
   AssociationType: string;
   AssociationValue: string;
-  ExtraData: { [k: string]: string };
+  ExtraData: Record<string, string>;
   MinFeeRateNanosPerKB: number;
   TransactionFees: TransactionFee[];
 }
@@ -5399,7 +5395,7 @@ export interface AssociationResponse {
   AppPublicKeyBase58Check: string;
   AssociationType: string;
   AssociationValue: string;
-  ExtraData: { [k: string]: string };
+  ExtraData: Record<string, string>;
   BlockHeight: number;
   TransactorProfile: ProfileEntryResponse | null;
   AppProfile: ProfileEntryResponse | null;
@@ -5431,7 +5427,7 @@ export interface PostAssociationsResponse {
 export interface DeleteAssociationRequest {
   TransactorPublicKeyBase58Check: string;
   AssociationID: string;
-  ExtraData: { [k: string]: string };
+  ExtraData: Record<string, string>;
   MinFeeRateNanosPerKB: number;
   TransactionFees: TransactionFee[];
 }
@@ -5451,7 +5447,7 @@ export interface AssociationsCountResponse {
 }
 
 export interface AssociationCountsResponse {
-  Counts: { [k: string]: number };
+  Counts: Record<string, number>;
   Total: number;
 }
 
@@ -5483,7 +5479,7 @@ export interface GetVideoStatusResponse {
   createdAt: number;
   videoSpec: {
     format: string;
-    tracks: {
+    tracks: Array<{
       fps: number;
       type: string;
       codec: string;
@@ -5492,7 +5488,7 @@ export interface GetVideoStatusResponse {
       bitrate: number;
       duration: number;
       pixelFormat: string;
-    }[];
+    }>;
     duration: number;
   };
   playbackID: string;

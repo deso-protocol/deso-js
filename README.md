@@ -196,3 +196,37 @@ const txInfo = submitPost({
 
 See the [transaction construction api documentation](https://docs.deso.org/deso-backend/construct-transactions) for reference.
 See an exhaustive list of the available transaction construction functions [here](https://github.com/deso-protocol/deso-js/tree/main/src/transactions)
+
+## Contributing
+
+Pull requests are welcome!
+
+### Setup
+
+- Clone this repo
+
+```sh
+  git clone ...
+  cd deso-js
+```
+
+### Useful workflows
+
+- Run the test suite
+
+```sh
+npm run test
+```
+
+- Link local changes into another project
+
+```sh
+# in the deso-js root directory run
+npm run link
+
+# navigate to your project's root
+cd $your_project_root_dir
+
+# create symlink in node_modules that points to your local copy of deso-protocol
+npm link deso-protocol
+```

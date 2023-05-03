@@ -1,4 +1,4 @@
-import { getPublicKey, utils as ecUtils } from '@noble/secp256k1';
+import { utils as ecUtils, getPublicKey } from '@noble/secp256k1';
 import { verify } from 'jsonwebtoken';
 import KeyEncoder from 'key-encoder';
 import { ChatType, NewMessageEntryResponse } from '../backend-types';

@@ -1,15 +1,15 @@
 import { sha256 } from '@noble/hashes/sha256';
 import {
-  getPublicKey,
-  getSharedSecret as nobleGetSharedSecret,
   Point,
   sign as ecSign,
   utils as ecUtils,
+  getPublicKey,
+  getSharedSecret as nobleGetSharedSecret,
 } from '@noble/secp256k1';
 import * as bs58 from 'bs58';
 import { PUBLIC_KEY_PREFIXES } from './constants';
-import { jwtAlgorithm, KeyPair, Network } from './types';
 import { TransactionV0 } from './transaction-transcoders';
+import { KeyPair, Network, jwtAlgorithm } from './types';
 
 // Browser friendly version of node's Buffer.concat.
 export function concatUint8Arrays(arrays: Uint8Array[], length?: number) {
@@ -212,7 +212,7 @@ function urlSafeBase64(str: string) {
     .replace(/=/g, '');
 }
 
-export const encryptChatMessage = async (
+export const encryptChatMessage = (
   senderSeedHex: string,
   recipientPublicKeyBase58Check: string,
   message: string
@@ -221,10 +221,7 @@ export const encryptChatMessage = async (
   const recipientPublicKey = bs58PublicKeyToBytes(
     recipientPublicKeyBase58Check
   );
-  const sharedPrivateKey = await getSharedPrivateKey(
-    privateKey,
-    recipientPublicKey
-  );
+  const sharedPrivateKey = getSharedPrivateKey(privateKey, recipientPublicKey);
   const sharedPublicKey = getPublicKey(sharedPrivateKey);
 
   return encrypt(sharedPublicKey, message);
@@ -242,10 +239,8 @@ export const encrypt = async (
   const ephemPrivateKey = ecUtils.randomBytes(32);
   const ephemPublicKey = getPublicKey(ephemPrivateKey);
   const publicKeyBytes =
-    typeof publicKey === 'string'
-      ? await bs58PublicKeyToBytes(publicKey)
-      : publicKey;
-  const privKey = await getSharedPrivateKey(ephemPrivateKey, publicKeyBytes);
+    typeof publicKey === 'string' ? bs58PublicKeyToBytes(publicKey) : publicKey;
+  const privKey = getSharedPrivateKey(ephemPrivateKey, publicKeyBytes);
   const encryptionKey = privKey.slice(0, 16);
   const iv = ecUtils.randomBytes(16);
   const macKey = sha256(privKey.slice(16));
@@ -382,11 +377,11 @@ export const decrypt = async (
   return new TextDecoder().decode(decryptedBuffer);
 };
 
-export const getSharedPrivateKey = async (
+export const getSharedPrivateKey = (
   privKey: Uint8Array,
   pubKey: Uint8Array
 ) => {
-  const sharedSecret = await getSharedSecret(privKey, pubKey);
+  const sharedSecret = getSharedSecret(privKey, pubKey);
 
   return kdf(sharedSecret, 32);
 };
@@ -399,10 +394,7 @@ export const decodePublicKey = async (publicKeyBase58Check: string) => {
   return Point.fromHex(senderPubKeyHex).toRawBytes(false);
 };
 
-export const getSharedSecret = async (
-  privKey: Uint8Array,
-  pubKey: Uint8Array
-) => {
+export const getSharedSecret = (privKey: Uint8Array, pubKey: Uint8Array) => {
   // passing true to compress the public key, and then slicing off the first byte
   // matches the implementation of derive in the elliptic package.
   // https://github.com/paulmillr/noble-secp256k1/issues/28#issuecomment-946538037

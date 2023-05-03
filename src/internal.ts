@@ -9,11 +9,6 @@ import {
 } from './backend-types';
 import { api, cleanURL, getAppState } from './data';
 import {
-  bs58PublicKeyToCompressedBytes,
-  encodeUTF8ToBytes,
-  identity,
-  publicKeyToBase58Check,
-  sha256X2,
   Transaction,
   TransactionExtraData,
   TransactionExtraDataKV,
@@ -26,6 +21,11 @@ import {
   TransactionNonce,
   TransactionOutput,
   TransactionToMsgDeSoTxn,
+  bs58PublicKeyToCompressedBytes,
+  encodeUTF8ToBytes,
+  identity,
+  publicKeyToBase58Check,
+  sha256X2,
 } from './identity';
 ////////////////////////////////////////////////////////////////////////////////
 // This is all the stuff we don't export to consumers of the library. If
@@ -92,6 +92,7 @@ export type BalanceModelTransactionFields = {
   ConsensusExtraDataKVs?: TransactionExtraDataKV[];
   MinFeeRateNanosPerKB?: number;
   TransactionFees?: TransactionFee[] | null;
+  BlockHeight?: number;
 };
 
 export const convertExtraData = (
@@ -111,16 +112,18 @@ export const convertExtraData = (
   return realExtraData;
 };
 
-export const constructBalanceModelTx = async (
+export const getTxnWithFees = (
   pubKey: string,
   metadata: TransactionMetadataRecord,
   txFields?: BalanceModelTransactionFields
-): Promise<ConstructedTransactionResponse> => {
-  // TODO: cache block height somewhere.
-  const { BlockHeight } = await getAppState();
+) => {
   const nonce = new TransactionNonce();
+  // NOTE: typically we would use the block height returned from a node to build
+  // a transaction, but just for calculating fees we can use a pseudo value, in
+  // this case we just use the max safe integer.
   // TODO: put in real block height buffer.
-  nonce.expirationBlockHeight = BlockHeight + 275;
+  nonce.expirationBlockHeight =
+    txFields?.BlockHeight ?? Number.MAX_SAFE_INTEGER + 275;
   // TODO: cache used partial IDs? Replace with better logic
   // for generating random uint64
   nonce.partialId = Math.floor(Math.random() * 1e18);
@@ -147,10 +150,25 @@ export const constructBalanceModelTx = async (
     signature: new Uint8Array(0),
   });
 
-  const txnWithFee = computeFee(
+  return computeFee(
     transaction,
     txFields?.MinFeeRateNanosPerKB || globalConfigOptions.MinFeeRateNanosPerKB
   );
+};
+
+export const constructBalanceModelTx = async (
+  pubKey: string,
+  metadata: TransactionMetadataRecord,
+  txFields?: BalanceModelTransactionFields
+): Promise<ConstructedTransactionResponse> => {
+  // TODO: cache block height somewhere.
+  const { BlockHeight } = await getAppState();
+
+  const txnWithFee = getTxnWithFees(pubKey, metadata, {
+    ...txFields,
+    BlockHeight,
+  });
+
   const txnBytes = txnWithFee.toBytes();
   const TransactionHex = bytesToHex(txnBytes);
 
@@ -245,4 +263,11 @@ export const isMaybeDeSoPublicKey = (query: string): boolean => {
     (query.length === 55 && query.startsWith('BC')) ||
     (query.length === 54 && query.startsWith('tBC'))
   );
+};
+
+export const sumTransactionFees = (
+  txFees?: TransactionFee[] | null
+): number => {
+  if (!txFees?.length) return 0;
+  return txFees.reduce((acc, curr) => acc + curr.AmountNanos, 0 as number);
 };

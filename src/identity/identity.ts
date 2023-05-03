@@ -2,16 +2,16 @@ import { keccak_256 } from '@noble/hashes/sha3';
 import { Point, utils as ecUtils } from '@noble/secp256k1';
 import { ethers } from 'ethers';
 import {
-  AccessGroupEntryResponse,
-  AuthorizeDerivedKeyRequest,
   ChatType,
-  DecryptedMessageEntryResponse,
-  InfuraResponse,
-  InfuraTx,
-  NewMessageEntryResponse,
-  QueryETHRPCRequest,
-  SubmitTransactionResponse,
-  TransactionSpendingLimitResponse,
+  type AccessGroupEntryResponse,
+  type AuthorizeDerivedKeyRequest,
+  type DecryptedMessageEntryResponse,
+  type InfuraResponse,
+  type InfuraTx,
+  type NewMessageEntryResponse,
+  type QueryETHRPCRequest,
+  type SubmitTransactionResponse,
+  type TransactionSpendingLimitResponse,
 } from '../backend-types';
 import { api } from './api';
 import {
@@ -40,22 +40,22 @@ import {
 } from './permissions-utils';
 import { parseQueryParams } from './query-param-utils';
 import {
-  AccessGroupPrivateInfo,
-  APIProvider,
-  Deferred,
-  EtherscanTransaction,
-  EtherscanTransactionsByAddressResponse,
-  IdentityConfiguration,
-  IdentityDerivePayload,
-  IdentityLoginPayload,
-  IdentityResponse,
-  jwtAlgorithm,
-  LoginOptions,
-  Network,
   NOTIFICATION_EVENTS,
-  StoredUser,
-  SubscriberNotification,
-  TransactionSpendingLimitResponseOptions,
+  type APIProvider,
+  type AccessGroupPrivateInfo,
+  type Deferred,
+  type EtherscanTransaction,
+  type EtherscanTransactionsByAddressResponse,
+  type IdentityConfiguration,
+  type IdentityDerivePayload,
+  type IdentityLoginPayload,
+  type IdentityResponse,
+  type LoginOptions,
+  type Network,
+  type StoredUser,
+  type SubscriberNotification,
+  type TransactionSpendingLimitResponseOptions,
+  type jwtAlgorithm,
 } from './types';
 export class Identity {
   /**
@@ -122,7 +122,7 @@ export class Identity {
   /**
    * @private
    */
-  #subscriber?: (state: any) => void;
+  #subscriber?: (notification: SubscriberNotification) => void;
 
   /**
    * @private
@@ -151,12 +151,15 @@ export class Identity {
       },
       alternateUsers:
         allStoredUsers &&
-        Object.keys(allStoredUsers).reduce((res, publicKey) => {
-          if (publicKey !== activePublicKey) {
-            res[publicKey] = allStoredUsers[publicKey];
-          }
-          return res;
-        }, {} as Record<string, StoredUser>),
+        Object.keys(allStoredUsers).reduce<Record<string, StoredUser>>(
+          (res, publicKey) => {
+            if (publicKey !== activePublicKey) {
+              res[publicKey] = allStoredUsers[publicKey];
+            }
+            return res;
+          },
+          {}
+        ),
     };
   }
 
@@ -203,6 +206,15 @@ export class Identity {
    */
   get nodeURI() {
     return this.#nodeURI;
+  }
+
+  /**
+   * The configured transaction spending limit values provided by the initial
+   * configure call.  These can be used to determine the default tx limit count
+   * to use if a derived key needs to be re-authorized.
+   */
+  get transactionSpendingLimitOptions() {
+    return this.#defaultTransactionSpendingLimit;
   }
 
   constructor(windowProvider: typeof globalThis, apiProvider: APIProvider) {
@@ -374,7 +386,7 @@ export class Identity {
       );
     }
 
-    return new Promise((resolve, reject) => {
+    return await new Promise((resolve, reject) => {
       this.#pendingWindowRequest = { resolve, reject, event };
 
       const identityParams: {
@@ -416,7 +428,7 @@ export class Identity {
    * @returns returns a promise that resolves to undefined, or rejects if there
    * was an error.
    */
-  logout(): Promise<undefined> {
+  async logout(): Promise<undefined> {
     const event = NOTIFICATION_EVENTS.LOGOUT_START;
     this.#subscriber?.({ event, ...this.#state });
     return new Promise((resolve, reject) => {
@@ -451,7 +463,7 @@ export class Identity {
    * const signedTxHex = await identity.signTx(txHex);
    * ```
    */
-  signTx(TransactionHex: string) {
+  async signTx(TransactionHex: string) {
     const { primaryDerivedKey } = this.#currentUser ?? {};
 
     if (!primaryDerivedKey?.derivedSeedHex) {
@@ -459,7 +471,7 @@ export class Identity {
       throw new Error('Cannot sign transaction without a derived seed hex');
     }
 
-    return signTx(TransactionHex, primaryDerivedKey.derivedSeedHex, {
+    return await signTx(TransactionHex, primaryDerivedKey.derivedSeedHex, {
       isDerivedKey: true,
     });
   }
@@ -529,7 +541,7 @@ export class Identity {
       // if the derived key is not authorized, authorize it and try again
       if (e?.message?.includes('RuleErrorDerivedKeyNotAuthorized')) {
         const { primaryDerivedKey } = this.#currentUser ?? {};
-        if (!primaryDerivedKey) {
+        if (primaryDerivedKey == null) {
           throw new Error(
             'Cannot authorize derived key without a logged in user'
           );
@@ -543,7 +555,7 @@ export class Identity {
         // reconstruct the original transaction and try again
         // this will throw if the previous authorization failed
         const tx = await constructTx();
-        return this.submitTx(await this.signTx(tx.TransactionHex));
+        return await this.submitTx(await this.signTx(tx.TransactionHex));
       }
 
       // just rethrow unexpected errors
@@ -565,7 +577,7 @@ export class Identity {
    * );
    * ```
    */
-  encryptMessage(
+  async encryptMessage(
     recipientPublicKeyBase58Check: string,
     messagePlainText: string
   ) {
@@ -576,7 +588,7 @@ export class Identity {
       throw new Error('Cannot encrypt message without a private messaging key');
     }
 
-    return encryptChatMessage(
+    return await encryptChatMessage(
       primaryDerivedKey.messagingPrivateKey,
       recipientPublicKeyBase58Check,
       messagePlainText
@@ -611,7 +623,7 @@ export class Identity {
 
     switch (message.ChatType) {
       case ChatType.DM:
-        if (message.MessageInfo?.ExtraData?.['unencrypted']) {
+        if (message.MessageInfo?.ExtraData?.unencrypted) {
           DecryptedMessage = unencryptedHexToPlainText(
             message.MessageInfo.EncryptedText
           );
@@ -722,11 +734,15 @@ export class Identity {
       throw new Error('Cannot sign jwt without a derived seed hex');
     }
 
-    return getSignedJWT(primaryDerivedKey.derivedSeedHex, this.#jwtAlgorithm, {
-      derivedPublicKeyBase58Check:
-        primaryDerivedKey.derivedPublicKeyBase58Check,
-      expiration: 60 * 10,
-    });
+    return await getSignedJWT(
+      primaryDerivedKey.derivedSeedHex,
+      this.#jwtAlgorithm,
+      {
+        derivedPublicKeyBase58Check:
+          primaryDerivedKey.derivedPublicKeyBase58Check,
+        expiration: 60 * 10,
+      }
+    );
   }
 
   /**
@@ -740,10 +756,10 @@ export class Identity {
    * await identity.getDeso();
    * ```
    */
-  getDeso() {
+  async getDeso() {
     const event = NOTIFICATION_EVENTS.GET_FREE_DESO_START;
     this.#subscriber?.({ event, ...this.#state });
-    return new Promise((resolve, reject) => {
+    return await new Promise((resolve, reject) => {
       this.#pendingWindowRequest = { resolve, reject, event };
       const activePublicKey = this.#activePublicKey;
 
@@ -770,10 +786,10 @@ export class Identity {
    * await identity.verifyPhoneNumber();
    * ```
    */
-  verifyPhoneNumber() {
+  async verifyPhoneNumber() {
     const event = NOTIFICATION_EVENTS.VERIFY_PHONE_NUMBER_START;
     this.#subscriber?.({ event, ...this.#state });
-    return new Promise((resolve, reject) => {
+    return await new Promise((resolve, reject) => {
       this.#pendingWindowRequest = { resolve, reject, event };
       const activePublicKey = this.#activePublicKey;
 
@@ -822,7 +838,7 @@ export class Identity {
   async refreshDerivedKeyPermissions() {
     const { primaryDerivedKey } = this.#currentUser ?? {};
 
-    if (!primaryDerivedKey) {
+    if (primaryDerivedKey == null) {
       // if we don't have a logged in user, we just bail
       return;
     }
@@ -870,8 +886,9 @@ export class Identity {
   hasPermissions(
     permissionsToCheck: Partial<TransactionSpendingLimitResponseOptions>
   ): boolean {
-    if (Object.keys(permissionsToCheck).length === 0)
+    if (Object.keys(permissionsToCheck).length === 0) {
       throw new Error('You must pass at least one permission to check');
+    }
 
     const { primaryDerivedKey } = this.#currentUser ?? {};
 
@@ -907,18 +924,23 @@ export class Identity {
    * });
    * ```
    */
-  requestPermissions(
+  async requestPermissions(
     transactionSpendingLimitResponse: Partial<TransactionSpendingLimitResponseOptions>
   ) {
     const { primaryDerivedKey } = this.#currentUser ?? {};
-    if (!primaryDerivedKey) {
+    if (primaryDerivedKey == null) {
       throw new Error('Cannot request permissions without a logged in user');
     }
 
     const { publicKeyBase58Check, derivedPublicKeyBase58Check } =
       primaryDerivedKey;
 
-    return this.derive(transactionSpendingLimitResponse, {
+    // transactionSpendingLimitResponse.TransactionCountLimitMap = {
+    //   ...this.#defaultTransactionSpendingLimit,
+    //   ...transactionSpendingLimitResponse.TransactionCountLimitMap,
+    // };
+
+    return await this.derive(transactionSpendingLimitResponse, {
       ownerPublicKey: publicKeyBase58Check,
       derivedPublicKey: derivedPublicKeyBase58Check,
     });
@@ -945,7 +967,7 @@ export class Identity {
    * });
    * ```
    */
-  derive(
+  async derive(
     transactionSpendingLimitResponse: Partial<TransactionSpendingLimitResponseOptions>,
     options?: {
       derivedPublicKey?: string;
@@ -957,7 +979,7 @@ export class Identity {
     const event = NOTIFICATION_EVENTS.REQUEST_PERMISSIONS_START;
     this.#subscriber?.({ event, ...this.#state });
 
-    return new Promise((resolve, reject) => {
+    return await new Promise((resolve, reject) => {
       this.#pendingWindowRequest = { resolve, reject, event };
 
       const params = {
@@ -1115,8 +1137,11 @@ export class Identity {
     }, 50);
   }
 
-  #queryETHRPC(params: QueryETHRPCRequest): Promise<InfuraResponse> {
-    return this.#api.post(`${this.#nodeURI}/api/v0/query-eth-rpc`, params);
+  async #queryETHRPC(params: QueryETHRPCRequest): Promise<InfuraResponse> {
+    return await this.#api.post(
+      `${this.#nodeURI}/api/v0/query-eth-rpc`,
+      params
+    );
   }
 
   async #getETHTransactionsSignedByAddress(
@@ -1148,8 +1173,8 @@ export class Identity {
   /**
    * @private
    */
-  #authorizeDerivedKey(params: AuthorizeDerivedKeyRequest) {
-    return this.#api.post(
+  async #authorizeDerivedKey(params: AuthorizeDerivedKeyRequest) {
+    return await this.#api.post(
       `${this.#nodeURI}/api/v0/authorize-derived-key`,
       params
     );
@@ -1159,7 +1184,7 @@ export class Identity {
    * @private
    */
   #setActiveUser(publicKey: string) {
-    if (!this.#users?.[publicKey]) {
+    if (this.#users?.[publicKey] == null) {
       throw new Error(
         `No user found for public key. Known users: ${JSON.stringify(
           this.#users ?? {}
@@ -1198,7 +1223,7 @@ export class Identity {
     const users = this.#users;
     const primaryDerivedKey = users?.[ownerPublicKey]?.primaryDerivedKey;
 
-    if (!primaryDerivedKey) {
+    if (primaryDerivedKey == null) {
       throw new Error(
         `No primary derived key found for user ${ownerPublicKey}`
       );
@@ -1261,7 +1286,7 @@ export class Identity {
     } else {
       this.#handleIdentityResponse(ev.data);
       this.#identityPopupWindow?.close();
-      if (this.#boundPostMessageListener) {
+      if (this.#boundPostMessageListener != null) {
         this.#window.removeEventListener(
           'message',
           this.#boundPostMessageListener
@@ -1298,7 +1323,7 @@ export class Identity {
             if (
               this.#pendingWindowRequest?.event ===
                 NOTIFICATION_EVENTS.LOGIN_START &&
-              this.#state.currentUser
+              this.#state.currentUser != null
             ) {
               this.#purgeUserDataForPublicKey(
                 this.#state.currentUser.publicKey
@@ -1434,7 +1459,7 @@ export class Identity {
 
     // This means we're doing a derived key permissions upgrade for the current user (not a login).
     if (
-      primaryDerivedKey &&
+      primaryDerivedKey != null &&
       primaryDerivedKey.publicKeyBase58Check === payload.publicKeyBase58Check &&
       primaryDerivedKey.derivedPublicKeyBase58Check ===
         payload.derivedPublicKeyBase58Check
@@ -1443,7 +1468,7 @@ export class Identity {
         primaryDerivedKey: { ...primaryDerivedKey, ...payload },
       });
 
-      return this.#authorizePrimaryDerivedKey(
+      return await this.#authorizePrimaryDerivedKey(
         payload.publicKeyBase58Check
       ).then(() => payload);
     }
@@ -1451,7 +1476,7 @@ export class Identity {
     // This means we're just switching to a user we already have in localStorage, we use the stored user bc they
     // may already have an authorized derived key that we can use.
     if (
-      this.#users?.[payload.publicKeyBase58Check] &&
+      this.#users?.[payload.publicKeyBase58Check] != null &&
       payload.publicKeyBase58Check !== this.#activePublicKey
     ) {
       this.#setActiveUser(payload.publicKeyBase58Check);
@@ -1467,7 +1492,7 @@ export class Identity {
         primaryDerivedKey: { ...payload, derivedSeedHex: seedHex },
       });
 
-      return this.#authorizePrimaryDerivedKey(
+      return await this.#authorizePrimaryDerivedKey(
         payload.publicKeyBase58Check
       ).then(() => ({
         ...payload,
@@ -1520,13 +1545,13 @@ export class Identity {
    */
   #buildQueryParams(paramsPojo: Record<string, any>) {
     const qps = new URLSearchParams(
-      Object.entries(paramsPojo).reduce((acc, [k, v]) => {
+      Object.entries(paramsPojo).reduce<Record<string, any>>((acc, [k, v]) => {
         acc[k] =
           typeof v === 'object' && v !== null
             ? encodeURIComponent(JSON.stringify(v))
             : v;
         return acc;
-      }, {} as Record<string, any>)
+      }, {})
     );
 
     if (this.#network === 'testnet') {
@@ -1544,7 +1569,7 @@ export class Identity {
    * @private
    */
   #openIdentityPopup(url: string) {
-    if (this.#identityPopupWindow) {
+    if (this.#identityPopupWindow != null) {
       this.#identityPopupWindow.close();
     }
 
@@ -1571,7 +1596,7 @@ export class Identity {
       this.#window.location.href = url;
     } else {
       // if we had a previously attached listener, remove it and create a new one.
-      if (this.#boundPostMessageListener) {
+      if (this.#boundPostMessageListener != null) {
         this.#window.removeEventListener(
           'message',
           this.#boundPostMessageListener
@@ -1619,7 +1644,7 @@ export class Identity {
       accessGroup.AccessGroupMemberEntryResponse.EncryptedKey
     );
 
-    return decryptChatMessage(
+    return await decryptChatMessage(
       decryptedKeys.seedHex,
       message.SenderInfo.AccessGroupPublicKeyBase58Check,
       message.MessageInfo.EncryptedText
@@ -1641,7 +1666,7 @@ export class Identity {
 
     if (
       message?.MessageInfo?.ExtraData &&
-      message.MessageInfo.ExtraData['unencrypted']
+      message.MessageInfo.ExtraData.unencrypted
     ) {
       return unencryptedHexToPlainText(message.MessageInfo.EncryptedText);
     } else {
@@ -1655,7 +1680,7 @@ export class Identity {
         ? message.SenderInfo.AccessGroupPublicKeyBase58Check
         : message.RecipientInfo.AccessGroupPublicKeyBase58Check;
 
-      return decryptChatMessage(
+      return await decryptChatMessage(
         privateKeyHex,
         publicDecryptionKey,
         message.MessageInfo.EncryptedText

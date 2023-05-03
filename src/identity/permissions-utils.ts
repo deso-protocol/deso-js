@@ -1,4 +1,8 @@
-import { TransactionSpendingLimitResponse } from '../backend-types';
+import {
+  TransactionSpendingLimitResponse,
+  TransactionType,
+} from '../backend-types';
+import { identity } from '../identity';
 import { TransactionSpendingLimitResponseOptions } from './types';
 export function compareTransactionSpendingLimits(
   expectedPermissions: any,
@@ -85,20 +89,55 @@ export function buildTransactionSpendingLimitResponse(
     });
   }
 
-  if (result.TransactionCountLimitMap) {
-    if (
-      typeof result.TransactionCountLimitMap['AUTHORIZE_DERIVED_KEY'] ===
-      'undefined'
-    ) {
-      result.TransactionCountLimitMap = {
-        ...result.TransactionCountLimitMap,
-        AUTHORIZE_DERIVED_KEY: 1,
-      };
-    } else if (result.TransactionCountLimitMap['AUTHORIZE_DERIVED_KEY'] < 0) {
-      delete result.TransactionCountLimitMap['AUTHORIZE_DERIVED_KEY'];
-    }
+  result.TransactionCountLimitMap = result.TransactionCountLimitMap ?? {};
+
+  if (
+    typeof result.TransactionCountLimitMap['AUTHORIZE_DERIVED_KEY'] ===
+    'undefined'
+  ) {
+    result.TransactionCountLimitMap = {
+      ...result.TransactionCountLimitMap,
+      AUTHORIZE_DERIVED_KEY: 1,
+    };
+  } else if (result.TransactionCountLimitMap['AUTHORIZE_DERIVED_KEY'] < 0) {
+    delete result.TransactionCountLimitMap['AUTHORIZE_DERIVED_KEY'];
   }
+
   return result;
+}
+
+export function guardTxPermission(
+  txType: TransactionType,
+  options?: {
+    fallbackTxLimitCount?: number;
+    txAmountDESONanos?: number;
+  }
+) {
+  if (
+    !identity.hasPermissions({
+      GlobalDESOLimit: options?.txAmountDESONanos ?? 0,
+      TransactionCountLimitMap: {
+        [txType]: 1,
+      },
+    })
+  ) {
+    return identity.requestPermissions({
+      GlobalDESOLimit: Math.max(
+        identity.transactionSpendingLimitOptions.GlobalDESOLimit ?? 0,
+        options?.txAmountDESONanos ?? 0
+      ),
+      // TODO: handle dao, nft, association limit maps, etc.
+      TransactionCountLimitMap: {
+        [txType]:
+          identity.transactionSpendingLimitOptions.TransactionCountLimitMap
+            ?.SUBMIT_POST ??
+          options?.fallbackTxLimitCount ??
+          1,
+      },
+    });
+  }
+
+  return Promise.resolve();
 }
 
 function walkObj(
