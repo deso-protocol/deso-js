@@ -14,7 +14,6 @@ import {
   SubmitPostRequest,
   SubmitPostResponse,
   TransactionFee,
-  TransactionType,
   UpdateProfileRequest,
   UpdateProfileResponse,
 } from '../backend-types';
@@ -34,7 +33,7 @@ import {
 import { guardTxPermission } from '../identity/permissions-utils';
 import {
   constructBalanceModelTx,
-  getTxnWithFees as getTxWithFee,
+  getTxWithFeeNanos,
   handleSignAndSubmit,
   sumTransactionFees,
 } from '../internal';
@@ -89,7 +88,7 @@ export const updateProfile = async (
     UpdateProfileResponse | ConstructedTransactionResponse
   >
 > => {
-  const txWithFee = getTxWithFee(
+  const txWithFee = getTxWithFeeNanos(
     params.UpdaterPublicKeyBase58Check,
     buildUpdateProfileMetadata(params),
     {
@@ -100,10 +99,12 @@ export const updateProfile = async (
   );
 
   if (options?.checkPermissions !== false) {
-    await guardTxPermission(TransactionType.UpdateProfile, {
-      fallbackTxLimitCount: options?.txLimitCount,
-      txAmountDESONanos:
+    await guardTxPermission({
+      GlobalDESOLimit:
         txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
+      TransactionCountLimitMap: {
+        UPDATE_PROFILE: options?.txLimitCount ?? 1,
+      },
     });
   }
 
@@ -196,7 +197,7 @@ export const submitPost = async (
 ): Promise<
   ConstructedAndSubmittedTx<SubmitPostResponse | ConstructedTransactionResponse>
 > => {
-  const txWithFee = getTxWithFee(
+  const txWithFee = getTxWithFeeNanos(
     params.UpdaterPublicKeyBase58Check,
     buildSubmitPostMetadata(params),
     {
@@ -208,10 +209,12 @@ export const submitPost = async (
   );
 
   if (options?.checkPermissions !== false) {
-    await guardTxPermission(TransactionType.SubmitPost, {
-      fallbackTxLimitCount: options?.txLimitCount,
-      txAmountDESONanos:
+    await guardTxPermission({
+      GlobalDESOLimit:
         txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
+      TransactionCountLimitMap: {
+        SUBMIT_POST: options?.txLimitCount ?? 1,
+      },
     });
   }
 
@@ -235,7 +238,7 @@ export const updateFollowingStatus = async (
   params: CreateFollowTxnRequestParams,
   options?: TxRequestOptions
 ): Promise<ConstructedAndSubmittedTx<CreateFollowTxnStatelessResponse>> => {
-  const txWithFee = getTxWithFee(
+  const txWithFee = getTxWithFeeNanos(
     params.FollowerPublicKeyBase58Check,
     buildFollowMetadata(params),
     {
@@ -246,10 +249,12 @@ export const updateFollowingStatus = async (
   );
 
   if (options?.checkPermissions !== false) {
-    await guardTxPermission(TransactionType.Follow, {
-      fallbackTxLimitCount: options?.txLimitCount,
-      txAmountDESONanos:
+    await guardTxPermission({
+      GlobalDESOLimit:
         txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
+      TransactionCountLimitMap: {
+        FOLLOW: options?.txLimitCount ?? 1,
+      },
     });
   }
 
@@ -328,7 +333,7 @@ export const updateLikeStatus = async (
   params: CreateLikeTransactionParams,
   options?: TxRequestOptions
 ): Promise<ConstructedAndSubmittedTx<CreateLikeStatelessResponse>> => {
-  const txWithFee = getTxWithFee(
+  const txWithFee = getTxWithFeeNanos(
     params.ReaderPublicKeyBase58Check,
     buildLikeMetadata(params),
     {
@@ -339,10 +344,12 @@ export const updateLikeStatus = async (
   );
 
   if (options?.checkPermissions !== false) {
-    await guardTxPermission(TransactionType.Like, {
-      fallbackTxLimitCount: options?.txLimitCount,
-      txAmountDESONanos:
+    await guardTxPermission({
+      GlobalDESOLimit:
         txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
+      TransactionCountLimitMap: {
+        LIKE: options?.txLimitCount ?? 1,
+      },
     });
   }
 
@@ -404,7 +411,7 @@ export const sendDMMessage = async (
     SendNewMessageResponse | ConstructedTransactionResponse
   >
 > => {
-  const txWithFee = getTxWithFee(
+  const txWithFee = getTxWithFeeNanos(
     params.SenderAccessGroupOwnerPublicKeyBase58Check,
     buildNewMessageMetadata(params, {
       type: NewMessageType.DM,
@@ -418,10 +425,12 @@ export const sendDMMessage = async (
   );
 
   if (options?.checkPermissions !== false) {
-    await guardTxPermission(TransactionType.NewMessage, {
-      fallbackTxLimitCount: options?.txLimitCount,
-      txAmountDESONanos:
+    await guardTxPermission({
+      GlobalDESOLimit:
         txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
+      TransactionCountLimitMap: {
+        NEW_MESSAGE: options?.txLimitCount ?? 1,
+      },
     });
   }
 
@@ -496,7 +505,7 @@ export const updateDMMessage = async (
     SendNewMessageResponse | ConstructedTransactionResponse
   >
 > => {
-  const txWithFee = getTxWithFee(
+  const txWithFee = getTxWithFeeNanos(
     params.SenderAccessGroupOwnerPublicKeyBase58Check,
     buildNewMessageMetadata(params, {
       type: NewMessageType.DM,
@@ -511,10 +520,12 @@ export const updateDMMessage = async (
   );
 
   if (options?.checkPermissions !== false) {
-    await guardTxPermission(TransactionType.NewMessage, {
-      fallbackTxLimitCount: options?.txLimitCount,
-      txAmountDESONanos:
+    await guardTxPermission({
+      GlobalDESOLimit:
         txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
+      TransactionCountLimitMap: {
+        NEW_MESSAGE: options?.txLimitCount ?? 1,
+      },
     });
   }
 
@@ -553,7 +564,7 @@ export const sendGroupChatMessage = async (
     SendNewMessageResponse | ConstructedTransactionResponse
   >
 > => {
-  const txWithFee = getTxWithFee(
+  const txWithFee = getTxWithFeeNanos(
     params.SenderAccessGroupOwnerPublicKeyBase58Check,
     buildNewMessageMetadata(params, {
       type: NewMessageType.Group,
@@ -567,10 +578,12 @@ export const sendGroupChatMessage = async (
   );
 
   if (options?.checkPermissions !== false) {
-    await guardTxPermission(TransactionType.NewMessage, {
-      fallbackTxLimitCount: options?.txLimitCount,
-      txAmountDESONanos:
+    await guardTxPermission({
+      GlobalDESOLimit:
         txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
+      TransactionCountLimitMap: {
+        NEW_MESSAGE: options?.txLimitCount ?? 1,
+      },
     });
   }
 
@@ -621,7 +634,7 @@ export const sendMessage = async (
     params.AccessGroup = 'default-key';
   }
 
-  const txWithFee = getTxWithFee(
+  const txWithFee = getTxWithFeeNanos(
     params.SenderPublicKeyBase58Check,
     buildNewMessageMetadata(
       {
@@ -665,10 +678,12 @@ export const sendMessage = async (
   );
 
   if (options?.checkPermissions !== false) {
-    await guardTxPermission(TransactionType.NewMessage, {
-      fallbackTxLimitCount: options?.txLimitCount,
-      txAmountDESONanos:
+    await guardTxPermission({
+      GlobalDESOLimit:
         txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
+      TransactionCountLimitMap: {
+        NEW_MESSAGE: options?.txLimitCount ?? 1,
+      },
     });
   }
 
@@ -729,7 +744,7 @@ export const updateGroupChatMessage = async (
     SendNewMessageResponse | ConstructedTransactionResponse
   >
 > => {
-  const txWithFee = getTxWithFee(
+  const txWithFee = getTxWithFeeNanos(
     params.SenderAccessGroupOwnerPublicKeyBase58Check,
     buildNewMessageMetadata(params, {
       type: NewMessageType.Group,
@@ -744,10 +759,12 @@ export const updateGroupChatMessage = async (
   );
 
   if (options?.checkPermissions !== false) {
-    await guardTxPermission(TransactionType.NewMessage, {
-      fallbackTxLimitCount: options?.txLimitCount,
-      txAmountDESONanos:
+    await guardTxPermission({
+      GlobalDESOLimit:
         txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
+      TransactionCountLimitMap: {
+        NEW_MESSAGE: options?.txLimitCount ?? 1,
+      },
     });
   }
 

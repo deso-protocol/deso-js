@@ -1,7 +1,4 @@
-import {
-  TransactionSpendingLimitResponse,
-  TransactionType,
-} from '../backend-types';
+import { TransactionSpendingLimitResponse } from '../backend-types';
 import { identity } from '../identity';
 import { TransactionSpendingLimitResponseOptions } from './types';
 export function compareTransactionSpendingLimits(
@@ -107,33 +104,15 @@ export function buildTransactionSpendingLimitResponse(
 }
 
 export function guardTxPermission(
-  txType: TransactionType,
-  options?: {
-    fallbackTxLimitCount?: number;
-    txAmountDESONanos?: number;
-  }
+  spendingLimitOptions: TransactionSpendingLimitResponseOptions
 ) {
-  if (
-    !identity.hasPermissions({
-      GlobalDESOLimit: options?.txAmountDESONanos ?? 0,
-      TransactionCountLimitMap: {
-        [txType]: 1,
-      },
-    })
-  ) {
+  if (!identity.hasPermissions(spendingLimitOptions)) {
     return identity.requestPermissions({
+      ...spendingLimitOptions,
       GlobalDESOLimit: Math.max(
         identity.transactionSpendingLimitOptions.GlobalDESOLimit ?? 0,
-        options?.txAmountDESONanos ?? 0
+        spendingLimitOptions.GlobalDESOLimit ?? 0
       ),
-      // TODO: handle dao, nft, association limit maps, etc.
-      TransactionCountLimitMap: {
-        [txType]:
-          identity.transactionSpendingLimitOptions.TransactionCountLimitMap
-            ?.SUBMIT_POST ??
-          options?.fallbackTxLimitCount ??
-          1,
-      },
     });
   }
 

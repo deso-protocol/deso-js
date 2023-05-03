@@ -1,3 +1,4 @@
+import { guardTxPermission } from 'src/identity/permissions-utils';
 import {
   AddAccessGroupMembersRequest,
   AddAccessGroupMembersResponse,
@@ -5,23 +6,54 @@ import {
   CreateAccessGroupRequest,
   CreateAccessGroupResponse,
   RequestOptions,
+  TransactionType,
   TxRequestWithOptionalFeesAndExtraData,
 } from '../backend-types';
 import { PartialWithRequiredFields } from '../data';
 import {
   AccessGroupMemberRecord,
-  bs58PublicKeyToCompressedBytes,
-  encodeUTF8ToBytes,
   TransactionExtraData,
   TransactionMetadataAccessGroup,
   TransactionMetadataAccessGroupMembers,
+  bs58PublicKeyToCompressedBytes,
+  encodeUTF8ToBytes,
 } from '../identity';
 import {
   constructBalanceModelTx,
   convertExtraData,
+  getTxWithFeeNanos,
   handleSignAndSubmit,
+  sumTransactionFees,
 } from '../internal';
-import { ConstructedAndSubmittedTx } from '../types';
+import { ConstructedAndSubmittedTx, TxRequestOptions } from '../types';
+
+const buildAccessGroupMetadata = (params: CreateAccessGroupRequestParams) => {
+  const metadata = new TransactionMetadataAccessGroup();
+  metadata.accessGroupPublicKey = bs58PublicKeyToCompressedBytes(
+    params.AccessGroupPublicKeyBase58Check
+  );
+  metadata.accessGroupOwnerPublicKey = bs58PublicKeyToCompressedBytes(
+    params.AccessGroupOwnerPublicKeyBase58Check
+  );
+  metadata.accessGroupOperationType = 2;
+  metadata.accessGroupKeyName = encodeUTF8ToBytes(params.AccessGroupKeyName);
+  return metadata;
+};
+
+export const constructCreateAccessGroupTransaction = (
+  params: CreateAccessGroupRequestParams
+): Promise<ConstructedTransactionResponse> => {
+  return constructBalanceModelTx(
+    params.AccessGroupOwnerPublicKeyBase58Check,
+    buildAccessGroupMetadata(params),
+    {
+      ExtraData: params.ExtraData,
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+    }
+  );
+};
+
 /**
  * https://docs.deso.org/deso-backend/construct-transactions/access-groups-api#create-access-group
  */
@@ -34,37 +66,32 @@ export type CreateAccessGroupRequestParams =
       | 'AccessGroupPublicKeyBase58Check'
     >
   >;
-export const createAccessGroup = (
+export const createAccessGroup = async (
   params: CreateAccessGroupRequestParams,
-  options?: RequestOptions
+  options?: TxRequestOptions
 ): Promise<ConstructedAndSubmittedTx<CreateAccessGroupResponse>> => {
-  return handleSignAndSubmit('api/v0/create-access-group', params, {
-    ...options,
-    constructionFunction: constructCreateAccessGroupTransaction,
-  });
-};
-
-export const constructCreateAccessGroupTransaction = (
-  params: CreateAccessGroupRequestParams
-): Promise<ConstructedTransactionResponse> => {
-  const metadata = new TransactionMetadataAccessGroup();
-  metadata.accessGroupPublicKey = bs58PublicKeyToCompressedBytes(
-    params.AccessGroupPublicKeyBase58Check
-  );
-  metadata.accessGroupOwnerPublicKey = bs58PublicKeyToCompressedBytes(
-    params.AccessGroupOwnerPublicKeyBase58Check
-  );
-  metadata.accessGroupOperationType = 2;
-  metadata.accessGroupKeyName = encodeUTF8ToBytes(params.AccessGroupKeyName);
-  return constructBalanceModelTx(
+  const txWithFee = getTxWithFeeNanos(
     params.AccessGroupOwnerPublicKeyBase58Check,
-    metadata,
+    buildAccessGroupMetadata(params),
     {
       ExtraData: params.ExtraData,
       MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
       TransactionFees: params.TransactionFees,
     }
   );
+
+  if (options?.checkPermissions !== false) {
+    await guardTxPermission(TransactionType.NewMessage, {
+      fallbackTxLimitCount: options?.txLimitCount,
+      txAmountDESONanos:
+        txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
+    });
+  }
+
+  return handleSignAndSubmit('api/v0/create-access-group', params, {
+    ...options,
+    constructionFunction: constructCreateAccessGroupTransaction,
+  });
 };
 
 /**
