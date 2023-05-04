@@ -60,7 +60,7 @@ configure({
 ### Identity: (logging in and out, creating new accounts, etc)
 
 ```ts
-import { identity } from "deso-protocol";
+import { identity } from 'deso-protocol';
 
 // Subscribe to identity state changes (user login/logout, permissions updated,
 // etc).  This is useful for binding your preferred framework's state management
@@ -103,14 +103,14 @@ await identity.jwt();
 // Sign and submit a transaction. This is handled for you if you're using any
 // of the provided transaction creation helpers. But you can also do this yourself
 // if you have a more complex use case.
-const tx = await axios.post("https://node.deso.org/api/v0/submit-post");
+const tx = await axios.post('https://node.deso.org/api/v0/submit-post');
 const submittedTx = await identity.signAndSubmit(tx);
 
 // For some use cases, you might want to handle signing, submitting,
 // and retrying yourself. Here's an example of handling each step of the process
 // yourself.
 const postTransaction = await axios.post(
-  "https://node.deso.org/api/v0/submit-post"
+  'https://node.deso.org/api/v0/submit-post'
 );
 const signedTx = await identity.signTx(postTransaction.TransactionHex);
 const submittedTx = await identity.submitTx(signedTx);
@@ -163,7 +163,7 @@ const decryptedMessagePlaintext = await identity.decryptMessage(
 ### Data: fetching data from a node
 
 ```ts
-import { getUsersStateless, getPostsStateless } from "deso-protocol";
+import { getUsersStateless, getPostsStateless } from 'deso-protocol';
 
 const users = await getUsersStateless({
   PublicKeysBase58Check: [key1, key2, ...rest],
@@ -182,12 +182,12 @@ confirmation for you. All you need to do is construct them by providing the raw
 data.
 
 ```ts
-import { submitPost } from "deso-protocol";
+import { submitPost } from 'deso-protocol';
 
 const txInfo = submitPost({
   UpdaterPublicKeyBase58Check: currentUser.publicKey,
   BodyObj: {
-    Body: "My first post on DeSo!",
+    Body: 'My first post on DeSo!',
     ImageURLs: [],
     VideoURLs: [],
   },

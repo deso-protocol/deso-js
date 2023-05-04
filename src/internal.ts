@@ -152,7 +152,7 @@ export const getTxWithFeeNanos = (
 
   return computeFee(
     transaction,
-    txFields?.MinFeeRateNanosPerKB || globalConfigOptions.MinFeeRateNanosPerKB
+    txFields?.MinFeeRateNanosPerKB ?? globalConfigOptions.MinFeeRateNanosPerKB
   );
 };
 

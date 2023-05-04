@@ -21,7 +21,8 @@ export function compareTransactionSpendingLimits(
         actualVal < expectedVal) ||
       (typeof actualVal === 'number' &&
         expectedVal === 'UNLIMITED' &&
-        actualVal < 1e9)
+        actualVal < 1e9) ||
+      (typeof actualVal === 'string' && actualVal !== expectedVal)
     ) {
       hasAllPermissions = false;
     }

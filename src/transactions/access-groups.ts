@@ -1,4 +1,3 @@
-import { guardTxPermission } from 'src/identity/permissions-utils';
 import {
   AddAccessGroupMembersRequest,
   AddAccessGroupMembersResponse,
@@ -6,7 +5,6 @@ import {
   CreateAccessGroupRequest,
   CreateAccessGroupResponse,
   RequestOptions,
-  TransactionType,
   TxRequestWithOptionalFeesAndExtraData,
 } from '../backend-types';
 import { PartialWithRequiredFields } from '../data';
@@ -18,6 +16,7 @@ import {
   bs58PublicKeyToCompressedBytes,
   encodeUTF8ToBytes,
 } from '../identity';
+import { guardTxPermission } from '../identity/permissions-utils';
 import {
   constructBalanceModelTx,
   convertExtraData,
@@ -81,10 +80,31 @@ export const createAccessGroup = async (
   );
 
   if (options?.checkPermissions !== false) {
-    await guardTxPermission(TransactionType.NewMessage, {
-      fallbackTxLimitCount: options?.txLimitCount,
-      txAmountDESONanos:
+    await guardTxPermission({
+      GlobalDESOLimit:
         txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
+      // NOTE: This is more permissive than we actually need it to be, but I
+      // couldn't get it to work when specifying the AccessGroupKeyName and
+      // AccessGroupOwnerPublicKeyBase58Check. If anyone complains, we can
+      // revisit it, but this is not a terribly sensitive permission to grant.
+      AccessGroupLimitMap: [
+        {
+          AccessGroupOwnerPublicKeyBase58Check: '',
+          ScopeType: 'Any',
+          AccessGroupKeyName: '',
+          OperationType: 'Any',
+          OpCount: options?.txLimitCount ?? 1,
+        },
+      ],
+      AccessGroupMemberLimitMap: [
+        {
+          AccessGroupOwnerPublicKeyBase58Check: '',
+          ScopeType: 'Any',
+          AccessGroupKeyName: '',
+          OperationType: 'Any',
+          OpCount: options?.txLimitCount ?? 1,
+        },
+      ],
     });
   }
 
@@ -142,19 +162,58 @@ export const constructUpdateAccessGroupTransaction = (
 /**
  * https://docs.deso.org/deso-backend/construct-transactions/access-groups-api#add-access-group-members
  */
-export const addAccessGroupMembers = (
+export const addAccessGroupMembers = async (
   params: TxRequestWithOptionalFeesAndExtraData<AddAccessGroupMembersRequest>,
-  options?: RequestOptions
+  options?: TxRequestOptions
 ): Promise<ConstructedAndSubmittedTx<AddAccessGroupMembersResponse>> => {
+  const txWithFee = getTxWithFeeNanos(
+    params.AccessGroupOwnerPublicKeyBase58Check,
+    buildAddAccessGroupMemberMetadata(params),
+    {
+      ExtraData: params.ExtraData,
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+    }
+  );
+
+  if (options?.checkPermissions !== false) {
+    await guardTxPermission({
+      GlobalDESOLimit:
+        txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
+      // NOTE: This is more permissive than we actually need it to be, but I
+      // couldn't get it to work when specifying the AccessGroupKeyName and
+      // AccessGroupOwnerPublicKeyBase58Check. If anyone complains, we can
+      // revisit it, but this is not a terribly sensitive permission to grant.
+      AccessGroupLimitMap: [
+        {
+          AccessGroupOwnerPublicKeyBase58Check: '',
+          ScopeType: 'Any',
+          AccessGroupKeyName: '',
+          OperationType: 'Any',
+          OpCount: options?.txLimitCount ?? 1,
+        },
+      ],
+      AccessGroupMemberLimitMap: [
+        {
+          AccessGroupOwnerPublicKeyBase58Check: '',
+          ScopeType: 'Any',
+          AccessGroupKeyName: '',
+          OperationType: 'Any',
+          OpCount: options?.txLimitCount ?? 1,
+        },
+      ],
+    });
+  }
+
   return handleSignAndSubmit('api/v0/add-access-group-members', params, {
     ...options,
     constructionFunction: constructAddAccessGroupMembersTransaction,
   });
 };
 
-export const constructAddAccessGroupMembersTransaction = (
+const buildAddAccessGroupMemberMetadata = (
   params: TxRequestWithOptionalFeesAndExtraData<AddAccessGroupMembersRequest>
-): Promise<ConstructedTransactionResponse> => {
+) => {
   const metadata = new TransactionMetadataAccessGroupMembers();
   metadata.accessGroupOwnerPublicKey = bs58PublicKeyToCompressedBytes(
     params.AccessGroupOwnerPublicKeyBase58Check
@@ -178,9 +237,15 @@ export const constructAddAccessGroupMembersTransaction = (
       return newAccessGroupMember;
     }
   );
+  return metadata;
+};
+
+export const constructAddAccessGroupMembersTransaction = (
+  params: TxRequestWithOptionalFeesAndExtraData<AddAccessGroupMembersRequest>
+): Promise<ConstructedTransactionResponse> => {
   return constructBalanceModelTx(
     params.AccessGroupOwnerPublicKeyBase58Check,
-    metadata,
+    buildAddAccessGroupMemberMetadata(params),
     {
       ExtraData: params.ExtraData,
       MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
@@ -192,19 +257,57 @@ export const constructAddAccessGroupMembersTransaction = (
 /**
  * https://docs.deso.org/deso-backend/construct-transactions/access-groups-api#remove-access-group-members
  */
-export const removeAccessGroupMembers = (
+export const removeAccessGroupMembers = async (
   params: TxRequestWithOptionalFeesAndExtraData<AddAccessGroupMembersRequest>,
-  options?: RequestOptions
+  options?: TxRequestOptions
 ): Promise<ConstructedAndSubmittedTx<AddAccessGroupMembersResponse>> => {
+  const txWithFee = getTxWithFeeNanos(
+    params.AccessGroupOwnerPublicKeyBase58Check,
+    buildRemoveAccessGroupMemberMetadata(params),
+    {
+      ExtraData: params.ExtraData,
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+    }
+  );
+
+  if (options?.checkPermissions !== false) {
+    await guardTxPermission({
+      GlobalDESOLimit:
+        txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
+      // NOTE: This is more permissive than we actually need it to be, but I
+      // couldn't get it to work when specifying the AccessGroupKeyName and
+      // AccessGroupOwnerPublicKeyBase58Check. If anyone complains, we can
+      // revisit it, but this is not a terribly sensitive permission to grant.
+      AccessGroupLimitMap: [
+        {
+          AccessGroupOwnerPublicKeyBase58Check: '',
+          ScopeType: 'Any',
+          AccessGroupKeyName: '',
+          OperationType: 'Any',
+          OpCount: options?.txLimitCount ?? 1,
+        },
+      ],
+      AccessGroupMemberLimitMap: [
+        {
+          AccessGroupOwnerPublicKeyBase58Check: '',
+          ScopeType: 'Any',
+          AccessGroupKeyName: '',
+          OperationType: 'Any',
+          OpCount: options?.txLimitCount ?? 1,
+        },
+      ],
+    });
+  }
   return handleSignAndSubmit('api/v0/remove-access-group-members', params, {
     ...options,
     constructionFunction: constructRemoveAccessGroupMembersTransaction,
   });
 };
 
-export const constructRemoveAccessGroupMembersTransaction = (
+const buildRemoveAccessGroupMemberMetadata = (
   params: TxRequestWithOptionalFeesAndExtraData<AddAccessGroupMembersRequest>
-): Promise<ConstructedTransactionResponse> => {
+) => {
   const metadata = new TransactionMetadataAccessGroupMembers();
   metadata.accessGroupOwnerPublicKey = bs58PublicKeyToCompressedBytes(
     params.AccessGroupOwnerPublicKeyBase58Check
@@ -226,9 +329,14 @@ export const constructRemoveAccessGroupMembersTransaction = (
       return newAccessGroupMember;
     }
   );
+  return metadata;
+};
+export const constructRemoveAccessGroupMembersTransaction = (
+  params: TxRequestWithOptionalFeesAndExtraData<AddAccessGroupMembersRequest>
+): Promise<ConstructedTransactionResponse> => {
   return constructBalanceModelTx(
     params.AccessGroupOwnerPublicKeyBase58Check,
-    metadata,
+    buildRemoveAccessGroupMemberMetadata(params),
     {
       ExtraData: params.ExtraData,
       MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
@@ -240,19 +348,58 @@ export const constructRemoveAccessGroupMembersTransaction = (
 /**
  * https://docs.deso.org/deso-backend/construct-transactions/access-groups-api#update-access-group-members
  */
-export const updateAccessGroupMembers = (
+export const updateAccessGroupMembers = async (
   params: TxRequestWithOptionalFeesAndExtraData<AddAccessGroupMembersRequest>,
-  options?: RequestOptions
+  options?: TxRequestOptions
 ): Promise<ConstructedAndSubmittedTx<AddAccessGroupMembersResponse>> => {
+  const txWithFee = getTxWithFeeNanos(
+    params.AccessGroupOwnerPublicKeyBase58Check,
+    buildUpdateAccessGroupMembersMetadata(params),
+    {
+      ExtraData: params.ExtraData,
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+    }
+  );
+
+  if (options?.checkPermissions !== false) {
+    await guardTxPermission({
+      GlobalDESOLimit:
+        txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
+      // NOTE: This is more permissive than we actually need it to be, but I
+      // couldn't get it to work when specifying the AccessGroupKeyName and
+      // AccessGroupOwnerPublicKeyBase58Check. If anyone complains, we can
+      // revisit it, but this is not a terribly sensitive permission to grant.
+      AccessGroupLimitMap: [
+        {
+          AccessGroupOwnerPublicKeyBase58Check: '',
+          ScopeType: 'Any',
+          AccessGroupKeyName: '',
+          OperationType: 'Any',
+          OpCount: options?.txLimitCount ?? 1,
+        },
+      ],
+      AccessGroupMemberLimitMap: [
+        {
+          AccessGroupOwnerPublicKeyBase58Check: '',
+          ScopeType: 'Any',
+          AccessGroupKeyName: '',
+          OperationType: 'Any',
+          OpCount: options?.txLimitCount ?? 1,
+        },
+      ],
+    });
+  }
+
   return handleSignAndSubmit('api/v0/update-access-group-members', params, {
     ...options,
     constructionFunction: constructUpdateAccessGroupMembersTransaction,
   });
 };
 
-export const constructUpdateAccessGroupMembersTransaction = (
+const buildUpdateAccessGroupMembersMetadata = (
   params: TxRequestWithOptionalFeesAndExtraData<AddAccessGroupMembersRequest>
-): Promise<ConstructedTransactionResponse> => {
+) => {
   const metadata = new TransactionMetadataAccessGroupMembers();
   metadata.accessGroupOwnerPublicKey = bs58PublicKeyToCompressedBytes(
     params.AccessGroupOwnerPublicKeyBase58Check
@@ -276,9 +423,15 @@ export const constructUpdateAccessGroupMembersTransaction = (
       return newAccessGroupMember;
     }
   );
+  return metadata;
+};
+
+export const constructUpdateAccessGroupMembersTransaction = (
+  params: TxRequestWithOptionalFeesAndExtraData<AddAccessGroupMembersRequest>
+): Promise<ConstructedTransactionResponse> => {
   return constructBalanceModelTx(
     params.AccessGroupOwnerPublicKeyBase58Check,
-    metadata,
+    buildUpdateAccessGroupMembersMetadata(params),
     {
       ExtraData: params.ExtraData,
       MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,

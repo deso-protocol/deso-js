@@ -22,6 +22,6 @@ export interface ConstructedAndSubmittedTx<T> {
 }
 
 export type TxRequestOptions = RequestOptions & {
-  txLimitCount?: number;
+  txLimitCount?: number | 'UNLIMITED';
   checkPermissions?: boolean;
 };

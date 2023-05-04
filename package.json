@@ -9,7 +9,7 @@
     "build": "tsc",
     "test": "jest",
     "package": "npm run build && cp {package.json,README.md,LICENSE} ./lib && cd ./lib && npm pkg delete scripts && cd -",
-    "link": "npm run package && cd ./lib && npm i && npm link",
+    "link": "npm run package && cd ./lib && npm i && npm link && cd - && tsc -w",
     "prepare": "husky install",
     "precommit": "lint-staged && npm run test"
   },
