@@ -12,35 +12,25 @@ export function compareTransactionSpendingLimits(
     return hasAllPermissions;
   }
 
-  if (
-    typeof actualPermissions?.NFTOperationLimitMap?.['']?.[0]?.any === 'number'
-  ) {
-    expectedPermissions.NFTOperationLimitMap = {
-      '': {
-        0: {
-          any: 'UNLIMITED',
-        },
-      },
-    };
-  }
-
   walkObj(expectedPermissions, (expectedVal, path) => {
-    const actualVal = getDeepValue(actualPermissions, path);
-
-    // NOTE: if we are checking for an NFT operation, and the user's derived key
-    // has the special "allow everything" configuration (PostHashHex = '' and
-    // serial number = 0), we just short-circuit and return true. This is a bit
-    // naive since the number *could* be less than the number of operations
-    // specified in the `expectedPermissions` object but this *should* do the
-    // right thing in most cases. If we need to be smarter about this later we
-    // can revisit.
+    // If the actual permissions are configured with the special "allow any" NFT
+    // mapping (PostHashHex = '', SerialNumber = 0) then we rewrite the lookup
+    // path to match any explicit mapping to the "allow any" mapping.
     if (
       path?.[0] === 'NFTOperationLimitMap' &&
-      typeof actualPermissions?.NFTOperationLimitMap?.['']?.[0]?.any ===
-        'number'
+      actualPermissions?.NFTOperationLimitMap?.['']?.[0]
     ) {
-      return hasAllPermissions;
+      if (
+        typeof actualPermissions?.NFTOperationLimitMap?.['']?.[0]?.any ===
+        'number'
+      ) {
+        path = ['NFTOperationLimitMap', '', '0', 'any'];
+      } else {
+        path = ['NFTOperationLimitMap', '', '0', path[path.length - 1]];
+      }
     }
+
+    const actualVal = getDeepValue(actualPermissions, path);
 
     if (
       typeof actualVal === 'undefined' ||
