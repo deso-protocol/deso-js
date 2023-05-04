@@ -1,6 +1,10 @@
 import {
   AccessGroupEntryResponse,
   AccessGroupMemberEntryResponse,
+  APIBlockRequest,
+  APIBlockResponse,
+  APITransactionInfoRequest,
+  APITransactionInfoResponse,
   AssociationCountsResponse,
   AssociationResponse,
   AssociationsCountResponse,
@@ -751,6 +755,53 @@ export const getExchangeRates = (
     options?.nodeURI ? cleanURL(options.nodeURI, endpoint) : endpoint
   );
 };
+
+/**
+ */
+export const getPublicKeyForUsername = (
+  username: string,
+  options?: RequestOptions
+): Promise<string> => {
+  const endpoint = 'api/v0/get-public-key-for-user-name';
+  return api.get(
+    (options?.nodeURI ? cleanURL(options.nodeURI, endpoint) : endpoint) + `/${username}`
+  );
+};
+
+/**
+ */
+export const getUsernameForPublicKey = (
+  publicKey: string,
+  options?: RequestOptions
+): Promise<string> => {
+  const endpoint = 'api/v0/get-user-name-for-public-key';
+  return api.get(
+    (options?.nodeURI ? cleanURL(options.nodeURI, endpoint) : endpoint) + `/${publicKey}`
+  );
+};
+
+export const getTransactionInfo = (
+  params: Partial<APITransactionInfoRequest> = {},
+  options?: RequestOptions
+): Promise<APITransactionInfoResponse> => {
+  const endpoint = 'api/v1/transaction-info';
+  return api.post(
+    options?.nodeURI ? cleanURL(options.nodeURI, endpoint) : endpoint,
+    params
+  );
+};
+
+export const getBlock = (
+  params: Partial<APIBlockRequest> = {},
+  options?: RequestOptions
+): Promise<APIBlockResponse> => {
+  const endpoint = 'api/v1/block';
+  return api.post(
+    options?.nodeURI ? cleanURL(options.nodeURI, endpoint) : endpoint,
+    params
+  );
+}
+
 
 /**
  * https://docs.deso.org/deso-backend/api/backend-api#get-app-state
