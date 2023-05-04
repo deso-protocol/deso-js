@@ -2,8 +2,8 @@ import { TransactionSpendingLimitResponse } from '../backend-types';
 import { identity } from '../identity';
 import { TransactionSpendingLimitResponseOptions } from './types';
 export function compareTransactionSpendingLimits(
-  expectedPermissions: any,
-  actualPermissions: any
+  expectedPermissions: TransactionSpendingLimitResponseOptions,
+  actualPermissions: TransactionSpendingLimitResponse
 ): boolean {
   let hasAllPermissions = true;
 
@@ -12,8 +12,36 @@ export function compareTransactionSpendingLimits(
     return hasAllPermissions;
   }
 
+  if (
+    typeof actualPermissions?.NFTOperationLimitMap?.['']?.[0]?.any === 'number'
+  ) {
+    expectedPermissions.NFTOperationLimitMap = {
+      '': {
+        0: {
+          any: 'UNLIMITED',
+        },
+      },
+    };
+  }
+
   walkObj(expectedPermissions, (expectedVal, path) => {
     const actualVal = getDeepValue(actualPermissions, path);
+
+    // NOTE: if we are checking for an NFT operation, and the user's derived key
+    // has the special "allow everything" configuration (PostHashHex = '' and
+    // serial number = 0), we just short-circuit and return true. This is a bit
+    // naive since the number *could* be less than the number of operations
+    // specified in the `expectedPermissions` object but this *should* do the
+    // right thing in most cases. If we need to be smarter about this later we
+    // can revisit.
+    if (
+      path?.[0] === 'NFTOperationLimitMap' &&
+      typeof actualPermissions?.NFTOperationLimitMap?.['']?.[0]?.any ===
+        'number'
+    ) {
+      return hasAllPermissions;
+    }
+
     if (
       typeof actualVal === 'undefined' ||
       (typeof actualVal === 'number' &&
