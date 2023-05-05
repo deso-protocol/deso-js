@@ -7,6 +7,7 @@ import {
   CreateLikeStatelessRequest,
   CreateLikeStatelessResponse,
   DeSoBodySchema,
+  DiamondLevelString,
   SendDiamondsRequest,
   SendDiamondsResponse,
   SendNewMessageRequest,
@@ -20,6 +21,7 @@ import {
 import { PartialWithRequiredFields, checkPartyAccessGroups } from '../data';
 import {
   TransactionExtraDataKV,
+  TransactionMetadataBasicTransfer,
   TransactionMetadataFollow,
   TransactionMetadataLike,
   TransactionMetadataNewMessage,
@@ -30,6 +32,7 @@ import {
   identity,
   uvarint64ToBuf,
 } from '../identity';
+import { DIAMOND_LEVEL_MAP } from '../identity/constants';
 import { guardTxPermission } from '../identity/permissions-utils';
 import {
   constructBalanceModelTx,
@@ -103,7 +106,11 @@ export const updateProfile = async (
       GlobalDESOLimit:
         txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
       TransactionCountLimitMap: {
-        UPDATE_PROFILE: options?.txLimitCount ?? 1,
+        UPDATE_PROFILE:
+          options?.txLimitCount ??
+          identity.transactionSpendingLimitOptions?.TransactionCountLimitMap
+            ?.UPDATE_PROFILE ??
+          1,
       },
     });
   }
@@ -213,7 +220,11 @@ export const submitPost = async (
       GlobalDESOLimit:
         txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
       TransactionCountLimitMap: {
-        SUBMIT_POST: options?.txLimitCount ?? 1,
+        SUBMIT_POST:
+          options?.txLimitCount ??
+          identity.transactionSpendingLimitOptions?.TransactionCountLimitMap
+            ?.SUBMIT_POST ??
+          1,
       },
     });
   }
@@ -253,7 +264,11 @@ export const updateFollowingStatus = async (
       GlobalDESOLimit:
         txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
       TransactionCountLimitMap: {
-        FOLLOW: options?.txLimitCount ?? 1,
+        FOLLOW:
+          options?.txLimitCount ??
+          identity.transactionSpendingLimitOptions?.TransactionCountLimitMap
+            ?.FOLLOW ??
+          1,
       },
     });
   }
@@ -294,20 +309,39 @@ export const sendDiamonds = async (
   params: TypeWithOptionalFeesAndExtraData<SendDiamondsRequest>,
   options?: TxRequestOptions
 ): Promise<ConstructedAndSubmittedTx<SendDiamondsResponse>> => {
-  // TODO: check permissions once we can calculate the fee appropriately
-  // if (options?.checkPermissions !== false) {
-  //   await guardTxPermission(TransactionType.BasicTransfer, {
-  //     fallbackTxLimitCount: options?.txLimitCount,
-  //   });
-  // }
+  const txWithFee = getTxWithFeeNanos(
+    params.SenderPublicKeyBase58Check,
+    new TransactionMetadataBasicTransfer(),
+    {
+      ExtraData: params.ExtraData,
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+      ConsensusExtraDataKVs: buildSendDiamondsConsensusKVs(params),
+    }
+  );
+
+  if (options?.checkPermissions !== false) {
+    await guardTxPermission({
+      GlobalDESOLimit:
+        txWithFee.feeNanos +
+        sumTransactionFees(params.TransactionFees) +
+        DIAMOND_LEVEL_MAP[params.DiamondLevel.toString() as DiamondLevelString],
+      TransactionCountLimitMap: {
+        BASIC_TRANSFER:
+          identity.transactionSpendingLimitOptions.TransactionCountLimitMap
+            ?.BASIC_TRANSFER ??
+          options?.txLimitCount ??
+          1,
+      },
+    });
+  }
 
   return handleSignAndSubmit('api/v0/send-diamonds', params, options);
 };
 
-// This one is a bit annoying since we should really look up how many diamonds you've already given on this post and only send the diff.
-export const constructDiamondTransaction = (
+const buildSendDiamondsConsensusKVs = (
   params: TypeWithOptionalFeesAndExtraData<SendDiamondsRequest>
-): Promise<ConstructedTransactionResponse> => {
+) => {
   const consensusExtraDataKVs: TransactionExtraDataKV[] = [];
   const diamondLevelKV = new TransactionExtraDataKV();
   diamondLevelKV.key = encodeUTF8ToBytes('DiamondLevel');
@@ -316,6 +350,16 @@ export const constructDiamondTransaction = (
   const diamondPostHashKV = new TransactionExtraDataKV();
   diamondPostHashKV.key = encodeUTF8ToBytes('DiamondPostHash');
   diamondPostHashKV.value = hexToBytes(params.DiamondPostHashHex);
+
+  consensusExtraDataKVs.push(diamondPostHashKV);
+
+  return consensusExtraDataKVs;
+};
+
+// This one is a bit annoying since we should really look up how many diamonds you've already given on this post and only send the diff.
+export const constructDiamondTransaction = (
+  params: TypeWithOptionalFeesAndExtraData<SendDiamondsRequest>
+): Promise<ConstructedTransactionResponse> => {
   return Promise.reject('Local construction for diamonds not supported yet.');
 };
 
@@ -348,7 +392,11 @@ export const updateLikeStatus = async (
       GlobalDESOLimit:
         txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
       TransactionCountLimitMap: {
-        LIKE: options?.txLimitCount ?? 1,
+        LIKE:
+          options?.txLimitCount ??
+          identity.transactionSpendingLimitOptions.TransactionCountLimitMap
+            ?.LIKE ??
+          1,
       },
     });
   }
@@ -429,7 +477,11 @@ export const sendDMMessage = async (
       GlobalDESOLimit:
         txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
       TransactionCountLimitMap: {
-        NEW_MESSAGE: options?.txLimitCount ?? 1,
+        NEW_MESSAGE:
+          options?.txLimitCount ??
+          identity.transactionSpendingLimitOptions?.TransactionCountLimitMap
+            ?.NEW_MESSAGE ??
+          1,
       },
     });
   }
@@ -524,7 +576,11 @@ export const updateDMMessage = async (
       GlobalDESOLimit:
         txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
       TransactionCountLimitMap: {
-        NEW_MESSAGE: options?.txLimitCount ?? 1,
+        NEW_MESSAGE:
+          options?.txLimitCount ??
+          identity.transactionSpendingLimitOptions?.TransactionCountLimitMap
+            ?.NEW_MESSAGE ??
+          1,
       },
     });
   }
@@ -582,7 +638,11 @@ export const sendGroupChatMessage = async (
       GlobalDESOLimit:
         txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
       TransactionCountLimitMap: {
-        NEW_MESSAGE: options?.txLimitCount ?? 1,
+        NEW_MESSAGE:
+          options?.txLimitCount ??
+          identity.transactionSpendingLimitOptions?.TransactionCountLimitMap
+            ?.NEW_MESSAGE ??
+          1,
       },
     });
   }
@@ -682,7 +742,11 @@ export const sendMessage = async (
       GlobalDESOLimit:
         txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
       TransactionCountLimitMap: {
-        NEW_MESSAGE: options?.txLimitCount ?? 1,
+        NEW_MESSAGE:
+          options?.txLimitCount ??
+          identity.transactionSpendingLimitOptions?.TransactionCountLimitMap
+            ?.NEW_MESSAGE ??
+          1,
       },
     });
   }
@@ -763,7 +827,11 @@ export const updateGroupChatMessage = async (
       GlobalDESOLimit:
         txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
       TransactionCountLimitMap: {
-        NEW_MESSAGE: options?.txLimitCount ?? 1,
+        NEW_MESSAGE:
+          options?.txLimitCount ??
+          identity.transactionSpendingLimitOptions?.TransactionCountLimitMap
+            ?.NEW_MESSAGE ??
+          1,
       },
     });
   }

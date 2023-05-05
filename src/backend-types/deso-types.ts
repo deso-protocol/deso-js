@@ -5495,3 +5495,5 @@ export interface GetVideoStatusResponse {
   playbackURL: string;
   downloadURL: string;
 }
+
+export type DiamondLevelString = '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8';
