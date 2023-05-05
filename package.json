@@ -1,6 +1,6 @@
 {
   "name": "deso-protocol",
-  "version": "1.1.15",
+  "version": "1.1.15-beta.0",
   "license": "MIT",
   "description": "Client side typescript/javascript SDK for building web3 applications for the DeSo blockchain.",
   "main": "./src/index.js",
