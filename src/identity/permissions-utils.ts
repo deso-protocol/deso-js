@@ -1,6 +1,7 @@
 import { TransactionSpendingLimitResponse } from '../backend-types';
 import { identity } from '../identity';
 import { TransactionSpendingLimitResponseOptions } from './types';
+
 export function compareTransactionSpendingLimits(
   expectedPermissions: TransactionSpendingLimitResponseOptions,
   actualPermissions: TransactionSpendingLimitResponse
@@ -101,11 +102,7 @@ export function compareTransactionSpendingLimits(
     if (
       typeof actualVal === 'undefined' ||
       (typeof actualVal === 'number' &&
-        typeof expectedVal === 'number' &&
-        actualVal < expectedVal) ||
-      (typeof actualVal === 'number' &&
-        expectedVal === 'UNLIMITED' &&
-        actualVal < 1e9) ||
+        actualVal < normalizeCount(expectedVal)) ||
       (typeof actualVal === 'string' && actualVal !== expectedVal)
     ) {
       hasAllPermissions = false;
@@ -250,5 +247,10 @@ function setDeepValue(obj: any, path: string[], value: any) {
 }
 
 function normalizeCount(count?: number | 'UNLIMITED') {
-  return count === 'UNLIMITED' ? 1e9 : count ?? 0;
+  // NOTE: If checking for unlimited, we just check if it's greater than 1
+  // because there is no good way to know if the original value was 'UNLIMITED'
+  // or some other numeric.  As long as the value is greater than 1, we just let
+  // it pass as 'UNLIMITED.' In the end this shouldn't matter since we fail the
+  // check if there are no more transactions left to spend.
+  return count === 'UNLIMITED' || count === 1e9 ? 1 : count ?? 0;
 }
