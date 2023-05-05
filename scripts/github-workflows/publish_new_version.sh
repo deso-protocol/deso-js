@@ -19,6 +19,7 @@ echo "Pre-release tag: $NPM_PRERELEASE_TAG"
 
 npm ci --ignore-scripts
 npm version --no-git-tag-version $NEW_VERSION
+ls -l
 npm run package
 cd ./lib
 
