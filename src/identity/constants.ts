@@ -49,3 +49,14 @@ export const DESO_NETWORK_TO_ETH_NETWORK: Record<
   mainnet: 'mainnet',
   testnet: 'goerli',
 });
+
+export const DIAMOND_LEVEL_MAP = Object.freeze({
+  '1': 50000,
+  '2': 500000,
+  '3': 5000000,
+  '4': 50000000,
+  '5': 500000000,
+  '6': 5000000000,
+  '7': 50000000000,
+  '8': 500000000000,
+});

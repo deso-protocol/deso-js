@@ -935,11 +935,6 @@ export class Identity {
     const { publicKeyBase58Check, derivedPublicKeyBase58Check } =
       primaryDerivedKey;
 
-    // transactionSpendingLimitResponse.TransactionCountLimitMap = {
-    //   ...this.#defaultTransactionSpendingLimit,
-    //   ...transactionSpendingLimitResponse.TransactionCountLimitMap,
-    // };
-
     return await this.derive(transactionSpendingLimitResponse, {
       ownerPublicKey: publicKeyBase58Check,
       derivedPublicKey: derivedPublicKeyBase58Check,

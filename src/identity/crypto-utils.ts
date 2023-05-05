@@ -281,9 +281,7 @@ export const bs58PublicKeyToCompressedBytes = (str: string) => {
     return new Uint8Array(33);
   }
   const pubKeyUncompressed = bs58PublicKeyToBytes(str);
-  return Uint8Array.from(
-    Point.fromHex(ecUtils.bytesToHex(pubKeyUncompressed)).toRawBytes(true)
-  );
+  return Point.fromHex(ecUtils.bytesToHex(pubKeyUncompressed)).toRawBytes(true);
 };
 
 export const bs58PublicKeyToBytes = (str: string) => {

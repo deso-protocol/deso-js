@@ -11,7 +11,6 @@ import {
   CreateNFTBidResponse,
   CreateNFTRequest,
   CreateNFTResponse,
-  RequestOptions,
   TransferNFTRequest,
   TransferNFTResponse,
   TxRequestWithOptionalFeesAndExtraData,
@@ -20,9 +19,6 @@ import {
 } from '../backend-types';
 import { PartialWithRequiredFields } from '../data';
 import {
-  bs58PublicKeyToCompressedBytes,
-  concatUint8Arrays,
-  encodeUTF8ToBytes,
   TransactionExtraDataKV,
   TransactionMetadataAcceptNFTBid,
   TransactionMetadataAcceptNFTTransfer,
@@ -31,10 +27,19 @@ import {
   TransactionMetadataNFTBid,
   TransactionMetadataNFTTransfer,
   TransactionMetadataUpdateNFT,
+  bs58PublicKeyToCompressedBytes,
+  concatUint8Arrays,
+  encodeUTF8ToBytes,
   uvarint64ToBuf,
 } from '../identity';
-import { constructBalanceModelTx, handleSignAndSubmit } from '../internal';
-import { ConstructedAndSubmittedTx } from '../types';
+import { guardTxPermission } from '../identity/permissions-utils';
+import {
+  constructBalanceModelTx,
+  getTxWithFeeNanos,
+  handleSignAndSubmit,
+  sumTransactionFees,
+} from '../internal';
+import { ConstructedAndSubmittedTx, TxRequestOptions } from '../types';
 /**
  * https://docs.deso.org/deso-backend/construct-transactions/nft-transactions-api#create-nft
  */
@@ -53,19 +58,38 @@ export type CreateNFTRequestParams = TxRequestWithOptionalFeesAndExtraData<
 
 export const createNFT = async (
   params: CreateNFTRequestParams,
-  options?: RequestOptions
+  options?: TxRequestOptions
 ): Promise<
   ConstructedAndSubmittedTx<CreateNFTResponse | ConstructedTransactionResponse>
 > => {
+  const txWithFee = getTxWithFeeNanos(
+    params.UpdaterPublicKeyBase58Check,
+    buildCreateNFTMetadata(params),
+    {
+      ExtraData: params.ExtraData,
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+      ConsensusExtraDataKVs: buildCreateNFTConsensusKVs(params),
+    }
+  );
+
+  if (options?.checkPermissions !== false) {
+    await guardTxPermission({
+      GlobalDESOLimit:
+        txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
+      TransactionCountLimitMap: {
+        CREATE_NFT: options?.txLimitCount ?? 1,
+      },
+    });
+  }
+
   return handleSignAndSubmit('api/v0/create-nft', params, {
     ...options,
     constructionFunction: constructCreateNFTTransaction,
   });
 };
 
-export const constructCreateNFTTransaction = (
-  params: CreateNFTRequestParams
-): Promise<ConstructedTransactionResponse> => {
+const buildCreateNFTMetadata = (params: CreateNFTRequestParams) => {
   const metadata = new TransactionMetadataCreateNFT();
   metadata.hasUnlockable = params.HasUnlockable;
   metadata.isForSale = params.IsForSale;
@@ -76,6 +100,10 @@ export const constructCreateNFTTransaction = (
     params.NFTRoyaltyToCreatorBasisPoints;
   metadata.numCopies = params.NumCopies;
 
+  return metadata;
+};
+
+const buildCreateNFTConsensusKVs = (params: CreateNFTRequestParams) => {
   const consensusExtraDataKVs: TransactionExtraDataKV[] = [];
   if (params.IsBuyNow && params.BuyNowPriceNanos !== undefined) {
     consensusExtraDataKVs.push(
@@ -123,12 +151,23 @@ export const constructCreateNFTTransaction = (
       new TransactionExtraDataKV(encodeUTF8ToBytes('CoinRoyaltiesMap'), buf)
     );
   }
-  return constructBalanceModelTx(params.UpdaterPublicKeyBase58Check, metadata, {
-    ExtraData: params.ExtraData,
-    ConsensusExtraDataKVs: consensusExtraDataKVs,
-    MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
-    TransactionFees: params.TransactionFees,
-  });
+
+  return consensusExtraDataKVs;
+};
+
+export const constructCreateNFTTransaction = (
+  params: CreateNFTRequestParams
+): Promise<ConstructedTransactionResponse> => {
+  return constructBalanceModelTx(
+    params.UpdaterPublicKeyBase58Check,
+    buildCreateNFTMetadata(params),
+    {
+      ExtraData: params.ExtraData,
+      ConsensusExtraDataKVs: buildCreateNFTConsensusKVs(params),
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+    }
+  );
 };
 
 /**
@@ -145,24 +184,47 @@ export type UpdateNFTRequestParams = TxRequestWithOptionalFeesAndExtraData<
 >;
 export const updateNFT = async (
   params: UpdateNFTRequestParams,
-  options?: RequestOptions
+  options?: TxRequestOptions
 ): Promise<
   ConstructedAndSubmittedTx<UpdateNFTResponse | ConstructedTransactionResponse>
 > => {
+  const txWithFee = getTxWithFeeNanos(
+    params.UpdaterPublicKeyBase58Check,
+    buildUpdateNFTMetadata(params),
+    {
+      ExtraData: params.ExtraData,
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+      ConsensusExtraDataKVs: buildUpdateNFTConsensusKVs(params),
+    }
+  );
+
+  if (options?.checkPermissions !== false) {
+    await guardTxPermission({
+      GlobalDESOLimit:
+        txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
+      TransactionCountLimitMap: {
+        UPDATE_NFT: options?.txLimitCount ?? 1,
+      },
+    });
+  }
+
   return handleSignAndSubmit('api/v0/update-nft', params, {
     ...options,
     constructionFunction: constructUpdateNFTTransaction,
   });
 };
 
-export const constructUpdateNFTTransaction = (
-  params: UpdateNFTRequestParams
-): Promise<ConstructedTransactionResponse> => {
+const buildUpdateNFTMetadata = (params: UpdateNFTRequestParams) => {
   const metadata = new TransactionMetadataUpdateNFT();
   metadata.isForSale = !!params.IsForSale;
   metadata.minBidAmountNanos = params.MinBidAmountNanos;
   metadata.nftPostHash = hexToBytes(params.NFTPostHashHex);
   metadata.serialNumber = params.SerialNumber;
+  return metadata;
+};
+
+const buildUpdateNFTConsensusKVs = (params: UpdateNFTRequestParams) => {
   const consensusExtraDataKVs: TransactionExtraDataKV[] = [];
   if (params.IsBuyNow && params.BuyNowPriceNanos !== undefined) {
     consensusExtraDataKVs.push(
@@ -172,13 +234,24 @@ export const constructUpdateNFTTransaction = (
       )
     );
   }
-  return constructBalanceModelTx(params.UpdaterPublicKeyBase58Check, metadata, {
-    ExtraData: params.ExtraData,
-    MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
-    TransactionFees: params.TransactionFees,
-    ConsensusExtraDataKVs: consensusExtraDataKVs,
-  });
+  return consensusExtraDataKVs;
 };
+
+export const constructUpdateNFTTransaction = (
+  params: UpdateNFTRequestParams
+): Promise<ConstructedTransactionResponse> => {
+  return constructBalanceModelTx(
+    params.UpdaterPublicKeyBase58Check,
+    buildUpdateNFTMetadata(params),
+    {
+      ExtraData: params.ExtraData,
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+      ConsensusExtraDataKVs: buildUpdateNFTConsensusKVs(params),
+    }
+  );
+};
+
 /**
  * https://docs.deso.org/deso-backend/construct-transactions/nft-transactions-api#create-nft-bid
  */
@@ -191,32 +264,67 @@ export type CreateNFTBidRequestParams = TxRequestWithOptionalFeesAndExtraData<
     | 'UpdaterPublicKeyBase58Check'
   >
 >;
-export const createNFTBid = (
+export const createNFTBid = async (
   params: CreateNFTBidRequestParams,
-  options?: RequestOptions
+  options?: TxRequestOptions
 ): Promise<
   ConstructedAndSubmittedTx<
     CreateNFTBidResponse | ConstructedTransactionResponse
   >
 > => {
+  const txWithFee = getTxWithFeeNanos(
+    params.UpdaterPublicKeyBase58Check,
+    buildCreateNFTBidMetadata(params),
+    {
+      ExtraData: params.ExtraData,
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+    }
+  );
+
+  if (options?.checkPermissions !== false) {
+    await guardTxPermission({
+      GlobalDESOLimit:
+        params.BidAmountNanos +
+        txWithFee.feeNanos +
+        sumTransactionFees(params.TransactionFees),
+      NFTOperationLimitMap: {
+        [params.NFTPostHashHex]: {
+          [params.SerialNumber]: {
+            nft_bid: options?.txLimitCount ?? 1,
+          },
+        },
+      },
+    });
+  }
+
   return handleSignAndSubmit('api/v0/create-nft-bid', params, {
     ...options,
     constructionFunction: constructNFTBidTransaction,
   });
 };
 
-export const constructNFTBidTransaction = (
-  params: CreateNFTBidRequestParams
-): Promise<ConstructedTransactionResponse> => {
+const buildCreateNFTBidMetadata = (params: CreateNFTBidRequestParams) => {
   const metadata = new TransactionMetadataNFTBid();
   metadata.bidAmountNanos = params.BidAmountNanos;
   metadata.nftPostHash = hexToBytes(params.NFTPostHashHex);
   metadata.serialNumber = params.SerialNumber;
-  return constructBalanceModelTx(params.UpdaterPublicKeyBase58Check, metadata, {
-    MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
-    ExtraData: params.ExtraData,
-    TransactionFees: params.TransactionFees,
-  });
+
+  return metadata;
+};
+
+export const constructNFTBidTransaction = (
+  params: CreateNFTBidRequestParams
+): Promise<ConstructedTransactionResponse> => {
+  return constructBalanceModelTx(
+    params.UpdaterPublicKeyBase58Check,
+    buildCreateNFTBidMetadata(params),
+    {
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      ExtraData: params.ExtraData,
+      TransactionFees: params.TransactionFees,
+    }
+  );
 };
 
 /**
@@ -232,23 +340,47 @@ export type AcceptNFTBidRequestParams = TxRequestWithOptionalFeesAndExtraData<
     | 'BidderPublicKeyBase58Check'
   >
 >;
-export const acceptNFTBid = (
+export const acceptNFTBid = async (
   params: AcceptNFTBidRequestParams,
-  options?: RequestOptions
+  options?: TxRequestOptions
 ): Promise<
   ConstructedAndSubmittedTx<
     AcceptNFTBidResponse | ConstructedTransactionResponse
   >
 > => {
+  const txWithFee = getTxWithFeeNanos(
+    params.UpdaterPublicKeyBase58Check,
+    buildAcceptNFTBidMetadata(params),
+    {
+      ExtraData: params.ExtraData,
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+    }
+  );
+
+  if (options?.checkPermissions !== false) {
+    await guardTxPermission({
+      GlobalDESOLimit:
+        params.BidAmountNanos +
+        txWithFee.feeNanos +
+        sumTransactionFees(params.TransactionFees),
+      NFTOperationLimitMap: {
+        [params.NFTPostHashHex]: {
+          [params.SerialNumber]: {
+            accept_nft_bid: options?.txLimitCount ?? 1,
+          },
+        },
+      },
+    });
+  }
+
   return handleSignAndSubmit('api/v0/accept-nft-bid', params, {
     ...options,
     constructionFunction: constructAcceptNFTBidTransaction,
   });
 };
 
-export const constructAcceptNFTBidTransaction = (
-  params: AcceptNFTBidRequestParams
-): Promise<ConstructedTransactionResponse> => {
+const buildAcceptNFTBidMetadata = (params: AcceptNFTBidRequestParams) => {
   const metadata = new TransactionMetadataAcceptNFTBid();
   metadata.bidAmountNanos = params.BidAmountNanos;
   metadata.bidderInputs = [];
@@ -261,11 +393,22 @@ export const constructAcceptNFTBidTransaction = (
   );
   metadata.nftPostHash = hexToBytes(params.NFTPostHashHex);
   metadata.serialNumber = params.SerialNumber;
-  return constructBalanceModelTx(params.UpdaterPublicKeyBase58Check, metadata, {
-    MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
-    ExtraData: params.ExtraData,
-    TransactionFees: params.TransactionFees,
-  });
+
+  return metadata;
+};
+
+export const constructAcceptNFTBidTransaction = (
+  params: AcceptNFTBidRequestParams
+): Promise<ConstructedTransactionResponse> => {
+  return constructBalanceModelTx(
+    params.UpdaterPublicKeyBase58Check,
+    buildAcceptNFTBidMetadata(params),
+    {
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      ExtraData: params.ExtraData,
+      TransactionFees: params.TransactionFees,
+    }
+  );
 };
 
 /**
@@ -280,23 +423,44 @@ export type TransferNFTRequestParams = TxRequestWithOptionalFeesAndExtraData<
     | 'SerialNumber'
   >
 >;
-export const transferNFT = (
+export const transferNFT = async (
   params: TransferNFTRequestParams,
-  options?: RequestOptions
+  options?: TxRequestOptions
 ): Promise<
   ConstructedAndSubmittedTx<
     TransferNFTResponse | ConstructedTransactionResponse
   >
 > => {
+  const txWithFee = getTxWithFeeNanos(
+    params.SenderPublicKeyBase58Check,
+    buildTransferNFTMetadata(params),
+    {
+      ExtraData: params.ExtraData,
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+    }
+  );
+
+  if (options?.checkPermissions !== false) {
+    await guardTxPermission({
+      GlobalDESOLimit:
+        txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
+      NFTOperationLimitMap: {
+        [params.NFTPostHashHex]: {
+          [params.SerialNumber]: {
+            transfer: options?.txLimitCount ?? 1,
+          },
+        },
+      },
+    });
+  }
   return handleSignAndSubmit('api/v0/transfer-nft', params, {
     ...options,
     constructionFunction: constructTransferNFT,
   });
 };
 
-export const constructTransferNFT = (
-  params: TransferNFTRequestParams
-): Promise<ConstructedTransactionResponse | ConstructedTransactionResponse> => {
+const buildTransferNFTMetadata = (params: TransferNFTRequestParams) => {
   const metadata = new TransactionMetadataNFTTransfer();
   metadata.encryptedUnlockableText = hexToBytes(
     params.EncryptedUnlockableText || ''
@@ -306,11 +470,22 @@ export const constructTransferNFT = (
     params.ReceiverPublicKeyBase58Check
   );
   metadata.serialNumber = params.SerialNumber;
-  return constructBalanceModelTx(params.SenderPublicKeyBase58Check, metadata, {
-    MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
-    ExtraData: params.ExtraData,
-    TransactionFees: params.TransactionFees,
-  });
+
+  return metadata;
+};
+
+export const constructTransferNFT = (
+  params: TransferNFTRequestParams
+): Promise<ConstructedTransactionResponse | ConstructedTransactionResponse> => {
+  return constructBalanceModelTx(
+    params.SenderPublicKeyBase58Check,
+    buildTransferNFTMetadata(params),
+    {
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      ExtraData: params.ExtraData,
+      TransactionFees: params.TransactionFees,
+    }
+  );
 };
 
 /**
@@ -323,31 +498,66 @@ export type AcceptNFTTransferRequestParams =
       'UpdaterPublicKeyBase58Check' | 'NFTPostHashHex' | 'SerialNumber'
     >
   >;
-export const acceptNFTTransfer = (
+export const acceptNFTTransfer = async (
   params: AcceptNFTTransferRequestParams,
-  options?: RequestOptions
+  options?: TxRequestOptions
 ): Promise<
   ConstructedAndSubmittedTx<
     AcceptNFTTransferResponse | ConstructedTransactionResponse
   >
 > => {
+  const txWithFee = getTxWithFeeNanos(
+    params.UpdaterPublicKeyBase58Check,
+    buildAcceptNFTTransferMetadata(params),
+    {
+      ExtraData: params.ExtraData,
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+    }
+  );
+
+  if (options?.checkPermissions !== false) {
+    await guardTxPermission({
+      GlobalDESOLimit:
+        txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
+      NFTOperationLimitMap: {
+        [params.NFTPostHashHex]: {
+          [params.SerialNumber]: {
+            accept_nft_transfer: options?.txLimitCount ?? 1,
+          },
+        },
+      },
+    });
+  }
+
   return handleSignAndSubmit('api/v0/accept-nft-transfer', params, {
     ...options,
     constructionFunction: constructAcceptNFTTransfer,
   });
 };
 
-export const constructAcceptNFTTransfer = (
+export const buildAcceptNFTTransferMetadata = (
   params: AcceptNFTTransferRequestParams
-): Promise<ConstructedTransactionResponse> => {
+) => {
   const metadata = new TransactionMetadataAcceptNFTTransfer();
   metadata.nftPostHash = hexToBytes(params.NFTPostHashHex);
   metadata.serialNumber = params.SerialNumber;
-  return constructBalanceModelTx(params.UpdaterPublicKeyBase58Check, metadata, {
-    ExtraData: params.ExtraData,
-    MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
-    TransactionFees: params.TransactionFees,
-  });
+
+  return metadata;
+};
+
+export const constructAcceptNFTTransfer = (
+  params: AcceptNFTTransferRequestParams
+): Promise<ConstructedTransactionResponse> => {
+  return constructBalanceModelTx(
+    params.UpdaterPublicKeyBase58Check,
+    buildAcceptNFTTransferMetadata(params),
+    {
+      ExtraData: params.ExtraData,
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+    }
+  );
 };
 
 /**
@@ -359,27 +569,60 @@ export type BurnNFTRequestParams = TxRequestWithOptionalFeesAndExtraData<
     'UpdaterPublicKeyBase58Check' | 'NFTPostHashHex' | 'SerialNumber'
   >
 >;
-export const burnNFT = (
+export const burnNFT = async (
   params: BurnNFTRequestParams,
-  options?: RequestOptions
+  options?: TxRequestOptions
 ): Promise<
   ConstructedAndSubmittedTx<BurnNFTResponse | ConstructedTransactionResponse>
 > => {
+  const txWithFee = getTxWithFeeNanos(
+    params.UpdaterPublicKeyBase58Check,
+    buildBurnNFTMetadata(params),
+    {
+      ExtraData: params.ExtraData,
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+    }
+  );
+
+  if (options?.checkPermissions !== false) {
+    await guardTxPermission({
+      GlobalDESOLimit:
+        txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
+      NFTOperationLimitMap: {
+        [params.NFTPostHashHex]: {
+          [params.SerialNumber]: {
+            burn: options?.txLimitCount ?? 1,
+          },
+        },
+      },
+    });
+  }
+
   return handleSignAndSubmit('api/v0/burn-nft', params, {
     ...options,
     constructionFunction: constructBurnNFTTransation,
   });
 };
 
-export const constructBurnNFTTransation = (
-  params: BurnNFTRequestParams
-): Promise<ConstructedTransactionResponse> => {
+const buildBurnNFTMetadata = (params: BurnNFTRequestParams) => {
   const metadata = new TransactionMetadataBurnNFT();
   metadata.nftPostHash = hexToBytes(params.NFTPostHashHex);
   metadata.serialNumber = params.SerialNumber;
-  return constructBalanceModelTx(params.UpdaterPublicKeyBase58Check, metadata, {
-    ExtraData: params.ExtraData,
-    MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
-    TransactionFees: params.TransactionFees,
-  });
+
+  return metadata;
+};
+
+export const constructBurnNFTTransation = (
+  params: BurnNFTRequestParams
+): Promise<ConstructedTransactionResponse> => {
+  return constructBalanceModelTx(
+    params.UpdaterPublicKeyBase58Check,
+    buildBurnNFTMetadata(params),
+    {
+      ExtraData: params.ExtraData,
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+    }
+  );
 };

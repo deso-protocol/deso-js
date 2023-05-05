@@ -112,7 +112,7 @@ export const convertExtraData = (
   return realExtraData;
 };
 
-export const getTxnWithFees = (
+export const getTxWithFeeNanos = (
   pubKey: string,
   metadata: TransactionMetadataRecord,
   txFields?: BalanceModelTransactionFields
@@ -152,7 +152,7 @@ export const getTxnWithFees = (
 
   return computeFee(
     transaction,
-    txFields?.MinFeeRateNanosPerKB || globalConfigOptions.MinFeeRateNanosPerKB
+    txFields?.MinFeeRateNanosPerKB ?? globalConfigOptions.MinFeeRateNanosPerKB
   );
 };
 
@@ -164,7 +164,7 @@ export const constructBalanceModelTx = async (
   // TODO: cache block height somewhere.
   const { BlockHeight } = await getAppState();
 
-  const txnWithFee = getTxnWithFees(pubKey, metadata, {
+  const txnWithFee = getTxWithFeeNanos(pubKey, metadata, {
     ...txFields,
     BlockHeight,
   });

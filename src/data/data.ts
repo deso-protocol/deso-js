@@ -783,7 +783,6 @@ export const getUsernameForPublicKey = (
 };
 
 export type APITransactionInfoParams =
-  | PartialWithRequiredFields<APITransactionInfoRequest, 'IsMempool'>
   | PartialWithRequiredFields<
       APITransactionInfoRequest,
       'TransactionIDBase58Check'

@@ -1,12 +1,10 @@
-import {
-  TransactionSpendingLimitResponse,
-  TransactionType,
-} from '../backend-types';
+import { TransactionSpendingLimitResponse } from '../backend-types';
 import { identity } from '../identity';
 import { TransactionSpendingLimitResponseOptions } from './types';
+
 export function compareTransactionSpendingLimits(
-  expectedPermissions: any,
-  actualPermissions: any
+  expectedPermissions: TransactionSpendingLimitResponseOptions,
+  actualPermissions: TransactionSpendingLimitResponse
 ): boolean {
   let hasAllPermissions = true;
 
@@ -16,15 +14,96 @@ export function compareTransactionSpendingLimits(
   }
 
   walkObj(expectedPermissions, (expectedVal, path) => {
+    // If the actual permissions are configured with any of the special "allow
+    // anything" mappings then we rewrite the lookup path for any explicit
+    // mapping to match on the "allow any" mapping. In some cases, simply
+    // compare the OpCounts and return early if their can be only 1 mapping.
+    switch (path?.[0]) {
+      case 'AccessGroupLimitMap':
+        if (
+          actualPermissions?.AccessGroupLimitMap?.find((map) => {
+            return (
+              map.ScopeType === 'Any' &&
+              map.AccessGroupKeyName === '' &&
+              map.OperationType === 'Any' &&
+              map.OpCount >=
+                normalizeCount(
+                  expectedPermissions?.AccessGroupLimitMap?.[Number(path[1])]
+                    ?.OpCount
+                )
+            );
+          })
+        ) {
+          return;
+        }
+        break;
+      case 'AccessGroupMemberLimitMap':
+        if (
+          actualPermissions?.AccessGroupMemberLimitMap?.find((map) => {
+            return (
+              map.ScopeType === 'Any' &&
+              map.AccessGroupKeyName === '' &&
+              map.OperationType === 'Any' &&
+              map.OpCount >=
+                normalizeCount(
+                  expectedPermissions?.AccessGroupMemberLimitMap?.[
+                    Number(path[1])
+                  ]?.OpCount
+                )
+            );
+          })
+        ) {
+          return;
+        }
+        break;
+      case 'AssociationLimitMap':
+        if (
+          actualPermissions?.AssociationLimitMap?.find((map) => {
+            return (
+              map.AssociationClass ===
+                expectedPermissions?.AssociationLimitMap?.[Number(path[1])]
+                  ?.AssociationClass &&
+              map.AppScopeType === 'Any' &&
+              map.AssociationType === '' &&
+              map.AssociationOperation === 'Any' &&
+              map.OpCount >=
+                normalizeCount(
+                  expectedPermissions?.AssociationLimitMap?.[Number(path[1])]
+                    ?.OpCount
+                )
+            );
+          })
+        ) {
+          return;
+        }
+        break;
+      case 'CreatorCoinOperationLimitMap':
+        if (actualPermissions?.CreatorCoinOperationLimitMap?.['']) {
+          path =
+            typeof actualPermissions?.CreatorCoinOperationLimitMap['']?.any ===
+            'number'
+              ? ['CreatorCoinOperationLimitMap', '', 'any']
+              : ['CreatorCoinOperationLimitMap', '', path[path.length - 1]];
+        }
+        break;
+      case 'NFTOperationLimitMap':
+        if (actualPermissions?.NFTOperationLimitMap?.['']?.[0]) {
+          path =
+            typeof actualPermissions?.NFTOperationLimitMap?.['']?.[0]?.any ===
+            'number'
+              ? ['NFTOperationLimitMap', '', '0', 'any']
+              : ['NFTOperationLimitMap', '', '0', path[path.length - 1]];
+        }
+        break;
+    }
+
     const actualVal = getDeepValue(actualPermissions, path);
+
     if (
       typeof actualVal === 'undefined' ||
       (typeof actualVal === 'number' &&
-        typeof expectedVal === 'number' &&
-        actualVal < expectedVal) ||
-      (typeof actualVal === 'number' &&
-        expectedVal === 'UNLIMITED' &&
-        actualVal < 1e9)
+        actualVal < normalizeCount(expectedVal)) ||
+      (typeof actualVal === 'string' && actualVal !== expectedVal)
     ) {
       hasAllPermissions = false;
     }
@@ -107,33 +186,14 @@ export function buildTransactionSpendingLimitResponse(
 }
 
 export function guardTxPermission(
-  txType: TransactionType,
-  options?: {
-    fallbackTxLimitCount?: number;
-    txAmountDESONanos?: number;
-  }
+  spendingLimitOptions: TransactionSpendingLimitResponseOptions
 ) {
-  if (
-    !identity.hasPermissions({
-      GlobalDESOLimit: options?.txAmountDESONanos ?? 0,
-      TransactionCountLimitMap: {
-        [txType]: 1,
-      },
-    })
-  ) {
+  if (!identity.hasPermissions(spendingLimitOptions)) {
     return identity.requestPermissions({
-      GlobalDESOLimit: Math.max(
-        identity.transactionSpendingLimitOptions.GlobalDESOLimit ?? 0,
-        options?.txAmountDESONanos ?? 0
-      ),
-      // TODO: handle dao, nft, association limit maps, etc.
-      TransactionCountLimitMap: {
-        [txType]:
-          identity.transactionSpendingLimitOptions.TransactionCountLimitMap
-            ?.SUBMIT_POST ??
-          options?.fallbackTxLimitCount ??
-          1,
-      },
+      ...spendingLimitOptions,
+      GlobalDESOLimit:
+        (identity.transactionSpendingLimitOptions.GlobalDESOLimit ?? 0) +
+        (spendingLimitOptions.GlobalDESOLimit ?? 0),
     });
   }
 
@@ -184,4 +244,13 @@ function setDeepValue(obj: any, path: string[], value: any) {
   } else {
     setDeepValue(obj[currKey], path.slice(1), value);
   }
+}
+
+function normalizeCount(count?: number | 'UNLIMITED') {
+  // NOTE: If checking for unlimited, we just check if it's greater than 1
+  // because there is no good way to know if the original value was 'UNLIMITED'
+  // or some other numeric.  As long as the value is greater than 1, we just let
+  // it pass as 'UNLIMITED.' In the end this shouldn't matter since we fail the
+  // check if there are no more transactions left to spend.
+  return count === 'UNLIMITED' || count === 1e9 ? 1 : count ?? 0;
 }
