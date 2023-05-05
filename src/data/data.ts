@@ -764,7 +764,8 @@ export const getPublicKeyForUsername = (
 ): Promise<string> => {
   const endpoint = 'api/v0/get-public-key-for-user-name';
   return api.get(
-    (options?.nodeURI ? cleanURL(options.nodeURI, endpoint) : endpoint) + `/${username}`
+    (options?.nodeURI ? cleanURL(options.nodeURI, endpoint) : endpoint) +
+      `/${username}`
   );
 };
 
@@ -776,12 +777,24 @@ export const getUsernameForPublicKey = (
 ): Promise<string> => {
   const endpoint = 'api/v0/get-user-name-for-public-key';
   return api.get(
-    (options?.nodeURI ? cleanURL(options.nodeURI, endpoint) : endpoint) + `/${publicKey}`
+    (options?.nodeURI ? cleanURL(options.nodeURI, endpoint) : endpoint) +
+      `/${publicKey}`
   );
 };
 
+export type APITransactionInfoParams =
+  | PartialWithRequiredFields<APITransactionInfoRequest, 'IsMempool'>
+  | PartialWithRequiredFields<
+      APITransactionInfoRequest,
+      'TransactionIDBase58Check'
+    >
+  | PartialWithRequiredFields<
+      APITransactionInfoRequest,
+      'PublicKeyBase58Check'
+    >;
+
 export const getTransactionInfo = (
-  params: Partial<APITransactionInfoRequest> = {},
+  params: Partial<APITransactionInfoParams> = {},
   options?: RequestOptions
 ): Promise<APITransactionInfoResponse> => {
   const endpoint = 'api/v1/transaction-info';
@@ -791,8 +804,12 @@ export const getTransactionInfo = (
   );
 };
 
+export type APIBlockParams =
+  | PartialWithRequiredFields<APIBlockRequest, 'Height'>
+  | PartialWithRequiredFields<APIBlockRequest, 'HashHex'>;
+
 export const getBlock = (
-  params: Partial<APIBlockRequest> = {},
+  params: APIBlockParams,
   options?: RequestOptions
 ): Promise<APIBlockResponse> => {
   const endpoint = 'api/v1/block';
@@ -800,8 +817,7 @@ export const getBlock = (
     options?.nodeURI ? cleanURL(options.nodeURI, endpoint) : endpoint,
     params
   );
-}
-
+};
 
 /**
  * https://docs.deso.org/deso-backend/api/backend-api#get-app-state
