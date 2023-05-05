@@ -40,7 +40,7 @@ export const sendDeso = async (
     params.SenderPublicKeyBase58Check,
     new TransactionMetadataBasicTransfer(),
     {
-      Outputs: buildSendDesoOutputs({
+      Outputs: buildSendDeSoOutputs({
         ...params,
         // NOTE: this is a bit of an odd hack, but bc we are only using this to
         // estimate the fee, we can overwrite the recipient to be the sender to
@@ -78,12 +78,16 @@ export const sendDeso = async (
   });
 };
 
-const buildSendDesoOutputs = (
+const buildSendDeSoOutputs = (
   params: TxRequestWithOptionalFeesAndExtraData<SendDeSoRequest>
 ) => {
   const transactionOutput = new TransactionOutput();
   transactionOutput.amountNanos = params.AmountNanos;
   transactionOutput.publicKey = bs58PublicKeyToCompressedBytes(
+    // FIXME: this will throw an error if the recipient is a username. We need
+    // to either fetch the public key and overwrite the username with it or
+    // throw a more helpful error to consumers explaining that we require the
+    // public key instead of the username.
     params.RecipientPublicKeyOrUsername
   );
   return [transactionOutput];
@@ -92,16 +96,17 @@ const buildSendDesoOutputs = (
 export const constructSendDeSoTransaction = (
   params: TxRequestWithOptionalFeesAndExtraData<SendDeSoRequest>
 ): Promise<ConstructedTransactionResponse> => {
-  const transactionOutput = new TransactionOutput();
-  transactionOutput.amountNanos = params.AmountNanos;
-  transactionOutput.publicKey = bs58PublicKeyToCompressedBytes(
-    params.RecipientPublicKeyOrUsername
-  );
+  if (!isMaybeDeSoPublicKey(params.RecipientPublicKeyOrUsername)) {
+    throw new Error(
+      'must provide public key, not user name for local construction'
+    );
+  }
+
   return constructBalanceModelTx(
     params.SenderPublicKeyBase58Check,
     new TransactionMetadataBasicTransfer(),
     {
-      Outputs: buildSendDesoOutputs(params),
+      Outputs: buildSendDeSoOutputs(params),
       ExtraData: params.ExtraData,
       MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
       TransactionFees: params.TransactionFees,
@@ -133,6 +138,7 @@ export const buyCreatorCoin = (
     BuyOrSellCreatorCoinResponse | ConstructedTransactionResponse
   >
 > => {
+  // TODO: Add tx permission check once local tx construction is implemented.
   return handleSignAndSubmit(
     'api/v0/buy-or-sell-creator-coin',
     {
@@ -167,6 +173,7 @@ export const sellCreatorCoin = (
     BuyOrSellCreatorCoinResponse | ConstructedTransactionResponse
   >
 > => {
+  // TODO: Add tx permission check once local tx construction is implemented.
   return handleSignAndSubmit(
     'api/v0/buy-or-sell-creator-coin',
     {
@@ -190,32 +197,41 @@ export type TransferCreatorCoinRequestParams =
       | 'CreatorCoinToTransferNanos'
     >
   >;
-export const transferCreatorCoin = (
+export const transferCreatorCoin = async (
   params: TransferCreatorCoinRequestParams,
-  options?: RequestOptions
+  options?: TxRequestOptions
 ): Promise<ConstructedAndSubmittedTx<TransferCreatorCoinResponse>> => {
+  const txWithFee = getTxWithFeeNanos(
+    params.SenderPublicKeyBase58Check,
+    buildTransferCreatorCoinMetadata(params),
+    {
+      ExtraData: params.ExtraData,
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+    }
+  );
+
+  if (options?.checkPermissions !== false) {
+    await guardTxPermission({
+      GlobalDESOLimit:
+        txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
+      CreatorCoinOperationLimitMap: {
+        [params.CreatorPublicKeyBase58Check]: {
+          transfer: options?.txLimitCount ?? 1,
+        },
+      },
+    });
+  }
+
   return handleSignAndSubmit('api/v0/transfer-creator-coin', params, {
     ...options,
     constructionFunction: constructTransferCreatorCoinTransaction,
   });
 };
 
-export const constructTransferCreatorCoinTransaction = (
-  params: TxRequestWithOptionalFeesAndExtraData<
-    PartialWithRequiredFields<
-      TransferCreatorCoinRequest,
-      | 'SenderPublicKeyBase58Check'
-      | 'CreatorPublicKeyBase58Check'
-      | 'ReceiverUsernameOrPublicKeyBase58Check'
-      | 'CreatorCoinToTransferNanos'
-    >
-  >
-): Promise<ConstructedTransactionResponse> => {
-  if (!isMaybeDeSoPublicKey(params.ReceiverUsernameOrPublicKeyBase58Check)) {
-    return Promise.reject(
-      'must provide public key, not user name for local construction'
-    );
-  }
+const buildTransferCreatorCoinMetadata = (
+  params: TransferCreatorCoinRequestParams
+) => {
   const metadata = new TransactionMetadataCreatorCoinTransfer();
   metadata.creatorCoinToTransferNanos = params.CreatorCoinToTransferNanos;
   metadata.profilePublicKey = bs58PublicKeyToCompressedBytes(
@@ -224,9 +240,25 @@ export const constructTransferCreatorCoinTransaction = (
   metadata.receiverPublicKey = bs58PublicKeyToCompressedBytes(
     params.ReceiverUsernameOrPublicKeyBase58Check
   );
-  return constructBalanceModelTx(params.SenderPublicKeyBase58Check, metadata, {
-    ExtraData: params.ExtraData,
-    MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
-    TransactionFees: params.TransactionFees,
-  });
+
+  return metadata;
+};
+
+export const constructTransferCreatorCoinTransaction = (
+  params: TransferCreatorCoinRequestParams
+): Promise<ConstructedTransactionResponse> => {
+  if (!isMaybeDeSoPublicKey(params.ReceiverUsernameOrPublicKeyBase58Check)) {
+    return Promise.reject(
+      'must provide public key, not user name for local construction'
+    );
+  }
+  return constructBalanceModelTx(
+    params.SenderPublicKeyBase58Check,
+    buildTransferCreatorCoinMetadata(params),
+    {
+      ExtraData: params.ExtraData,
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+    }
+  );
 };
