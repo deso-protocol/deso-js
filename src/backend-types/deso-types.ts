@@ -1052,6 +1052,67 @@ export interface UpdateProfileTxindexMetadata {
   IsHidden: boolean;
 }
 
+export interface CreateUserAssociationTxindexMetadata {
+  TargetUserPublicKeyBase58Check: string;
+  AppPublicKeyBase58Check: string;
+  AssociationType: string;
+  AssociationValue: string;
+}
+
+export interface DeleteUserAssociationTxindexMetadata {
+  AssociationIDHex: string;
+  TargetUserPublicKeyBase58Check: string;
+  AppPublicKeyBase58Check: string;
+  AssociationType: string;
+  AssociationValue: string;
+}
+
+export interface CreatePostAssociationTxindexMetadata {
+  PostHashHex: string;
+  AppPublicKeyBase58Check: string;
+  AssociationType: string;
+  AssociationValue: string;
+}
+
+export interface DeletePostAssociationTxindexMetadata {
+  AssociationIDHex: string;
+  PostHashHex: string;
+  AppPublicKeyBase58Check: string;
+  AssociationType: string;
+  AssociationValue: string;
+}
+
+export interface AccessGroupTxindexMetadata {
+  AccessGroupOwnerPublicKey: number[];
+  AccessGroupPublicKey: number[];
+  AccessGroupKeyName: number[];
+  AccessGroupOperationType: number;
+}
+
+export interface AccessGroupMemberTxindexType {
+  AccessGroupMemberPublicKey: number[];
+  AccessGroupMemberKeyName: number[];
+  EncryptedKey: number[];
+  ExtraData: { [k: string]: number[] };
+}
+
+export interface AccessGroupMembersTxindexMetadata {
+  AccessGroupOwnerPublicKey: number[];
+  AccessGroupKeyName: number[];
+  AccessGroupMembersList: AccessGroupMemberTxindexType[];
+  AccessGroupMemberOperationType: number;
+}
+
+export interface NewMessageTxindexMetadata {
+  SenderAccessGroupOwnerPublicKey: number[];
+  SenderAccessGroupKeyName: number[];
+  RecipientAccessGroupOwnerPublicKey: number[];
+  RecipientAccessGroupKeyName: number[];
+  TimestampNanos: number;
+  NewMessageType: number;
+  NewMessageOperation: number;
+}
+
 // struct2ts:types/generated/types.SubmitPostTxindexMetadata
 export interface SubmitPostTxindexMetadata {
   PostHashBeingModifiedHex: string;
@@ -1168,6 +1229,13 @@ export interface TransactionMetadata {
   CreateNFTTxindexMetadata: CreateNFTTxindexMetadata | null;
   UpdateNFTTxindexMetadata: UpdateNFTTxindexMetadata | null;
   DAOCoinLimitOrderTxindexMetadata: DAOCoinLimitOrderTxindexMetadata | null;
+  CreateUserAssociationTxindexMetadata: CreateUserAssociationTxindexMetadata | null;
+  DeleteUserAssociationTxindexMetadata: DeleteUserAssociationTxindexMetadata | null;
+  CreatePostAssociationTxindexMetadata: CreatePostAssociationTxindexMetadata | null;
+  DeletePostAssociationTxindexMetadata: DeletePostAssociationTxindexMetadata | null;
+  AccessGroupTxindexMetadata: AccessGroupTxindexMetadata | null;
+  AccessGroupMembersTxindexMetadata: AccessGroupMembersTxindexMetadata | null;
+  NewMessageTxindexMetadata: NewMessageTxindexMetadata | null;
 }
 
 // struct2ts:types/generated/types.TransactionEvent
@@ -3010,6 +3078,11 @@ export interface OutputResponse {
   AmountNanos: number;
 }
 
+export interface DeSoNonce {
+  ExpirationBlockHeight: number;
+  PartialID: number;
+}
+
 // struct2ts:types/generated/types.TransactionResponse
 export interface TransactionResponse {
   TransactionIDBase58Check: string;
@@ -3021,6 +3094,9 @@ export interface TransactionResponse {
   BlockHashHex: string;
   TransactionMetadata: TransactionMetadata;
   ExtraData: Record<string, string>;
+  TxnNonce?: DeSoNonce;
+  TxnFeeNanos?: number;
+  TxnVersion?: number;
 }
 
 // struct2ts:types/generated/types.APIBaseResponse

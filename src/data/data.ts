@@ -1,6 +1,10 @@
 import {
   AccessGroupEntryResponse,
   AccessGroupMemberEntryResponse,
+  APIBlockRequest,
+  APIBlockResponse,
+  APITransactionInfoRequest,
+  APITransactionInfoResponse,
   AssociationCountsResponse,
   AssociationResponse,
   AssociationsCountResponse,
@@ -749,6 +753,69 @@ export const getExchangeRates = (
   const endpoint = 'api/v0/get-exchange-rate';
   return api.get(
     options?.nodeURI ? cleanURL(options.nodeURI, endpoint) : endpoint
+  );
+};
+
+/**
+ */
+export const getPublicKeyForUsername = (
+  username: string,
+  options?: RequestOptions
+): Promise<string> => {
+  const endpoint = 'api/v0/get-public-key-for-user-name';
+  return api.get(
+    (options?.nodeURI ? cleanURL(options.nodeURI, endpoint) : endpoint) +
+      `/${username}`
+  );
+};
+
+/**
+ */
+export const getUsernameForPublicKey = (
+  publicKey: string,
+  options?: RequestOptions
+): Promise<string> => {
+  const endpoint = 'api/v0/get-user-name-for-public-key';
+  return api.get(
+    (options?.nodeURI ? cleanURL(options.nodeURI, endpoint) : endpoint) +
+      `/${publicKey}`
+  );
+};
+
+export type APITransactionInfoParams =
+  | PartialWithRequiredFields<APITransactionInfoRequest, 'IsMempool'>
+  | PartialWithRequiredFields<
+      APITransactionInfoRequest,
+      'TransactionIDBase58Check'
+    >
+  | PartialWithRequiredFields<
+      APITransactionInfoRequest,
+      'PublicKeyBase58Check'
+    >;
+
+export const getTransactionInfo = (
+  params: Partial<APITransactionInfoParams> = {},
+  options?: RequestOptions
+): Promise<APITransactionInfoResponse> => {
+  const endpoint = 'api/v1/transaction-info';
+  return api.post(
+    options?.nodeURI ? cleanURL(options.nodeURI, endpoint) : endpoint,
+    params
+  );
+};
+
+export type APIBlockParams =
+  | PartialWithRequiredFields<APIBlockRequest, 'Height'>
+  | PartialWithRequiredFields<APIBlockRequest, 'HashHex'>;
+
+export const getBlock = (
+  params: APIBlockParams,
+  options?: RequestOptions
+): Promise<APIBlockResponse> => {
+  const endpoint = 'api/v1/block';
+  return api.post(
+    options?.nodeURI ? cleanURL(options.nodeURI, endpoint) : endpoint,
+    params
   );
 };
 
