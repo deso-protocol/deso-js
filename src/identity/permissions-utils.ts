@@ -13,21 +13,87 @@ export function compareTransactionSpendingLimits(
   }
 
   walkObj(expectedPermissions, (expectedVal, path) => {
-    // If the actual permissions are configured with the special "allow any" NFT
-    // mapping (PostHashHex = '', SerialNumber = 0) then we rewrite the lookup
-    // path to match any explicit mapping to the "allow any" mapping.
-    if (
-      path?.[0] === 'NFTOperationLimitMap' &&
-      actualPermissions?.NFTOperationLimitMap?.['']?.[0]
-    ) {
-      if (
-        typeof actualPermissions?.NFTOperationLimitMap?.['']?.[0]?.any ===
-        'number'
-      ) {
-        path = ['NFTOperationLimitMap', '', '0', 'any'];
-      } else {
-        path = ['NFTOperationLimitMap', '', '0', path[path.length - 1]];
-      }
+    // If the actual permissions are configured with any of the special "allow
+    // anything" mappings then we rewrite the lookup path for any explicit
+    // mapping to match on the "allow any" mapping. In some cases, simply
+    // compare the OpCounts and return early if their can be only 1 mapping.
+    switch (path?.[0]) {
+      case 'AccessGroupLimitMap':
+        if (
+          actualPermissions?.AccessGroupLimitMap?.find((map) => {
+            return (
+              map.ScopeType === 'Any' &&
+              map.AccessGroupKeyName === '' &&
+              map.OperationType === 'Any' &&
+              map.OpCount >=
+                normalizeCount(
+                  expectedPermissions?.AccessGroupLimitMap?.[Number(path[1])]
+                    ?.OpCount
+                )
+            );
+          })
+        ) {
+          return;
+        }
+        break;
+      case 'AccessGroupMemberLimitMap':
+        if (
+          actualPermissions?.AccessGroupMemberLimitMap?.find((map) => {
+            return (
+              map.ScopeType === 'Any' &&
+              map.AccessGroupKeyName === '' &&
+              map.OperationType === 'Any' &&
+              map.OpCount >=
+                normalizeCount(
+                  expectedPermissions?.AccessGroupMemberLimitMap?.[
+                    Number(path[1])
+                  ]?.OpCount
+                )
+            );
+          })
+        ) {
+          return;
+        }
+        break;
+      case 'AssociationLimitMap':
+        if (
+          actualPermissions?.AssociationLimitMap?.find((map) => {
+            return (
+              map.AssociationClass ===
+                expectedPermissions?.AssociationLimitMap?.[Number(path[1])]
+                  ?.AssociationClass &&
+              map.AppScopeType === 'Any' &&
+              map.AssociationType === '' &&
+              map.AssociationOperation === 'Any' &&
+              map.OpCount >=
+                normalizeCount(
+                  expectedPermissions?.AssociationLimitMap?.[Number(path[1])]
+                    ?.OpCount
+                )
+            );
+          })
+        ) {
+          return;
+        }
+        break;
+      case 'CreatorCoinOperationLimitMap':
+        if (actualPermissions?.CreatorCoinOperationLimitMap?.['']) {
+          path =
+            typeof actualPermissions?.CreatorCoinOperationLimitMap['']?.any ===
+            'number'
+              ? ['CreatorCoinOperationLimitMap', '', 'any']
+              : ['CreatorCoinOperationLimitMap', '', path[path.length - 1]];
+        }
+        break;
+      case 'NFTOperationLimitMap':
+        if (actualPermissions?.NFTOperationLimitMap?.['']?.[0]) {
+          path =
+            typeof actualPermissions?.NFTOperationLimitMap?.['']?.[0]?.any ===
+            'number'
+              ? ['NFTOperationLimitMap', '', '0', 'any']
+              : ['NFTOperationLimitMap', '', '0', path[path.length - 1]];
+        }
+        break;
     }
 
     const actualVal = getDeepValue(actualPermissions, path);
@@ -128,10 +194,9 @@ export function guardTxPermission(
   if (!identity.hasPermissions(spendingLimitOptions)) {
     return identity.requestPermissions({
       ...spendingLimitOptions,
-      GlobalDESOLimit: Math.max(
-        identity.transactionSpendingLimitOptions.GlobalDESOLimit ?? 0,
-        spendingLimitOptions.GlobalDESOLimit ?? 0
-      ),
+      GlobalDESOLimit:
+        (identity.transactionSpendingLimitOptions.GlobalDESOLimit ?? 0) +
+        (spendingLimitOptions.GlobalDESOLimit ?? 0),
     });
   }
 
@@ -182,4 +247,8 @@ function setDeepValue(obj: any, path: string[], value: any) {
   } else {
     setDeepValue(obj[currKey], path.slice(1), value);
   }
+}
+
+function normalizeCount(count?: number | 'UNLIMITED') {
+  return count === 'UNLIMITED' ? 1e9 : count ?? 0;
 }

@@ -11,31 +11,82 @@ import {
 } from '../backend-types';
 import { PartialWithRequiredFields } from '../data';
 import {
-  bs58PublicKeyToCompressedBytes,
   TransactionMetadataBasicTransfer,
   TransactionMetadataCreatorCoinTransfer,
   TransactionOutput,
+  bs58PublicKeyToCompressedBytes,
+  identity,
 } from '../identity';
+import { guardTxPermission } from '../identity/permissions-utils';
 import {
   constructBalanceModelTx,
+  getTxWithFeeNanos,
   handleSignAndSubmit,
   isMaybeDeSoPublicKey,
+  sumTransactionFees,
 } from '../internal';
-import { ConstructedAndSubmittedTx } from '../types';
+import { ConstructedAndSubmittedTx, TxRequestOptions } from '../types';
 
 /**
  * https://docs.deso.org/deso-backend/construct-transactions/financial-transactions-api#send-deso
  */
-export const sendDeso = (
+export const sendDeso = async (
   params: TxRequestWithOptionalFeesAndExtraData<SendDeSoRequest>,
-  options?: RequestOptions
+  options?: TxRequestOptions
 ): Promise<
   ConstructedAndSubmittedTx<SendDeSoResponse | ConstructedTransactionResponse>
 > => {
+  const txWithFee = getTxWithFeeNanos(
+    params.SenderPublicKeyBase58Check,
+    new TransactionMetadataBasicTransfer(),
+    {
+      Outputs: buildSendDesoOutputs({
+        ...params,
+        // NOTE: this is a bit of an odd hack, but bc we are only using this to
+        // estimate the fee, we can overwrite the recipient to be the sender to
+        // ensure the value is a valid public key that can be converted to
+        // bytes. The reason we cannot make an api call to get the true public
+        // key is because it could cause the derived key re-approval popup to
+        // get blocked by browser popup blockers.
+        RecipientPublicKeyOrUsername: params.SenderPublicKeyBase58Check,
+      }),
+      ExtraData: params.ExtraData,
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+    }
+  );
+
+  if (options?.checkPermissions !== false) {
+    await guardTxPermission({
+      GlobalDESOLimit:
+        params.AmountNanos +
+        txWithFee.feeNanos +
+        sumTransactionFees(params.TransactionFees),
+      TransactionCountLimitMap: {
+        BASIC_TRANSFER:
+          options?.txLimitCount ??
+          identity.transactionSpendingLimitOptions.TransactionCountLimitMap
+            ?.BASIC_TRANSFER ??
+          1,
+      },
+    });
+  }
+
   return handleSignAndSubmit('api/v0/send-deso', params, {
     ...options,
     constructionFunction: constructSendDeSoTransaction,
   });
+};
+
+const buildSendDesoOutputs = (
+  params: TxRequestWithOptionalFeesAndExtraData<SendDeSoRequest>
+) => {
+  const transactionOutput = new TransactionOutput();
+  transactionOutput.amountNanos = params.AmountNanos;
+  transactionOutput.publicKey = bs58PublicKeyToCompressedBytes(
+    params.RecipientPublicKeyOrUsername
+  );
+  return [transactionOutput];
 };
 
 export const constructSendDeSoTransaction = (
@@ -50,7 +101,7 @@ export const constructSendDeSoTransaction = (
     params.SenderPublicKeyBase58Check,
     new TransactionMetadataBasicTransfer(),
     {
-      Outputs: [transactionOutput],
+      Outputs: buildSendDesoOutputs(params),
       ExtraData: params.ExtraData,
       MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
       TransactionFees: params.TransactionFees,
