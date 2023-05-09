@@ -122,8 +122,9 @@ export const getTxWithFeeNanos = (
   // a transaction, but just for calculating fees we can use a pseudo value, in
   // this case we just use the max safe integer.
   // TODO: put in real block height buffer.
-  nonce.expirationBlockHeight =
-    (txFields?.BlockHeight ?? Number.MAX_SAFE_INTEGER) + 275;
+  nonce.expirationBlockHeight = txFields?.BlockHeight
+    ? txFields.BlockHeight + 275
+    : Number.MAX_SAFE_INTEGER;
   // TODO: cache used partial IDs? Replace with better logic
   // for generating random uint64
   nonce.partialId = Math.floor(Math.random() * 1e18);
