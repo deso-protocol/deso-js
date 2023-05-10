@@ -1046,7 +1046,7 @@ describe('identity', () => {
       console.log('submit 100 character post');
       await constructSubmitPost({
         BodyObj: {
-          Body: [...Array(100)].map(() => 'a').join(''), // 100 character post
+          Body: [...Array(100)].map(() => 'a').join(''),
           ImageURLs: [],
           VideoURLs: [],
         },
@@ -1056,7 +1056,7 @@ describe('identity', () => {
       console.log('submit 500 character post');
       await constructSubmitPost({
         BodyObj: {
-          Body: [...Array(500)].map(() => 'a').join(''), // 100 character post
+          Body: [...Array(500)].map(() => 'a').join(''),
           ImageURLs: [],
           VideoURLs: [],
         },
@@ -1066,7 +1066,7 @@ describe('identity', () => {
       console.log('comment on post w/ 100 character comment');
       await constructSubmitPost({
         BodyObj: {
-          Body: [...Array(100)].map(() => 'a').join(''), // 100 character post
+          Body: [...Array(100)].map(() => 'a').join(''),
           ImageURLs: [],
           VideoURLs: [],
         },
@@ -1075,10 +1075,10 @@ describe('identity', () => {
         ParentStakeID:
           '1a1702bbf5b49c088ccf33da4b620a1d0c099f958a3931be3af47ad532bfe29c',
       });
-      console.log('comment on post w/ 100 character comment');
+      console.log('comment on post w/ 500 character comment');
       await constructSubmitPost({
         BodyObj: {
-          Body: [...Array(500)].map(() => 'a').join(''), // 100 character post
+          Body: [...Array(500)].map(() => 'a').join(''),
           ImageURLs: [],
           VideoURLs: [],
         },
