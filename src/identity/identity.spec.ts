@@ -996,7 +996,7 @@ describe('identity', () => {
     );
   });
 
-  describe('tx size test', () => {
+  describe('tx size and fee test', () => {
     const testPubKey =
       'BC1YLiSayiRJKRut5gNW8CnN7vGugm3UzH8wXJiwx4io4FJKgRTGVqF';
     const testPostHashHex =
