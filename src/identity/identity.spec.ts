@@ -16,9 +16,24 @@ import {
   Transaction,
   TransactionExtraData,
   TransactionMetadataBasicTransfer,
+  TransactionMetadataCreatorCoin,
   TransactionNonce,
 } from './transaction-transcoders';
 import { APIProvider } from './types';
+import {
+  buyCreatorCoin,
+  constructSendDeSoTransaction,
+} from '../transactions/financial';
+import {
+  buildSendDiamondsConsensusKVs,
+  constructDiamondTransaction,
+  constructFollowTransaction,
+  constructLikeTransaction,
+  constructSubmitPost,
+  constructUpdateProfileTransaction,
+} from '../transactions/social';
+import { constructCreateNFTTransaction } from '../transactions/nfts';
+import { computeTxSize, getTxWithFeeNanos } from '../internal';
 
 function getPemEncodePublicKey(privateKey: Uint8Array): string {
   const publicKey = getPublicKey(privateKey, true);
@@ -96,6 +111,11 @@ describe('identity', () => {
             const txBytes = exampleTransaction.toBytes();
             return Promise.resolve({
               TransactionHex: ecUtils.bytesToHex(txBytes),
+            });
+          }
+          if (url.endsWith('get-app-state')) {
+            return Promise.resolve({
+              BlockHeight: 300000,
             });
           }
           return Promise.resolve(null);
@@ -974,5 +994,202 @@ describe('identity', () => {
     it.todo(
       'it properly handles the case where a users derived key cannot be authorized'
     );
+  });
+
+  describe('tx size test', () => {
+    const testPubKey =
+      'BC1YLiSayiRJKRut5gNW8CnN7vGugm3UzH8wXJiwx4io4FJKgRTGVqF';
+    const testPostHashHex =
+      '1a1702bbf5b49c088ccf33da4b620a1d0c099f958a3931be3af47ad532bfe29c';
+    const MinFeeRateNanosPerKB = 1000;
+    it('basic transfer', async () => {
+      console.log('send 1 deso');
+      const sendDeso = await constructSendDeSoTransaction({
+        AmountNanos: 1e9,
+        MinFeeRateNanosPerKB,
+        SenderPublicKeyBase58Check: testPubKey,
+        RecipientPublicKeyOrUsername: testPubKey,
+      });
+      console.log('send 10 deso');
+      await constructSendDeSoTransaction({
+        AmountNanos: 10 * 1e9,
+        MinFeeRateNanosPerKB,
+        SenderPublicKeyBase58Check: testPubKey,
+        RecipientPublicKeyOrUsername: testPubKey,
+      });
+      // Note: we don't suppport local construction for diamond txs yet since it requires an
+      // add'l api request if you're upgrading from one diamond amount to another.
+      console.log('send 1 diamond');
+      const diamondTxWithFee = getTxWithFeeNanos(
+        testPubKey,
+        new TransactionMetadataBasicTransfer(),
+        {
+          MinFeeRateNanosPerKB,
+          ConsensusExtraDataKVs: buildSendDiamondsConsensusKVs({
+            DiamondPostHashHex: testPostHashHex,
+            DiamondLevel: 1,
+            SenderPublicKeyBase58Check: testPubKey,
+            ReceiverPublicKeyBase58Check: testPubKey,
+          }),
+        }
+      );
+      console.log(
+        'Txn Type: ',
+        diamondTxWithFee.getTxnTypeString(),
+        '\nComputed Fee: ',
+        diamondTxWithFee.feeNanos,
+        '\nComputed Size: ',
+        computeTxSize(diamondTxWithFee) + 71
+      );
+    });
+    it('submit post', async () => {
+      console.log('submit 100 character post');
+      await constructSubmitPost({
+        BodyObj: {
+          Body: [...Array(100)].map(() => 'a').join(''), // 100 character post
+          ImageURLs: [],
+          VideoURLs: [],
+        },
+        MinFeeRateNanosPerKB,
+        UpdaterPublicKeyBase58Check: testPubKey,
+      });
+      console.log('submit 500 character post');
+      await constructSubmitPost({
+        BodyObj: {
+          Body: [...Array(500)].map(() => 'a').join(''), // 100 character post
+          ImageURLs: [],
+          VideoURLs: [],
+        },
+        MinFeeRateNanosPerKB,
+        UpdaterPublicKeyBase58Check: testPubKey,
+      });
+      console.log('comment on post w/ 100 character comment');
+      await constructSubmitPost({
+        BodyObj: {
+          Body: [...Array(100)].map(() => 'a').join(''), // 100 character post
+          ImageURLs: [],
+          VideoURLs: [],
+        },
+        MinFeeRateNanosPerKB,
+        UpdaterPublicKeyBase58Check: testPubKey,
+        ParentStakeID:
+          '1a1702bbf5b49c088ccf33da4b620a1d0c099f958a3931be3af47ad532bfe29c',
+      });
+      console.log('comment on post w/ 100 character comment');
+      await constructSubmitPost({
+        BodyObj: {
+          Body: [...Array(500)].map(() => 'a').join(''), // 100 character post
+          ImageURLs: [],
+          VideoURLs: [],
+        },
+        MinFeeRateNanosPerKB,
+        UpdaterPublicKeyBase58Check: testPubKey,
+        ParentStakeID: testPostHashHex,
+      });
+      console.log('repost no body');
+      await constructSubmitPost({
+        BodyObj: {
+          Body: '',
+          ImageURLs: [],
+          VideoURLs: [],
+        },
+        MinFeeRateNanosPerKB,
+        UpdaterPublicKeyBase58Check: testPubKey,
+        RepostedPostHashHex: testPostHashHex,
+      });
+    });
+    it('create NFT', async () => {
+      console.log('1 copy NFT');
+      await constructCreateNFTTransaction({
+        MinFeeRateNanosPerKB,
+        UpdaterPublicKeyBase58Check: testPubKey,
+        NumCopies: 1,
+        IsForSale: false,
+        MinBidAmountNanos: 0,
+        NFTPostHashHex: testPostHashHex,
+        NFTRoyaltyToCoinBasisPoints: 0,
+        NFTRoyaltyToCreatorBasisPoints: 0,
+        HasUnlockable: false,
+      });
+    });
+    it('like', async () => {
+      console.log('like a post');
+      await constructLikeTransaction({
+        MinFeeRateNanosPerKB,
+        ReaderPublicKeyBase58Check: testPubKey,
+        LikedPostHashHex: testPostHashHex,
+      });
+    });
+    it('follow', async () => {
+      console.log('follow a user');
+      await constructFollowTransaction({
+        FollowerPublicKeyBase58Check: testPubKey,
+        FollowedPublicKeyBase58Check: testPubKey,
+        MinFeeRateNanosPerKB,
+      });
+    });
+    it('creator coin', async () => {
+      console.log('buy 1 DESO worth of creator coin, expecting 0.5 CCs');
+      const creatorCoinBuyMetadata = new TransactionMetadataCreatorCoin();
+      creatorCoinBuyMetadata.operationType = 0;
+      creatorCoinBuyMetadata.desoToSellNanos = 1e9;
+      creatorCoinBuyMetadata.minCreatorCoinExpectedNanos = 0.5 * 1e9;
+      creatorCoinBuyMetadata.profilePublicKey =
+        bs58PublicKeyToCompressedBytes(testPubKey);
+      const creatorCoinBuyTxWithFee = getTxWithFeeNanos(
+        testPubKey,
+        creatorCoinBuyMetadata,
+        {
+          MinFeeRateNanosPerKB,
+        }
+      );
+      console.log(
+        'Txn Type: ',
+        creatorCoinBuyTxWithFee.getTxnTypeString(),
+        '\nComputed Fee: ',
+        creatorCoinBuyTxWithFee.feeNanos,
+        '\nComputed Size: ',
+        computeTxSize(creatorCoinBuyTxWithFee) + 71
+      );
+
+      console.log('sell 0.5 CCs and expect 1 DESO in return');
+      const creatorCoinSellMetadata = new TransactionMetadataCreatorCoin();
+      creatorCoinSellMetadata.operationType = 1;
+      creatorCoinSellMetadata.desoToSellNanos = 0.5 * 1e9;
+      creatorCoinSellMetadata.minDeSoExpectedNanos = 1e9;
+      creatorCoinSellMetadata.profilePublicKey =
+        bs58PublicKeyToCompressedBytes(testPubKey);
+      const creatorCoinSellTxWithFee = getTxWithFeeNanos(
+        testPubKey,
+        creatorCoinSellMetadata,
+        {
+          MinFeeRateNanosPerKB,
+        }
+      );
+      console.log(
+        'Txn Type: ',
+        creatorCoinSellTxWithFee.getTxnTypeString(),
+        '\nComputed Fee: ',
+        creatorCoinSellTxWithFee.feeNanos,
+        '\nComputed Size: ',
+        computeTxSize(creatorCoinSellTxWithFee) + 71
+      );
+    });
+    it('update profile', async () => {
+      console.log('update all metadata fields of profile');
+      await constructUpdateProfileTransaction({
+        UpdaterPublicKeyBase58Check: testPubKey,
+        NewUsername: 'LazyNina',
+        NewDescription: "I'm a lazy nina",
+        IsHidden: false,
+        NewCreatorBasisPoints: 10000,
+        NewStakeMultipleBasisPoints: 12500,
+        ProfilePublicKeyBase58Check: '',
+        // Note: this is the field that usually results in the most impact on the fee
+        NewProfilePic:
+          'data:image/webp;base64,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',
+        MinFeeRateNanosPerKB,
+      });
+    });
   });
 });

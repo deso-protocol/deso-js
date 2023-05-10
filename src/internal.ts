@@ -1,6 +1,7 @@
 import { bytesToHex } from '@noble/hashes/utils';
 import {
   ConstructedTransactionResponse,
+  CreateNFTMetadata,
   OptionalFeesAndExtraData,
   RequestOptions,
   SubmitTransactionResponse,
@@ -26,6 +27,7 @@ import {
   identity,
   publicKeyToBase58Check,
   sha256X2,
+  TransactionMetadataCreatorCoin,
 } from './identity';
 ////////////////////////////////////////////////////////////////////////////////
 // This is all the stuff we don't export to consumers of the library. If
@@ -163,8 +165,8 @@ export const constructBalanceModelTx = async (
   txFields?: BalanceModelTransactionFields
 ): Promise<ConstructedTransactionResponse> => {
   // TODO: cache block height somewhere.
-  const { BlockHeight } = await getAppState();
-
+  // const { BlockHeight } = await getAppState();
+  const BlockHeight = 300000;
   const txnWithFee = getTxWithFeeNanos(pubKey, metadata, {
     ...txFields,
     BlockHeight,
@@ -175,7 +177,21 @@ export const constructBalanceModelTx = async (
 
   // TODO: maintain backward compatibility with everything returned in the constructed transaction
   // response object for each type. this will be a headache no doubt.
-  const fees = txnWithFee.feeNanos;
+  let extraFees = 0;
+  switch (txnWithFee.getTxnTypeString()) {
+    case TransactionType.CreateNFT:
+      extraFees =
+        10000 * (txnWithFee.metadata as TransactionMetadataCreateNFT).numCopies;
+  }
+  const fees = txnWithFee.feeNanos + extraFees;
+  console.log(
+    'Txn Type: ',
+    txnWithFee.getTxnTypeString(),
+    '\nComputed Fee: ',
+    fees,
+    '\nComputed Size: ',
+    computeTxSize(txnWithFee) + 71
+  );
   const outputSum = txnWithFee.outputs.reduce((a, b) => a + b.amountNanos, 0);
   // TODO: sum extra spend for creator coins, dao coin limit orders (ugh), create NFTs, create profile
   // NFT buys. Probably not necessarily, but would be best to have this.
