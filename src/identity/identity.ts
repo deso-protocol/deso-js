@@ -936,6 +936,12 @@ export class Identity {
       throw new Error('You must pass at least one permission to check');
     }
 
+    if (!this.#window.localStorage) {
+      throw new Error(
+        'You must be in a browser context to use hasPermissionsSync. Did you mean to use hasPermissionsAsync?'
+      );
+    }
+
     // NOTE: We're making an assumption here that the storage provider is
     // browser localStorage, which has a synchronous API.
     const usersJSON = this.#window.localStorage.getItem(
