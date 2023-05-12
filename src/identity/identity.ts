@@ -186,8 +186,6 @@ export class Identity {
    * @private
    */
   async #getActivePublicKey(): Promise<string | null> {
-    if (!this.#isBrowser) return null;
-
     return (
       this.#storageProvider?.getItem(LOCAL_STORAGE_KEYS.activePublicKey) ?? null
     );
@@ -197,8 +195,6 @@ export class Identity {
    * @private
    */
   async #getUsers(): Promise<Record<string, StoredUser> | null> {
-    if (!this.#isBrowser) return null;
-
     const storedUsers = await this.#storageProvider?.getItem(
       LOCAL_STORAGE_KEYS.identityUsers
     );
@@ -896,7 +892,7 @@ export class Identity {
         }/${primaryDerivedKey.derivedPublicKeyBase58Check}`
       );
 
-      this.#updateUser(primaryDerivedKey.publicKeyBase58Check, {
+      await this.#updateUser(primaryDerivedKey.publicKeyBase58Check, {
         primaryDerivedKey: {
           ...primaryDerivedKey,
           transactionSpendingLimits:
@@ -1226,13 +1222,17 @@ export class Identity {
 
   #handleRedirectURI(redirectURI: string) {
     // Check if the URL contains identity query params at startup
-    const queryParams = new URLSearchParams(redirectURI);
+    const query = redirectURI.split('?')[1];
+    const queryParams = new URLSearchParams(query);
 
     if (queryParams.get('service') === IDENTITY_SERVICE_VALUE) {
       const initialResponse = parseQueryParams(queryParams);
       // Strip the identity query params from the URL. replaceState removes it from browser history
-      this.#window.history.replaceState({}, '', this.#window.location.pathname);
-
+      this.#window.history?.replaceState(
+        {},
+        '',
+        this.#window.location.pathname
+      );
       this.#handleIdentityResponse(initialResponse);
     }
 
@@ -1346,7 +1346,7 @@ export class Identity {
     const Memo =
       trimmedAppName.length > 0
         ? trimmedAppName
-        : this.#window.location.hostname;
+        : this.#window.location?.hostname ?? 'unknown';
 
     const resp = await this.#authorizeDerivedKey({
       OwnerPublicKeyBase58Check: primaryDerivedKey.publicKeyBase58Check,
@@ -1601,7 +1601,7 @@ export class Identity {
       primaryDerivedKey.derivedPublicKeyBase58Check ===
         payload.derivedPublicKeyBase58Check
     ) {
-      this.#updateUser(payload.publicKeyBase58Check, {
+      await this.#updateUser(payload.publicKeyBase58Check, {
         primaryDerivedKey: { ...primaryDerivedKey, ...payload },
       });
 
@@ -1630,7 +1630,7 @@ export class Identity {
       // This means we're logging in a user we haven't seen yet
     } else if (maybeLoginKeyPair) {
       const { seedHex } = JSON.parse(maybeLoginKeyPair);
-      this.#updateUser(payload.publicKeyBase58Check, {
+      await this.#updateUser(payload.publicKeyBase58Check, {
         primaryDerivedKey: { ...payload, derivedSeedHex: seedHex },
       });
 
