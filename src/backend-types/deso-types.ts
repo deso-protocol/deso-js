@@ -3087,11 +3087,16 @@ export interface DeSoNonce {
 export interface TransactionResponse {
   TransactionIDBase58Check: string;
   RawTransactionHex: string;
+  RawTxnMetadata: any;
   Inputs: InputResponse[] | null;
   Outputs: OutputResponse[] | null;
   SignatureHex: string;
   TransactionType: string;
   BlockHashHex: string;
+  BlockInfo?: {
+    Height: number;
+    TimestampSecs: number;
+  };
   TransactionMetadata: TransactionMetadata;
   ExtraData: Record<string, string>;
   TxnNonce?: DeSoNonce;
@@ -3184,6 +3189,10 @@ export interface APITransactionInfoRequest {
   LastTransactionIDBase58Check: string;
   LastPublicKeyTransactionIndex: number;
   Limit: number;
+  FilterByTxnType?: string;
+  FilterByTransactorPublicKeyBase58Check?: string;
+  StartTime?: string;
+  EndTime?: string;
 }
 
 // struct2ts:types/generated/types.APITransactionInfoResponse
