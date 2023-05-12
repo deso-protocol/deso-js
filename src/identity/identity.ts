@@ -377,6 +377,12 @@ export class Identity {
     currentUser: StoredUser | null;
     alternateUsers: Record<string, StoredUser> | null;
   } {
+    if (!this.#window.localStorage) {
+      throw new Error(
+        'You can only use snapshotSync in a browser context where localStorage is available. Did you mean to use snapshot instead?'
+      );
+    }
+
     const storedUsersJSON = this.#window.localStorage.getItem(
       LOCAL_STORAGE_KEYS.identityUsers
     );
