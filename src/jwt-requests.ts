@@ -64,12 +64,12 @@ import {
   WyreWalletOrderQuotationPayload,
   WyreWalletOrderReservationPayload,
 } from './backend-types';
-import { api, cleanURL, media, PartialWithRequiredFields } from './data';
+import { PartialWithRequiredFields, api, cleanURL, media } from './data';
 import {
-  encodeUTF8ToBytes,
-  identity,
   TransactionExtraDataKV,
   TransactionMetadataUpdateGlobalParams,
+  encodeUTF8ToBytes,
+  identity,
   uvarint64ToBuf,
 } from './identity';
 import { constructBalanceModelTx, handleSignAndSubmit } from './internal';
@@ -83,7 +83,7 @@ const jwtPost = async (
   let AdminPublicKey = '';
 
   if (isAdminRequest) {
-    const { currentUser } = identity.snapshot();
+    const { currentUser } = await identity.snapshot();
 
     if (!currentUser) {
       throw new Error('Cannot issue an admin request without a logged in user');

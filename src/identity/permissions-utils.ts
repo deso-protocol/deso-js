@@ -188,7 +188,7 @@ export function buildTransactionSpendingLimitResponse(
 export function guardTxPermission(
   spendingLimitOptions: TransactionSpendingLimitResponseOptions
 ) {
-  if (!identity.hasPermissions(spendingLimitOptions)) {
+  if (!identity.hasPermissionsSync(spendingLimitOptions)) {
     return identity.requestPermissions({
       ...spendingLimitOptions,
       GlobalDESOLimit:

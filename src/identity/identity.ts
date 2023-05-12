@@ -40,6 +40,7 @@ import {
 } from './permissions-utils';
 import { parseQueryParams } from './query-param-utils';
 import {
+  AsyncStorage,
   NOTIFICATION_EVENTS,
   type APIProvider,
   type AccessGroupPrivateInfo,
@@ -57,6 +58,7 @@ import {
   type TransactionSpendingLimitResponseOptions,
   type jwtAlgorithm,
 } from './types';
+
 export class Identity {
   /**
    * @private
@@ -135,14 +137,31 @@ export class Identity {
   #isBrowser: boolean;
 
   /**
+   * @private
+   */
+  #identityPresenter?: (url: string) => void;
+
+  /**
+   * @private
+   */
+  #identityRedirectResolver?: () => Promise<string>;
+
+  /**
+   * @private
+   */
+  #storageProvider?: Storage | AsyncStorage = globalThis.localStorage;
+
+  /**
    * The current internal state of identity. This is a combination of the
    * current user and all other users stored in local storage.
    * @private
    */
-  get #state() {
-    const allStoredUsers = this.#users;
-    const activePublicKey = this.#activePublicKey;
-    const currentUser = this.#currentUser;
+  async #getState() {
+    const [allStoredUsers, activePublicKey, currentUser] = await Promise.all([
+      this.#getUsers(),
+      this.#getActivePublicKey(),
+      this.#getCurrentUser(),
+    ]);
 
     return {
       currentUser: currentUser && {
@@ -166,37 +185,40 @@ export class Identity {
   /**
    * @private
    */
-  get #activePublicKey(): string | null {
+  async #getActivePublicKey(): Promise<string | null> {
     if (!this.#isBrowser) return null;
 
-    return this.#window.localStorage.getItem(
-      LOCAL_STORAGE_KEYS.activePublicKey
+    return (
+      this.#storageProvider?.getItem(LOCAL_STORAGE_KEYS.activePublicKey) ?? null
     );
   }
 
   /**
    * @private
    */
-  get #users(): Record<string, StoredUser> | null {
+  async #getUsers(): Promise<Record<string, StoredUser> | null> {
     if (!this.#isBrowser) return null;
 
-    const storedUsers = this.#window.localStorage?.getItem(
+    const storedUsers = await this.#storageProvider?.getItem(
       LOCAL_STORAGE_KEYS.identityUsers
     );
+
     return storedUsers && JSON.parse(storedUsers);
   }
 
   /**
    * @private
    */
-  get #currentUser(): StoredUser | null {
-    const activePublicKey = this.#activePublicKey;
+  async #getCurrentUser(): Promise<StoredUser | null> {
+    const activePublicKey = await this.#getActivePublicKey();
 
     if (!activePublicKey) {
       return null;
     }
 
-    return (this.#users?.[activePublicKey] as StoredUser) ?? null;
+    const users = await this.#getUsers();
+
+    return (users?.[activePublicKey] as StoredUser) ?? null;
   }
 
   /**
@@ -223,7 +245,7 @@ export class Identity {
     this.#isBrowser = typeof windowProvider.location !== 'undefined';
 
     if (this.#isBrowser) {
-      this.#browserEnvInit();
+      this.#handleRedirectURI(this.#window.location.search);
     }
   }
 
@@ -267,6 +289,9 @@ export class Identity {
     redirectURI,
     jwtAlgorithm = 'ES256',
     appName = '',
+    storageProvider,
+    identityPresenter,
+    identityRedirectResolver,
   }: IdentityConfiguration) {
     this.#identityURI = identityURI;
     this.#network = network;
@@ -274,6 +299,18 @@ export class Identity {
     this.#redirectURI = redirectURI;
     this.#jwtAlgorithm = jwtAlgorithm;
     this.#appName = appName;
+    this.#identityPresenter = identityPresenter;
+    this.#identityRedirectResolver = identityRedirectResolver;
+
+    if (typeof storageProvider !== 'undefined') {
+      this.#storageProvider = storageProvider;
+    }
+
+    if (!this.#storageProvider) {
+      throw new Error(
+        'Could not find a storage provider. Please provide a storage provider or use a browser that supports localStorage.'
+      );
+    }
 
     if (!this.#didConfigure && this.#isBrowser) {
       this.#defaultTransactionSpendingLimit =
@@ -314,9 +351,10 @@ export class Identity {
    * @param subscriber this is a callback that will be called with the current
    * state and the event that triggered the change.
    */
-  subscribe(subscriber: (notification: SubscriberNotification) => void) {
+  async subscribe(subscriber: (notification: SubscriberNotification) => void) {
     this.#subscriber = subscriber;
-    this.#subscriber({ event: NOTIFICATION_EVENTS.SUBSCRIBE, ...this.#state });
+    const state = await this.#getState();
+    this.#subscriber({ event: NOTIFICATION_EVENTS.SUBSCRIBE, ...state });
   }
 
   /**
@@ -326,11 +364,11 @@ export class Identity {
    * state you can use this method. Can be useful for debugging or setting up
    * initial state in your app.
    */
-  snapshot(): {
+  snapshot(): Promise<{
     currentUser: StoredUser | null;
     alternateUsers: Record<string, StoredUser> | null;
-  } {
-    return this.#state;
+  }> {
+    return this.#getState();
   }
 
   /**
@@ -360,13 +398,11 @@ export class Identity {
     { getFreeDeso }: LoginOptions = { getFreeDeso: true }
   ): Promise<IdentityDerivePayload> {
     const event = NOTIFICATION_EVENTS.LOGIN_START;
-    this.#subscriber?.({
-      event,
-      ...this.#state,
-    });
+    const state = await this.#getState();
+    this.#subscriber?.({ event, ...state });
 
     let derivedPublicKey: string;
-    const loginKeyPair = this.#window.localStorage?.getItem(
+    const loginKeyPair = await this.#storageProvider?.getItem(
       LOCAL_STORAGE_KEYS.loginKeyPair
     );
 
@@ -377,7 +413,7 @@ export class Identity {
       derivedPublicKey = publicKeyToBase58Check(keys.public, {
         network: this.#network,
       });
-      this.#window.localStorage?.setItem(
+      this.#storageProvider?.setItem(
         LOCAL_STORAGE_KEYS.loginKeyPair,
         JSON.stringify({
           publicKey: derivedPublicKey,
@@ -430,17 +466,20 @@ export class Identity {
    */
   async logout(): Promise<undefined> {
     const event = NOTIFICATION_EVENTS.LOGOUT_START;
-    this.#subscriber?.({ event, ...this.#state });
+    const state = await this.#getState();
+    this.#subscriber?.({ event, ...state });
+
     return new Promise((resolve, reject) => {
-      this.#pendingWindowRequest = { resolve, reject, event };
-      const publicKey = this.#activePublicKey;
-      if (!publicKey) {
-        this.#pendingWindowRequest.reject(
-          new Error('cannot logout without an active public key')
-        );
-      } else {
-        this.#launchIdentity('logout', { publicKey });
-      }
+      this.#getActivePublicKey().then((publicKey) => {
+        this.#pendingWindowRequest = { resolve, reject, event };
+        if (!publicKey) {
+          this.#pendingWindowRequest.reject(
+            new Error('cannot logout without an active public key')
+          );
+        } else {
+          this.#launchIdentity('logout', { publicKey });
+        }
+      });
     });
   }
 
@@ -464,7 +503,7 @@ export class Identity {
    * ```
    */
   async signTx(TransactionHex: string) {
-    const { primaryDerivedKey } = this.#currentUser ?? {};
+    const { primaryDerivedKey } = (await this.#getCurrentUser()) ?? {};
 
     if (!primaryDerivedKey?.derivedSeedHex) {
       // This *should* never happen, but just in case we throw here to surface any bugs.
@@ -540,7 +579,7 @@ export class Identity {
     } catch (e: any) {
       // if the derived key is not authorized, authorize it and try again
       if (e?.message?.includes('RuleErrorDerivedKeyNotAuthorized')) {
-        const { primaryDerivedKey } = this.#currentUser ?? {};
+        const { primaryDerivedKey } = (await this.#getCurrentUser()) ?? {};
         if (primaryDerivedKey == null) {
           throw new Error(
             'Cannot authorize derived key without a logged in user'
@@ -581,7 +620,7 @@ export class Identity {
     recipientPublicKeyBase58Check: string,
     messagePlainText: string
   ) {
-    const { primaryDerivedKey } = this.#currentUser ?? {};
+    const { primaryDerivedKey } = (await this.#getCurrentUser()) ?? {};
 
     if (!primaryDerivedKey?.messagingPrivateKey) {
       // This *should* never happen, but just in case we throw here to surface any bugs.
@@ -607,7 +646,7 @@ export class Identity {
     groups: AccessGroupEntryResponse[]
   ): Promise<DecryptedMessageEntryResponse> {
     const { primaryDerivedKey, publicKey: userPublicKeyBase58Check } =
-      this.#currentUser ?? {};
+      (await this.#getCurrentUser()) ?? {};
     if (!(primaryDerivedKey?.messagingPrivateKey && userPublicKeyBase58Check)) {
       // This *should* never happen, but just in case we throw here to surface any bugs.
       throw new Error('Cannot decrypt messages without a logged in user');
@@ -665,7 +704,7 @@ export class Identity {
    * @returns returns a promise that resolves t the decrypted key pair.
    */
   async decryptAccessGroupKeyPair(encryptedKeyHex: string) {
-    const { primaryDerivedKey } = this.#currentUser ?? {};
+    const { primaryDerivedKey } = (await this.#getCurrentUser()) ?? {};
 
     if (!primaryDerivedKey?.messagingPrivateKey) {
       // This *should* never happen, but just in case we throw here to surface any bugs.
@@ -687,8 +726,10 @@ export class Identity {
    * @param groupName the plaintext name of the group chat
    * @returns a promise that resolves to the new key info.
    */
-  accessGroupStandardDerivation(groupName: string): AccessGroupPrivateInfo {
-    const { primaryDerivedKey } = this.#currentUser ?? {};
+  async accessGroupStandardDerivation(
+    groupName: string
+  ): Promise<AccessGroupPrivateInfo> {
+    const { primaryDerivedKey } = (await this.#getCurrentUser()) ?? {};
 
     if (!primaryDerivedKey?.messagingPrivateKey) {
       // This *should* never happen, but just in case we throw here to surface any bugs.
@@ -727,7 +768,7 @@ export class Identity {
    * ```
    */
   async jwt() {
-    const { primaryDerivedKey } = this.#currentUser ?? {};
+    const { primaryDerivedKey } = (await this.#getCurrentUser()) ?? {};
 
     if (!primaryDerivedKey?.derivedSeedHex) {
       // This *should* never happen, but just in case we throw here to surface any bugs.
@@ -758,21 +799,23 @@ export class Identity {
    */
   async getDeso() {
     const event = NOTIFICATION_EVENTS.GET_FREE_DESO_START;
-    this.#subscriber?.({ event, ...this.#state });
+    const state = await this.#getState();
+    this.#subscriber?.({ event, ...state });
     return await new Promise((resolve, reject) => {
-      this.#pendingWindowRequest = { resolve, reject, event };
-      const activePublicKey = this.#activePublicKey;
+      this.#getActivePublicKey().then((activePublicKey) => {
+        this.#pendingWindowRequest = { resolve, reject, event };
 
-      if (!activePublicKey) {
-        this.#pendingWindowRequest.reject(
-          new Error('Cannot get free deso without a logged in user')
-        );
-        return;
-      }
+        if (!activePublicKey) {
+          this.#pendingWindowRequest.reject(
+            new Error('Cannot get free deso without a logged in user')
+          );
+          return;
+        }
 
-      this.#launchIdentity('get-deso', {
-        publicKey: activePublicKey,
-        getFreeDeso: true,
+        this.#launchIdentity('get-deso', {
+          publicKey: activePublicKey,
+          getFreeDeso: true,
+        });
       });
     });
   }
@@ -788,19 +831,21 @@ export class Identity {
    */
   async verifyPhoneNumber() {
     const event = NOTIFICATION_EVENTS.VERIFY_PHONE_NUMBER_START;
-    this.#subscriber?.({ event, ...this.#state });
+    const state = await this.#getState();
+    this.#subscriber?.({ event, ...state });
     return await new Promise((resolve, reject) => {
-      this.#pendingWindowRequest = { resolve, reject, event };
-      const activePublicKey = this.#activePublicKey;
+      this.#getActivePublicKey().then((activePublicKey) => {
+        this.#pendingWindowRequest = { resolve, reject, event };
 
-      if (!activePublicKey) {
-        this.#pendingWindowRequest.reject(
-          new Error('Cannon verify phone number without an active user')
-        );
-      }
+        if (!activePublicKey) {
+          this.#pendingWindowRequest.reject(
+            new Error('Cannon verify phone number without an active user')
+          );
+        }
 
-      this.#launchIdentity('verify-phone-number', {
-        public_key: activePublicKey,
+        this.#launchIdentity('verify-phone-number', {
+          public_key: activePublicKey,
+        });
       });
     });
   }
@@ -819,11 +864,12 @@ export class Identity {
    * identity.setActiveUser(someLoggedInPublicKey);
    * ```
    */
-  setActiveUser(publicKey: string) {
+  async setActiveUser(publicKey: string) {
     this.#setActiveUser(publicKey);
+    const state = await this.#getState();
     this.#subscriber?.({
       event: NOTIFICATION_EVENTS.CHANGE_ACTIVE_USER,
-      ...this.#state,
+      ...state,
     });
   }
 
@@ -836,7 +882,7 @@ export class Identity {
    * @returns void
    */
   async refreshDerivedKeyPermissions() {
-    const { primaryDerivedKey } = this.#currentUser ?? {};
+    const { primaryDerivedKey } = (await this.#getCurrentUser()) ?? {};
 
     if (primaryDerivedKey == null) {
       // if we don't have a logged in user, we just bail
@@ -867,10 +913,14 @@ export class Identity {
   }
 
   /**
-   * Checks if a user's derived key has the permissions to perform a given
-   * action or batch of actions. The permissions are passed in as an object with
-   * the same shape as the `TransactionSpendingLimitResponseOptions` type, which
-   * is the same as the `spendingLimitOptions` passed to the configure method.
+   * Use this in a browser context where localStorage is used as the storage
+   * provider, and it is necessary to check permissions synchronously to prevent
+   * issues with pop up blockers. If a user's derived key has the permissions to
+   * perform a given action or batch of actions. The permissions are passed in
+   * as an object with the same shape as the
+   * `TransactionSpendingLimitResponseOptions` type, which is the same as the
+   * `spendingLimitOptions` passed to the configure method.
+   *
    *
    * @example
    * Here we check if the user has the permissions to submit at least 1 post.
@@ -883,14 +933,74 @@ export class Identity {
    * });
    * ```
    */
-  hasPermissions(
+  hasPermissionsSync(
     permissionsToCheck: Partial<TransactionSpendingLimitResponseOptions>
   ): boolean {
     if (Object.keys(permissionsToCheck).length === 0) {
       throw new Error('You must pass at least one permission to check');
     }
 
-    const { primaryDerivedKey } = this.#currentUser ?? {};
+    // NOTE: We're making an assumption here that the storage provider is
+    // browser localStorage, which has a synchronous API.
+    const usersJSON = this.#window.localStorage.getItem(
+      LOCAL_STORAGE_KEYS.identityUsers
+    );
+    const activeKey = this.#window.localStorage.getItem(
+      LOCAL_STORAGE_KEYS.activePublicKey
+    );
+
+    if (!(usersJSON && activeKey)) {
+      return false;
+    }
+
+    const users = JSON.parse(usersJSON) as Record<string, StoredUser>;
+    const activeUser = users[activeKey];
+
+    const { primaryDerivedKey } = activeUser ?? {};
+
+    // If the key is expired, unauthorized, or has no money we can't do anything with it
+    if (!primaryDerivedKey?.IsValid) {
+      return false;
+    }
+
+    // if the key has no spending limits, we can't do anything with it
+    if (!primaryDerivedKey?.transactionSpendingLimits) {
+      return false;
+    }
+
+    return compareTransactionSpendingLimits(
+      permissionsToCheck,
+      primaryDerivedKey.transactionSpendingLimits
+    );
+  }
+
+  /**
+   * Use this if the storage provider is asynchronous (react native, etc). If a
+   * user's derived key has the permissions to perform a given action or batch
+   * of actions. The permissions are passed in as an object with the same shape
+   * as the `TransactionSpendingLimitResponseOptions` type, which is the same as
+   * the `spendingLimitOptions` passed to the configure method.
+   *
+   *
+   * @example
+   * Here we check if the user has the permissions to submit at least 1 post.
+   *
+   * ```typescript
+   * const hasPermissions = await identity.hasPermissions({
+   *   TransactionCountLimitMap: {
+   *     SUBMIT_POST: 1,
+   *    },
+   * });
+   * ```
+   */
+  async hasPermissionsAsync(
+    permissionsToCheck: Partial<TransactionSpendingLimitResponseOptions>
+  ): Promise<boolean> {
+    if (Object.keys(permissionsToCheck).length === 0) {
+      throw new Error('You must pass at least one permission to check');
+    }
+
+    const { primaryDerivedKey } = (await this.#getCurrentUser()) ?? {};
 
     // If the key is expired, unauthorized, or has no money we can't do anything with it
     if (!primaryDerivedKey?.IsValid) {
@@ -927,7 +1037,7 @@ export class Identity {
   async requestPermissions(
     transactionSpendingLimitResponse: Partial<TransactionSpendingLimitResponseOptions>
   ) {
-    const { primaryDerivedKey } = this.#currentUser ?? {};
+    const { primaryDerivedKey } = (await this.#getCurrentUser()) ?? {};
     if (primaryDerivedKey == null) {
       throw new Error('Cannot request permissions without a logged in user');
     }
@@ -972,7 +1082,8 @@ export class Identity {
     }
   ) {
     const event = NOTIFICATION_EVENTS.REQUEST_PERMISSIONS_START;
-    this.#subscriber?.({ event, ...this.#state });
+    const state = await this.#getState();
+    this.#subscriber?.({ event, ...state });
 
     return await new Promise((resolve, reject) => {
       this.#pendingWindowRequest = { resolve, reject, event };
@@ -1113,9 +1224,9 @@ export class Identity {
     return publicKeyToBase58Check(compressedEthKey, { network: this.#network });
   }
 
-  #browserEnvInit() {
+  #handleRedirectURI(redirectURI: string) {
     // Check if the URL contains identity query params at startup
-    const queryParams = new URLSearchParams(this.#window.location.search);
+    const queryParams = new URLSearchParams(redirectURI);
 
     if (queryParams.get('service') === IDENTITY_SERVICE_VALUE) {
       const initialResponse = parseQueryParams(queryParams);
@@ -1178,15 +1289,21 @@ export class Identity {
   /**
    * @private
    */
-  #setActiveUser(publicKey: string) {
-    if (this.#users?.[publicKey] == null) {
+  async #setActiveUser(publicKey: string) {
+    const users = await this.#getUsers();
+    if (users?.[publicKey] == null) {
       throw new Error(
         `No user found for public key. Known users: ${JSON.stringify(
-          this.#users ?? {}
+          users ?? {}
         )}`
       );
     }
-    this.#window.localStorage.setItem(
+
+    if (!this.#storageProvider) {
+      throw new Error('No storage provider available.');
+    }
+
+    this.#storageProvider.setItem(
       LOCAL_STORAGE_KEYS.activePublicKey,
       publicKey
     );
@@ -1211,11 +1328,12 @@ export class Identity {
    * @private
    */
   async #authorizePrimaryDerivedKey(ownerPublicKey: string) {
+    const state1 = await this.#getState();
     this.#subscriber?.({
       event: NOTIFICATION_EVENTS.AUTHORIZE_DERIVED_KEY_START,
-      ...this.#state,
+      ...state1,
     });
-    const users = this.#users;
+    const users = await this.#getUsers();
     const primaryDerivedKey = users?.[ownerPublicKey]?.primaryDerivedKey;
 
     if (primaryDerivedKey == null) {
@@ -1249,11 +1367,13 @@ export class Identity {
 
     const signedTx = await this.signTx(resp.TransactionHex);
     const result = await this.submitTx(signedTx);
+    const state2 = await this.#getState();
 
     this.#subscriber?.({
       event: NOTIFICATION_EVENTS.AUTHORIZE_DERIVED_KEY_END,
-      ...this.#state,
+      ...state2,
     });
+
     return result;
   }
 
@@ -1298,8 +1418,8 @@ export class Identity {
     switch (method) {
       case 'derive':
         this.#handleDeriveMethod(payload as IdentityDerivePayload)
-          .then((res) => {
-            const state = this.#state;
+          .then(async (res) => {
+            const state = await this.#getState();
             this.#subscriber?.({
               event:
                 this.#pendingWindowRequest?.event ===
@@ -1310,26 +1430,31 @@ export class Identity {
             });
             this.#pendingWindowRequest?.resolve(res);
           })
-          .catch((e) => {
+          .catch(async (e) => {
             // if we're in a login flow just don't let the user log in if we
             // can't authorize their derived key.  we've already stored the user
             // in local storage before attempting to authorize, so we remove
             // their data.
+            const currentUser = await this.#getCurrentUser();
             if (
               this.#pendingWindowRequest?.event ===
                 NOTIFICATION_EVENTS.LOGIN_START &&
-              this.#state.currentUser != null
+              currentUser != null
             ) {
-              this.#purgeUserDataForPublicKey(
-                this.#state.currentUser.publicKey
-              );
-              this.#window.localStorage.removeItem(
+              this.#purgeUserDataForPublicKey(currentUser.publicKey);
+
+              if (!this.#storageProvider) {
+                throw new Error('No storage provider available.');
+              }
+
+              await this.#storageProvider.removeItem(
                 LOCAL_STORAGE_KEYS.activePublicKey
               );
             }
+            const state = await this.#getState();
             this.#subscriber?.({
               event: NOTIFICATION_EVENTS.AUTHORIZE_DERIVED_KEY_FAIL,
-              ...this.#state,
+              ...state,
             });
             // propagate the error to the external caller
             this.#pendingWindowRequest?.reject(this.#getErrorInstance(e));
@@ -1346,23 +1471,31 @@ export class Identity {
   /**
    * @private
    */
-  #handleLoginMethod(payload: IdentityLoginPayload) {
+  async #handleLoginMethod(payload: IdentityLoginPayload) {
+    const activePublicKey = await this.#getActivePublicKey();
+
     // NOTE: this is a bit counterintuitive, but a missing publicKeyAdded
     // identifies this as a logout (even though the method is 'login'), and we
     // don't actually support login via the identity "login" method so don't
     // look for it here. We only support it via the "derive" method.
     if (!payload.publicKeyAdded) {
-      const publicKey = this.#activePublicKey;
-
-      if (!publicKey) {
+      if (!activePublicKey) {
         throw new Error('No active public key found');
       }
 
-      this.#window.localStorage.removeItem(LOCAL_STORAGE_KEYS.activePublicKey);
-      this.#purgeUserDataForPublicKey(publicKey);
+      if (!this.#storageProvider) {
+        throw new Error('No storage provider available.');
+      }
+
+      await this.#storageProvider.removeItem(
+        LOCAL_STORAGE_KEYS.activePublicKey
+      );
+      this.#purgeUserDataForPublicKey(activePublicKey);
+
+      const state = await this.#getState();
       this.#subscriber?.({
         event: NOTIFICATION_EVENTS.LOGOUT_END,
-        ...this.#state,
+        ...state,
       });
       this.#pendingWindowRequest?.resolve(payload);
 
@@ -1372,7 +1505,7 @@ export class Identity {
     } else if (
       payload.publicKeyAdded &&
       !payload.signedUp &&
-      payload.publicKeyAdded === this.#activePublicKey
+      payload.publicKeyAdded === activePublicKey
     ) {
       // const expectedEvent = NOTIFICATION_EVENTS.GET_FREE_DESO_START;
       let endEvent: NOTIFICATION_EVENTS;
@@ -1386,17 +1519,16 @@ export class Identity {
       }
 
       this.#authorizePrimaryDerivedKey(payload.publicKeyAdded)
-        .then(() => {
+        .then(async () => {
           this.#pendingWindowRequest?.resolve(payload);
-          this.#subscriber?.({
-            event: endEvent,
-            ...this.#state,
-          });
+          const state = await this.#getState();
+          this.#subscriber?.({ event: endEvent, ...state });
         })
-        .catch((e) => {
+        .catch(async (e) => {
+          const state = await this.#getState();
           this.#subscriber?.({
             event: NOTIFICATION_EVENTS.AUTHORIZE_DERIVED_KEY_FAIL,
-            ...this.#state,
+            ...state,
           });
           this.#pendingWindowRequest?.reject(this.#getErrorInstance(e));
         });
@@ -1410,17 +1542,23 @@ export class Identity {
   /**
    * @private
    */
-  #purgeUserDataForPublicKey(publicKey: string) {
-    const users = this.#window.localStorage.getItem(
+  async #purgeUserDataForPublicKey(publicKey: string) {
+    if (!this.#storageProvider) {
+      throw new Error('No storage provider is available.');
+    }
+
+    const users = await this.#storageProvider.getItem(
       LOCAL_STORAGE_KEYS.identityUsers
     );
     if (users) {
       const usersObj = JSON.parse(users);
       delete usersObj[publicKey];
       if (Object.keys(usersObj).length === 0) {
-        this.#window.localStorage.removeItem(LOCAL_STORAGE_KEYS.identityUsers);
+        await this.#storageProvider.removeItem(
+          LOCAL_STORAGE_KEYS.identityUsers
+        );
       } else {
-        this.#window.localStorage.setItem(
+        await this.#storageProvider.setItem(
           LOCAL_STORAGE_KEYS.identityUsers,
           JSON.stringify(usersObj)
         );
@@ -1434,7 +1572,7 @@ export class Identity {
   async #handleDeriveMethod(
     payload: IdentityDerivePayload
   ): Promise<IdentityDerivePayload> {
-    const { primaryDerivedKey } = this.#currentUser ?? {};
+    const { primaryDerivedKey } = (await this.#getCurrentUser()) ?? {};
 
     // NOTE: If we generated the keys and provided the derived public key,
     // identity will respond with an empty string in the derivedSeedHex field.
@@ -1444,13 +1582,17 @@ export class Identity {
       delete payload.derivedSeedHex;
     }
 
+    if (!this.#storageProvider) {
+      throw new Error('No storage provider is available.');
+    }
+
     // we may or may not have a login key pair in localStorage. If we do, it means we
     // initiated a login flow.
-    const maybeLoginKeyPair = this.#window.localStorage.getItem(
+    const maybeLoginKeyPair = await this.#storageProvider.getItem(
       LOCAL_STORAGE_KEYS.loginKeyPair
     );
     // in the case of a login, we always clean up the login key pair from localStorage.
-    this.#window.localStorage.removeItem(LOCAL_STORAGE_KEYS.loginKeyPair);
+    await this.#storageProvider.removeItem(LOCAL_STORAGE_KEYS.loginKeyPair);
 
     // This means we're doing a derived key permissions upgrade for the current user (not a login).
     if (
@@ -1468,11 +1610,16 @@ export class Identity {
       ).then(() => payload);
     }
 
+    const [users, activePublicKey] = await Promise.all([
+      this.#getUsers(),
+      this.#getActivePublicKey(),
+    ]);
+
     // This means we're just switching to a user we already have in localStorage, we use the stored user bc they
     // may already have an authorized derived key that we can use.
     if (
-      this.#users?.[payload.publicKeyBase58Check] != null &&
-      payload.publicKeyBase58Check !== this.#activePublicKey
+      users?.[payload.publicKeyBase58Check] != null &&
+      payload.publicKeyBase58Check !== activePublicKey
     ) {
       this.#setActiveUser(payload.publicKeyBase58Check);
       // if the logged in user changes, we try to refresh the derived key permissions in the background
@@ -1502,8 +1649,12 @@ export class Identity {
   /**
    * @private
    */
-  #updateUser(masterPublicKey: string, attributes: Record<string, any>) {
-    const users = this.#window.localStorage.getItem(
+  async #updateUser(masterPublicKey: string, attributes: Record<string, any>) {
+    if (!this.#storageProvider) {
+      throw new Error('No storage provider is available.');
+    }
+
+    const users = await this.#storageProvider.getItem(
       LOCAL_STORAGE_KEYS.identityUsers
     );
     if (users) {
@@ -1517,19 +1668,19 @@ export class Identity {
           ...attributes,
         };
       }
-      this.#window.localStorage.setItem(
+      await this.#storageProvider.setItem(
         LOCAL_STORAGE_KEYS.identityUsers,
         JSON.stringify(usersObj)
       );
     } else {
-      this.#window.localStorage.setItem(
+      await this.#storageProvider.setItem(
         LOCAL_STORAGE_KEYS.identityUsers,
         JSON.stringify({
           [masterPublicKey]: { publicKey: masterPublicKey, ...attributes },
         })
       );
     }
-    this.#window.localStorage.setItem(
+    await this.#storageProvider.setItem(
       LOCAL_STORAGE_KEYS.activePublicKey,
       masterPublicKey
     );
@@ -1586,6 +1737,20 @@ export class Identity {
   #launchIdentity(path: string, params: Record<string, any>) {
     const qps = this.#buildQueryParams(params);
     const url = `${this.#identityURI}/${path.replace(/^\//, '')}?${qps}`;
+
+    // If we have a custom presenter, use that instead of the default browser APIs.
+    // This would typically be used for mobile apps.
+    if (typeof this.#identityPresenter === 'function') {
+      if (!this.#identityRedirectResolver) {
+        throw new Error(
+          'You must provide an identityRedirectResolver when using a custom identityPresenter.'
+        );
+      }
+      const pendingRedirectUrl = this.#identityRedirectResolver();
+      this.#identityPresenter(url);
+      pendingRedirectUrl.then(this.#handleRedirectURI.bind(this));
+      return;
+    }
 
     if (qps.get('redirect_uri')) {
       this.#window.location.href = url;
@@ -1700,5 +1865,8 @@ const unencryptedHexToPlainText = (hex: string) => {
   const textDecoder = new TextDecoder();
   return textDecoder.decode(bytes);
 };
+
+const isPromiseLike = (obj: unknown) =>
+  obj && typeof (obj as Promise<unknown>).then === 'function';
 
 export const identity = new Identity(globalThis, api);
