@@ -125,6 +125,12 @@ export interface IdentityConfiguration {
    * opened. This can be used to customize how the identity url is opened. For
    * example, if you are using react native, you might want to use the Linking
    * API to open the url in a system browser window.
+   * @example
+   * ```ts
+   * identityPresenter: (url) => {
+   *   WebBrowser.openBrowserAsync(url);
+   * },
+   * ```
    */
   identityPresenter?: (url: string) => void;
 
