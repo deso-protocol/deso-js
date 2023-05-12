@@ -185,10 +185,25 @@ export function buildTransactionSpendingLimitResponse(
   return result;
 }
 
-export function guardTxPermission(
+export async function guardTxPermission(
   spendingLimitOptions: TransactionSpendingLimitResponseOptions
 ) {
-  if (!identity.hasPermissions(spendingLimitOptions)) {
+  let hasPermissions = false;
+
+  try {
+    hasPermissions = identity.hasPermissionsSync(spendingLimitOptions);
+  } catch (e: any) {
+    if (
+      e?.message?.includes(
+        'You must be in a browser context to use hasPermissionsSync'
+      )
+    ) {
+      // Try falling back to hasPermissionsAsync
+      hasPermissions = await identity.hasPermissionsAsync(spendingLimitOptions);
+    }
+  }
+
+  if (!hasPermissions) {
     return identity.requestPermissions({
       ...spendingLimitOptions,
       GlobalDESOLimit:
