@@ -368,6 +368,53 @@ export class Identity {
   }
 
   /**
+   * Same as snapshot except it runs synchronously. This exists primarily for
+   * backwards compatibility should only be used in a browser context where
+   * localStorage is available.
+   */
+  snapshotSync(): {
+    currentUser: StoredUser | null;
+    alternateUsers: Record<string, StoredUser> | null;
+  } {
+    const storedUsersJSON = this.#window.localStorage.getItem(
+      LOCAL_STORAGE_KEYS.identityUsers
+    );
+    const activePublicKey = this.#window.localStorage.getItem(
+      LOCAL_STORAGE_KEYS.activePublicKey
+    );
+    let currentUser: StoredUser | null = null;
+    let allStoredUsers: Record<string, StoredUser> | null = null;
+
+    if (storedUsersJSON && activePublicKey) {
+      allStoredUsers = JSON.parse(storedUsersJSON);
+      // This check shouldn't be necessary, but it makes typescript happy.
+      if (allStoredUsers) {
+        currentUser = allStoredUsers[activePublicKey];
+      }
+    }
+
+    return {
+      currentUser: currentUser && {
+        ...currentUser,
+        publicKey: currentUser.primaryDerivedKey.publicKeyBase58Check,
+      },
+      alternateUsers:
+        allStoredUsers &&
+        Object.keys(allStoredUsers).reduce<Record<string, StoredUser>>(
+          (res, publicKey) => {
+            if (publicKey !== activePublicKey) {
+              if (allStoredUsers) {
+                res[publicKey] = allStoredUsers[publicKey];
+              }
+            }
+            return res;
+          },
+          {}
+        ),
+    };
+  }
+
+  /**
    * Starts a login flow. This will open a new window and prompt the user to
    * select an existing account or create a new account. If there is an error
    * during the login flow, the promise will reject with an error which you can

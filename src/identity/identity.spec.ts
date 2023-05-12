@@ -211,7 +211,7 @@ describe('identity', () => {
         ),
       ]);
 
-      const { currentUser } = await identity.snapshot();
+      const { currentUser } = identity.snapshotSync();
       expect(currentUser?.publicKey).toEqual(
         'BC1YLiot3hqKeKhK82soKAeK3BFdTnMjpd2w4HPfesaFzYHUpUzJ2ay'
       );
