@@ -371,6 +371,7 @@ export class Identity {
    * Same as snapshot except it runs synchronously. This exists primarily for
    * backwards compatibility should only be used in a browser context where
    * localStorage is available.
+   * @deprecated use `snapshot` instead.
    */
   snapshotSync(): {
     currentUser: StoredUser | null;
