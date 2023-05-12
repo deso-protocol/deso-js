@@ -113,7 +113,8 @@ export interface IdentityConfiguration {
   jwtAlgorithm?: jwtAlgorithm;
 
   /**
-   *
+   * An optional storage provider. If not provided, we will assume localStorage
+   * is available.
    */
   storageProvider?: Storage | AsyncStorage;
 
