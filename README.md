@@ -57,9 +57,9 @@ configure({
   // THE FOLLOWING CONFIGURATIONS ARE ONLY NEEDED IN A REACT NATIVE CONTEXT
 
   /**
-   * An optional storage provider. If not provided, we will assume localStorage
-   * is available. In react native this will typically be an async storage
-   * class.
+   * An optional storage provider. If not provided, we will assume we're running
+   * in a browser context and localStorage is available. In react native you must
+   * set a storage provider which is likely an async storage instance.
    */
   storageProvider?: Storage | AsyncStorage;
 
