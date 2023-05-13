@@ -273,10 +273,10 @@ if (typeof global.TextDecoder === 'undefined') {
 
 `deso-protocol` requires the web crypto APIs, which are provided via
 the
-[react-native-webview-crypto](https://github.com/webview-crypto/react-native-webview-crypto#usage)
+[react-native-webview-crypto](https://github.com/webview-crypto/react-native-webview-crypto)
 package. TL;DR you need to render a hidden webview at the top level of your app
-to proxy crypto method calls to, so please pay special attention to their usage
-documentation.
+to proxy crypto method calls to, so please pay special attention to their [usage
+documentation](https://github.com/webview-crypto/react-native-webview-crypto#usage).
 
 And finally you will need to configure `deso-protocol` with a `redirectURI`, `identityPresenter`, and `storageProvider`.
 If you are using [Expo](https://expo.dev) it is very easy to set things up.
