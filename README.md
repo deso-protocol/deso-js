@@ -236,7 +236,7 @@ version `0.71.7` or later to ensure `BigInt` support is available.
 npm i deso-protocol@beta
 ```
 
-There a few peer dependencies that are required for everything to work smoothly.
+There are a few peer dependencies that are required for everything to work smoothly.
 
 ```sh
 npm i react-native-get-random-values react-native-webview react-native-webview-crypto text-encoding @react-native-async-storage/async-storage @ethersproject/shims
@@ -271,7 +271,7 @@ if (typeof global.TextDecoder === 'undefined') {
 }
 ```
 
-`deso-protocol` requires the web crypto APIs, which are provided via
+`deso-protocol` requires the [web crypto API](https://developer.mozilla.org/en-US/docs/Web/API/Crypto), which is provided via
 the
 [react-native-webview-crypto](https://github.com/webview-crypto/react-native-webview-crypto)
 package. TL;DR you need to render a hidden webview at the top level of your app
