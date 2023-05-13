@@ -281,6 +281,7 @@ And finally you will need to configure `deso-protocol` with a `redirectURI`, `id
 If you are using [Expo](https://expo.dev) it is very easy to set things up.
 
 ```ts
+// App.tsx
 import { configure } from 'deso-protocol';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as AuthSession from 'expo-auth-session';
