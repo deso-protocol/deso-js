@@ -64,8 +64,7 @@ configure({
   storageProvider?: Storage | AsyncStorage;
 
   /**
-   * An optional function that is provided the identity url that needs to be
-   * opened. This can be used to customize how the identity url is opened. For
+   * An optional function that can be used to customize how the identity url is opened. For
    * example, if you are using react native, you might want to use the WebBrowser
    * API to open the url in a system browser window.
    * @example
