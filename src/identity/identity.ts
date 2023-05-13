@@ -144,11 +144,6 @@ export class Identity {
   /**
    * @private
    */
-  #identityRedirectResolver?: () => Promise<string>;
-
-  /**
-   * @private
-   */
   #storageProvider?: Storage | AsyncStorage = globalThis.localStorage;
 
   /**
@@ -241,7 +236,7 @@ export class Identity {
     this.#isBrowser = typeof windowProvider.location !== 'undefined';
 
     if (this.#isBrowser) {
-      this.#handleRedirectURI(this.#window.location.search);
+      this.handleRedirectURI(this.#window.location.search);
     }
   }
 
@@ -287,7 +282,6 @@ export class Identity {
     appName = '',
     storageProvider,
     identityPresenter,
-    identityRedirectResolver,
   }: IdentityConfiguration) {
     this.#identityURI = identityURI;
     this.#network = network;
@@ -296,7 +290,6 @@ export class Identity {
     this.#jwtAlgorithm = jwtAlgorithm;
     this.#appName = appName;
     this.#identityPresenter = identityPresenter;
-    this.#identityRedirectResolver = identityRedirectResolver;
 
     if (typeof storageProvider !== 'undefined') {
       this.#storageProvider = storageProvider;
@@ -1280,7 +1273,12 @@ export class Identity {
     return publicKeyToBase58Check(compressedEthKey, { network: this.#network });
   }
 
-  #handleRedirectURI(redirectURI: string) {
+  /**
+   * Method to handle the redirect URI from the identity service. Typically this
+   * would be useful in a mobile context where the user is redirected back to
+   * the app after completing the identity flow.
+   */
+  handleRedirectURI(redirectURI: string) {
     // Check if the URL contains identity query params at startup
     const query = redirectURI.split('?')[1];
     const queryParams = new URLSearchParams(query);
@@ -1801,14 +1799,7 @@ export class Identity {
     // If we have a custom presenter, use that instead of the default browser APIs.
     // This would typically be used for mobile apps.
     if (typeof this.#identityPresenter === 'function') {
-      if (!this.#identityRedirectResolver) {
-        throw new Error(
-          'You must provide an identityRedirectResolver when using a custom identityPresenter.'
-        );
-      }
-      const pendingRedirectUrl = this.#identityRedirectResolver();
       this.#identityPresenter(url);
-      pendingRedirectUrl.then(this.#handleRedirectURI.bind(this));
       return;
     }
 

@@ -127,33 +127,15 @@ export interface IdentityConfiguration {
    * API to open the url in a system browser window.
    * @example
    * ```ts
-   * identityPresenter: (url) => {
-   *   WebBrowser.openBrowserAsync(url);
+   * identityPresenter: async (url) => {
+   *   const result = await WebBrowser.openAuthSessionAsync(url);
+   *   if (result.type === 'success') {
+   *     identity.handleRedirectURI(result.url);
+   *   }
    * },
    * ```
    */
   identityPresenter?: (url: string) => void;
-
-  /**
-   * A function that returns a promise that resolves to a
-   * redirect url. This would be used in the context of react native application
-   * that needs to propagate the redirect url to the identity library.
-   * NOTE: This is required if you are using a custom identityPresenter.
-   * @example
-   * ```ts
-   *   identityRedirectResolver: () => {
-   *     return new Promise((resolve) => {
-   *       // This is an example of how you might use the Linking API in react native,
-   *       // assuming you've opened a browser window to the identity domain.
-   *       Linking.addEventListener('url', ({ url }) => {
-   *         WebBrowser.dismissBrowser();
-   *         resolve(url);
-   *       });
-   *     });
-   *   },
-   * ```
-   */
-  identityRedirectResolver?: () => Promise<string>;
 }
 
 export interface APIProvider {
