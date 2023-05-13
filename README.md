@@ -120,7 +120,7 @@ await identity.logout();
 
 // Switch users (for apps that manage multiple accounts for a single user).
 // NOTE: The publicKey here must be a user that has previously logged in.
-identity.setActiveUser(publicKey);
+await identity.setActiveUser(publicKey);
 
 // Generate a jwt for making authenticated requests via `Authorization` http
 // header.
@@ -145,8 +145,17 @@ const submittedTx = await identity.submitTx(signedTx);
 // post on behalf of a user Read more about the transaction count limit map here
 // https://docs.deso.org/for-developers/backend/blockchain-data/basics/data-types#transactionspendinglimitresponse and you can find an exhaustive list
 // of available transaction types here: https://github.com/deso-protocol/core/blob/a836e4d2e92f59f7570c7a00f82a3107ec80dd02/lib/network.go#L244
-// This returns a boolean value synchronously.
-const hasPermission = identity.hasPermissions({
+// This returns a boolean value synchronously and should be used in a browser context to prevent issues with
+// popup blockers.
+const hasPermission = identity.hasPermissionsSync({
+  TransactionCountLimitMap: {
+    SUBMIT_POST: 1,
+  },
+});
+
+// The same as `hasPermissionsSync` but async because the storage provider might be AsyncStorage
+// This would typically be used in a native mobile (react native) context.
+const hasPermission = await identity.hasPermissionsAsync({
   TransactionCountLimitMap: {
     SUBMIT_POST: 1,
   },
