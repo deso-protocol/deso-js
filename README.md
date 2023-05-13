@@ -210,7 +210,7 @@ data.
 ```ts
 import { submitPost } from 'deso-protocol';
 
-const txInfo = submitPost({
+const txInfo = await submitPost({
   UpdaterPublicKeyBase58Check: currentUser.publicKey,
   BodyObj: {
     Body: 'My first post on DeSo!',
