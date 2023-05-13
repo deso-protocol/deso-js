@@ -301,7 +301,7 @@ export class Identity {
       );
     }
 
-    if (!this.#didConfigure && this.#isBrowser) {
+    if (!this.#didConfigure) {
       this.#defaultTransactionSpendingLimit =
         buildTransactionSpendingLimitResponse(spendingLimitOptions);
 
