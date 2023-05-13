@@ -225,7 +225,7 @@ See an exhaustive list of the available transaction construction functions [here
 
 ## React Native (beta)
 
-React native support is a work in progress, but there is a beta version
+[React native](https://reactnative.dev) support is a work in progress, but there is a beta version
 available if you'd like to test to it out. You will need to run react native
 version `0.71.7` or later to ensure `BigInt` support is available.
 
