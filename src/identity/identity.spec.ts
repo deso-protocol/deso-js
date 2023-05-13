@@ -30,7 +30,7 @@ function getPemEncodePublicKey(privateKey: Uint8Array): string {
 }
 
 describe('identity', () => {
-  let identity: Identity;
+  let identity: Identity<Storage>;
   let windowFake: typeof globalThis;
   let apiFake: APIProvider;
   let postMessageListener: (args: any) => any;

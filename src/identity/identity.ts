@@ -40,8 +40,8 @@ import {
 } from './permissions-utils';
 import { parseQueryParams } from './query-param-utils';
 import {
-  AsyncStorage,
   NOTIFICATION_EVENTS,
+  StorageProvider,
   type APIProvider,
   type AccessGroupPrivateInfo,
   type Deferred,
@@ -59,7 +59,7 @@ import {
   type jwtAlgorithm,
 } from './types';
 
-export class Identity {
+export class Identity<T extends StorageProvider> {
   /**
    * @private
    */
@@ -144,7 +144,7 @@ export class Identity {
   /**
    * @private
    */
-  #storageProvider?: Storage | AsyncStorage = globalThis.localStorage;
+  #storageProvider: T;
 
   /**
    * The current internal state of identity. This is a combination of the
@@ -180,10 +180,18 @@ export class Identity {
   /**
    * @private
    */
-  async #getActivePublicKey(): Promise<string | null> {
-    return (
-      this.#storageProvider?.getItem(LOCAL_STORAGE_KEYS.activePublicKey) ?? null
+  #getActivePublicKey(): T extends Storage
+    ? string | null
+    : Promise<string | null> {
+    const activePublicKey = this.#storageProvider?.getItem(
+      LOCAL_STORAGE_KEYS.activePublicKey
     );
+
+    if (typeof activePublicKey === 'string' || activePublicKey === null) {
+      return activePublicKey as any;
+    }
+
+    return activePublicKey as any;
   }
 
   /**
@@ -234,6 +242,7 @@ export class Identity {
     this.#window = windowProvider;
     this.#api = apiProvider;
     this.#isBrowser = typeof windowProvider.location !== 'undefined';
+    this.#storageProvider = globalThis.localStorage as T;
 
     if (this.#isBrowser) {
       this.handleRedirectURI(this.#window.location.search);
@@ -291,8 +300,8 @@ export class Identity {
     this.#appName = appName;
     this.#identityPresenter = identityPresenter;
 
-    if (typeof storageProvider !== 'undefined') {
-      this.#storageProvider = storageProvider;
+    if (storageProvider) {
+      this.#storageProvider = storageProvider as T;
     }
 
     if (!this.#storageProvider) {
@@ -513,16 +522,27 @@ export class Identity {
     this.#subscriber?.({ event, ...state });
 
     return new Promise((resolve, reject) => {
-      this.#getActivePublicKey().then((publicKey) => {
+      const activePublicKey = this.#getActivePublicKey();
+      const launchIdentity = (activePublicKey: string | null) => {
         this.#pendingWindowRequest = { resolve, reject, event };
-        if (!publicKey) {
+        if (!activePublicKey) {
           this.#pendingWindowRequest.reject(
             new Error('cannot logout without an active public key')
           );
         } else {
-          this.#launchIdentity('logout', { publicKey });
+          this.#launchIdentity('logout', { publicKey: activePublicKey });
         }
-      });
+      };
+
+      // NOTE: in the case of a browser context, we are using synchronous local
+      // storage, We cannot introduce any async operations because it may
+      // trigger popup blockers, which is why we need to branch the logic like
+      // this.
+      if (typeof activePublicKey === 'string' || activePublicKey === null) {
+        launchIdentity(activePublicKey);
+      } else {
+        activePublicKey?.then(launchIdentity);
+      }
     });
   }
 
@@ -844,8 +864,10 @@ export class Identity {
     const event = NOTIFICATION_EVENTS.GET_FREE_DESO_START;
     const state = await this.#getState();
     this.#subscriber?.({ event, ...state });
+
     return await new Promise((resolve, reject) => {
-      this.#getActivePublicKey().then((activePublicKey) => {
+      const activePublicKey = this.#getActivePublicKey();
+      const launchIdentity = (activePublicKey: string | null) => {
         this.#pendingWindowRequest = { resolve, reject, event };
 
         if (!activePublicKey) {
@@ -859,7 +881,17 @@ export class Identity {
           publicKey: activePublicKey,
           getFreeDeso: true,
         });
-      });
+      };
+
+      // NOTE: in the case of a browser context, we are using synchronous local
+      // storage, We cannot introduce any async operations because it may
+      // trigger popup blockers, which is why we need to branch the logic like
+      // this.
+      if (typeof activePublicKey === 'string' || activePublicKey === null) {
+        launchIdentity(activePublicKey);
+      } else {
+        activePublicKey?.then(launchIdentity);
+      }
     });
   }
 
@@ -877,7 +909,8 @@ export class Identity {
     const state = await this.#getState();
     this.#subscriber?.({ event, ...state });
     return await new Promise((resolve, reject) => {
-      this.#getActivePublicKey().then((activePublicKey) => {
+      const activePublicKey = this.#getActivePublicKey();
+      const launchIdentity = (activePublicKey: string | null) => {
         this.#pendingWindowRequest = { resolve, reject, event };
 
         if (!activePublicKey) {
@@ -889,7 +922,17 @@ export class Identity {
         this.#launchIdentity('verify-phone-number', {
           public_key: activePublicKey,
         });
-      });
+      };
+
+      // NOTE: in the case of a browser context, we are using synchronous local
+      // storage, We cannot introduce any async operations because it may
+      // trigger popup blockers, which is why we need to branch the logic like
+      // this.
+      if (typeof activePublicKey === 'string' || activePublicKey === null) {
+        launchIdentity(activePublicKey);
+      } else {
+        activePublicKey?.then(launchIdentity);
+      }
     });
   }
 
@@ -1917,7 +1960,7 @@ const unencryptedHexToPlainText = (hex: string) => {
   return textDecoder.decode(bytes);
 };
 
-const isPromiseLike = (obj: unknown) =>
-  obj && typeof (obj as Promise<unknown>).then === 'function';
+const isSyncStorageData = (data: unknown) =>
+  typeof data === 'string' || data === null;
 
 export const identity = new Identity(globalThis, api);

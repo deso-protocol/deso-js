@@ -118,7 +118,7 @@ export interface IdentityConfiguration {
    * An optional storage provider. If not provided, we will assume localStorage
    * is available.
    */
-  storageProvider?: Storage | AsyncStorage;
+  storageProvider?: StorageProvider;
 
   /**
    * An optional function that is provided the identity url that needs to be
@@ -342,3 +342,5 @@ export interface AsyncStorage {
   removeItem: (key: string) => Promise<void>;
   clear: () => Promise<void>;
 }
+
+export type StorageProvider = Storage | AsyncStorage;
