@@ -35,16 +35,11 @@ else
   exit 1
 fi
 
-# Now publish the react-native package.
 cd -
-# NOTE: we overwrite the identity-instance.ts file with the native version so
-# the correct type definitions are exported for react-native.
-sed -i '' 's/Identity<Storage>/Identity<AsyncStorage>/g' ./src/identity/identity-instance.ts
-npm run package
-# revert changes after packaging.
-git checkout ./src/identity/identity-instance.native.ts ./src/identity/identity-instance.ts
+
+# Now publish the react-native package.
+npm run package:react-native
 cd ./lib
-npm pkg set name='deso-protocol-react-native'
 
 # If the version is a pre-release (beta), publish with the --tag flag.
 if [[ $NPM_PRERELEASE_TAG == beta ]]; then
