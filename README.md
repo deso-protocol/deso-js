@@ -147,13 +147,13 @@ const submittedTx = await identity.submitTx(signedTx);
 // of available transaction types here: https://github.com/deso-protocol/core/blob/a836e4d2e92f59f7570c7a00f82a3107ec80dd02/lib/network.go#L244
 // This returns a boolean value synchronously and should be used in a browser context to prevent issues with
 // popup blockers.
-const hasPermission = identity.hasPermissionsSync({
+const hasPermission = identity.hasPermissions({
   TransactionCountLimitMap: {
     SUBMIT_POST: 1,
   },
 });
 
-// The same as `hasPermissionsSync` but async because the storage provider might be AsyncStorage
+// The same as `hasPermissions` but async because the storage provider might be AsyncStorage
 // This would typically be used in a native mobile (react native) context.
 const hasPermission = await identity.hasPermissionsAsync({
   TransactionCountLimitMap: {

@@ -17,7 +17,6 @@ import {
   bs58PublicKeyToCompressedBytes,
   identity,
 } from '../identity';
-import { guardTxPermission } from '../identity/permissions-utils';
 import {
   constructBalanceModelTx,
   getTxWithFeeNanos,
@@ -26,6 +25,7 @@ import {
   sumTransactionFees,
 } from '../internal';
 import { ConstructedAndSubmittedTx, TxRequestOptions } from '../types';
+import { guardTxPermission } from './utils';
 
 /**
  * https://docs.deso.org/deso-backend/construct-transactions/financial-transactions-api#send-deso

@@ -19,9 +19,32 @@ echo "Pre-release tag: $NPM_PRERELEASE_TAG"
 
 npm ci --ignore-scripts
 npm version --no-git-tag-version $NEW_VERSION
-ls -l
 npm run package
 cd ./lib
+
+# If the version is a pre-release (beta), publish with the --tag flag.
+if [[ $NPM_PRERELEASE_TAG == beta ]]; then
+  echo "Publishing pre-release version $NEW_VERSION"
+  npm publish --tag $NPM_PRERELEASE_TAG --access public
+# if the parsed prelease tag is a number, it's just a regular release.
+elif [[ $NPM_PRERELEASE_TAG =~ ^[0-9]+$ ]]; then
+  echo "Publishing latest stable version $NEW_VERSION"
+  npm publish --access public
+else
+  echo "Invalid version format for $NEW_VERSION. Please use the following format: v<version-number> or v<version-number>-beta.<pre-release-version>"
+  exit 1
+fi
+
+# Now publish the react-native package.
+cd -
+# NOTE: we overwrite the identity-instance.ts file with the native version so
+# the correct type definitions are exported for react-native.
+sed -i '' 's/Identity<Storage>/Identity<AsyncStorage>/g' ./src/identity/identity-instance.ts
+npm run package
+# revert changes after packaging.
+git checkout ./src/identity/identity-instance.native.ts ./src/identity/identity-instance.ts
+cd ./lib
+npm pkg set name='deso-protocol-react-native'
 
 # If the version is a pre-release (beta), publish with the --tag flag.
 if [[ $NPM_PRERELEASE_TAG == beta ]]; then

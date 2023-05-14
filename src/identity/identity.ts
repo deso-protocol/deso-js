@@ -2,18 +2,17 @@ import { keccak_256 } from '@noble/hashes/sha3';
 import { Point, utils as ecUtils } from '@noble/secp256k1';
 import { ethers } from 'ethers';
 import {
+  AuthorizeDerivedKeyRequest,
   ChatType,
+  InfuraResponse,
+  QueryETHRPCRequest,
   type AccessGroupEntryResponse,
-  type AuthorizeDerivedKeyRequest,
   type DecryptedMessageEntryResponse,
-  type InfuraResponse,
   type InfuraTx,
   type NewMessageEntryResponse,
-  type QueryETHRPCRequest,
   type SubmitTransactionResponse,
   type TransactionSpendingLimitResponse,
 } from '../backend-types';
-import { api } from './api';
 import {
   DEFAULT_IDENTITY_URI,
   DEFAULT_NODE_URI,
@@ -40,17 +39,18 @@ import {
 } from './permissions-utils';
 import { parseQueryParams } from './query-param-utils';
 import {
+  EtherscanTransaction,
+  IdentityResponse,
+  IdentityState,
   NOTIFICATION_EVENTS,
   StorageProvider,
   type APIProvider,
   type AccessGroupPrivateInfo,
   type Deferred,
-  type EtherscanTransaction,
   type EtherscanTransactionsByAddressResponse,
   type IdentityConfiguration,
   type IdentityDerivePayload,
   type IdentityLoginPayload,
-  type IdentityResponse,
   type LoginOptions,
   type Network,
   type StoredUser,
@@ -151,30 +151,57 @@ export class Identity<T extends StorageProvider> {
    * current user and all other users stored in local storage.
    * @private
    */
-  async #getState() {
-    const [allStoredUsers, activePublicKey, currentUser] = await Promise.all([
-      this.#getUsers(),
-      this.#getActivePublicKey(),
-      this.#getCurrentUser(),
-    ]);
+  #getState(): T extends Storage ? IdentityState : Promise<IdentityState> {
+    const users = this.#getUsers();
 
-    return {
-      currentUser: currentUser && {
-        ...currentUser,
-        publicKey: currentUser.primaryDerivedKey.publicKeyBase58Check,
-      },
-      alternateUsers:
-        allStoredUsers &&
-        Object.keys(allStoredUsers).reduce<Record<string, StoredUser>>(
-          (res, publicKey) => {
-            if (publicKey !== activePublicKey) {
-              res[publicKey] = allStoredUsers[publicKey];
-            }
-            return res;
-          },
-          {}
-        ),
-    };
+    if (typeof users?.then === 'function') {
+      // we're in async mode
+      return Promise.all([
+        users,
+        this.#getActivePublicKey(),
+        this.#getCurrentUser(),
+      ]).then(([allStoredUsers, activePublicKey, currentUser]) => ({
+        currentUser: currentUser && {
+          ...currentUser,
+          publicKey: currentUser.primaryDerivedKey.publicKeyBase58Check,
+        },
+        alternateUsers:
+          allStoredUsers &&
+          Object.keys(allStoredUsers).reduce<Record<string, StoredUser>>(
+            (res, publicKey) => {
+              if (publicKey !== activePublicKey) {
+                res[publicKey] = allStoredUsers[publicKey];
+              }
+              return res;
+            },
+            {}
+          ),
+      })) as any;
+    } else {
+      // we're in sync mode
+      const activePublicKey = this.#getActivePublicKey() as string | null;
+      const currentUser = this.#getCurrentUser() as StoredUser | null;
+
+      return {
+        currentUser: currentUser && {
+          ...currentUser,
+          publicKey: currentUser.primaryDerivedKey.publicKeyBase58Check,
+        },
+        alternateUsers:
+          users &&
+          Object.keys(users).reduce<Record<string, StoredUser>>(
+            (res, publicKey) => {
+              if (publicKey !== activePublicKey) {
+                res[publicKey] = (users as Record<string, StoredUser>)?.[
+                  publicKey
+                ];
+              }
+              return res;
+            },
+            {}
+          ),
+      } as any;
+    }
   }
 
   /**
@@ -197,27 +224,45 @@ export class Identity<T extends StorageProvider> {
   /**
    * @private
    */
-  async #getUsers(): Promise<Record<string, StoredUser> | null> {
-    const storedUsers = await this.#storageProvider?.getItem(
+  #getUsers(): T extends Storage
+    ? Record<string, StoredUser> | null
+    : Promise<Record<string, StoredUser> | null> {
+    const storedUsers = this.#storageProvider?.getItem(
       LOCAL_STORAGE_KEYS.identityUsers
     );
 
-    return storedUsers && JSON.parse(storedUsers);
+    if (typeof storedUsers === 'string' || storedUsers === null) {
+      return storedUsers && JSON.parse(storedUsers);
+    }
+
+    return storedUsers.then((users) => users && JSON.parse(users)) as any;
   }
 
   /**
    * @private
    */
-  async #getCurrentUser(): Promise<StoredUser | null> {
-    const activePublicKey = await this.#getActivePublicKey();
+  #getCurrentUser(): T extends Storage
+    ? StoredUser | null
+    : Promise<StoredUser | null> {
+    const activePublicKey = this.#getActivePublicKey();
 
-    if (!activePublicKey) {
-      return null;
+    if (typeof activePublicKey === 'string' || activePublicKey === null) {
+      if (!activePublicKey) return null as any;
+
+      // we know we're dealing with sync storage
+      const users = this.#getUsers() as Record<string, StoredUser> | null;
+      const currentUser =
+        (users?.[activePublicKey as string] as StoredUser) ?? null;
+      return currentUser as any;
     }
 
-    const users = await this.#getUsers();
-
-    return (users?.[activePublicKey] as StoredUser) ?? null;
+    // we assume we're dealing with async storage if we make it here
+    return Promise.all([activePublicKey, this.#getUsers()]).then(
+      ([publicKey, users]) => {
+        if (!publicKey) return null;
+        return (users?.[publicKey] as StoredUser) ?? null;
+      }
+    ) as any;
   }
 
   /**
@@ -244,7 +289,7 @@ export class Identity<T extends StorageProvider> {
     this.#isBrowser = typeof windowProvider.location !== 'undefined';
     this.#storageProvider = globalThis.localStorage as T;
 
-    if (this.#isBrowser) {
+    if (this.#isBrowser && this.#window.location.search) {
       this.handleRedirectURI(this.#window.location.search);
     }
   }
@@ -362,65 +407,8 @@ export class Identity<T extends StorageProvider> {
    * state you can use this method. Can be useful for debugging or setting up
    * initial state in your app.
    */
-  snapshot(): Promise<{
-    currentUser: StoredUser | null;
-    alternateUsers: Record<string, StoredUser> | null;
-  }> {
+  snapshot(): T extends Storage ? IdentityState : Promise<IdentityState> {
     return this.#getState();
-  }
-
-  /**
-   * Same as snapshot except it runs synchronously. This exists primarily for
-   * backwards compatibility should only be used in a browser context where
-   * localStorage is available.
-   * @deprecated use `snapshot` instead.
-   */
-  snapshotSync(): {
-    currentUser: StoredUser | null;
-    alternateUsers: Record<string, StoredUser> | null;
-  } {
-    if (!this.#window.localStorage) {
-      throw new Error(
-        'You can only use snapshotSync in a browser context where localStorage is available. Did you mean to use snapshot instead?'
-      );
-    }
-
-    const storedUsersJSON = this.#window.localStorage.getItem(
-      LOCAL_STORAGE_KEYS.identityUsers
-    );
-    const activePublicKey = this.#window.localStorage.getItem(
-      LOCAL_STORAGE_KEYS.activePublicKey
-    );
-    let currentUser: StoredUser | null = null;
-    let allStoredUsers: Record<string, StoredUser> | null = null;
-
-    if (storedUsersJSON && activePublicKey) {
-      allStoredUsers = JSON.parse(storedUsersJSON);
-      // This check shouldn't be necessary, but it makes typescript happy.
-      if (allStoredUsers) {
-        currentUser = allStoredUsers[activePublicKey];
-      }
-    }
-
-    return {
-      currentUser: currentUser && {
-        ...currentUser,
-        publicKey: currentUser.primaryDerivedKey.publicKeyBase58Check,
-      },
-      alternateUsers:
-        allStoredUsers &&
-        Object.keys(allStoredUsers).reduce<Record<string, StoredUser>>(
-          (res, publicKey) => {
-            if (publicKey !== activePublicKey) {
-              if (allStoredUsers) {
-                res[publicKey] = allStoredUsers[publicKey];
-              }
-            }
-            return res;
-          },
-          {}
-        ),
-    };
   }
 
   /**
@@ -465,7 +453,7 @@ export class Identity<T extends StorageProvider> {
       derivedPublicKey = publicKeyToBase58Check(keys.public, {
         network: this.#network,
       });
-      this.#storageProvider?.setItem(
+      await this.#storageProvider?.setItem(
         LOCAL_STORAGE_KEYS.loginKeyPair,
         JSON.stringify({
           publicKey: derivedPublicKey,
@@ -1019,95 +1007,57 @@ export class Identity<T extends StorageProvider> {
    * });
    * ```
    */
-  hasPermissionsSync(
+  hasPermissions(
     permissionsToCheck: Partial<TransactionSpendingLimitResponseOptions>
-  ): boolean {
+  ): T extends Storage ? boolean : Promise<boolean> {
     if (Object.keys(permissionsToCheck).length === 0) {
       throw new Error('You must pass at least one permission to check');
     }
 
-    if (!this.#window.localStorage) {
-      throw new Error(
-        'You must be in a browser context to use hasPermissionsSync. Did you mean to use hasPermissionsAsync?'
+    const users = this.#getUsers();
+    const checkPermissions = (
+      users: Record<string, StoredUser> | null,
+      activeKey: string | null
+    ) => {
+      if (!(users && activeKey)) {
+        return false as any;
+      }
+
+      const activeUser = (users as Record<string, StoredUser>)[
+        activeKey as string
+      ];
+
+      const { primaryDerivedKey } = activeUser ?? {};
+
+      // If the key is expired, unauthorized, or has no money we can't do anything with it
+      if (!primaryDerivedKey?.IsValid) {
+        return false as any;
+      }
+
+      // if the key has no spending limits, we can't do anything with it
+      if (!primaryDerivedKey?.transactionSpendingLimits) {
+        return false as any;
+      }
+
+      return compareTransactionSpendingLimits(
+        permissionsToCheck,
+        primaryDerivedKey.transactionSpendingLimits
       );
+    };
+
+    if (typeof users?.then === 'function') {
+      // async mode
+      return Promise.all([users, this.#getActivePublicKey()]).then(
+        ([users, activeKey]) => checkPermissions(users, activeKey)
+      ) as any;
+    } else {
+      // sync mode
+      const activeKey = this.#getActivePublicKey();
+      return checkPermissions(
+        users as Record<string, StoredUser>,
+        activeKey as string
+      ) as any;
     }
-
-    // NOTE: We're making an assumption here that the storage provider is
-    // browser localStorage, which has a synchronous API.
-    const usersJSON = this.#window.localStorage.getItem(
-      LOCAL_STORAGE_KEYS.identityUsers
-    );
-    const activeKey = this.#window.localStorage.getItem(
-      LOCAL_STORAGE_KEYS.activePublicKey
-    );
-
-    if (!(usersJSON && activeKey)) {
-      return false;
-    }
-
-    const users = JSON.parse(usersJSON) as Record<string, StoredUser>;
-    const activeUser = users[activeKey];
-
-    const { primaryDerivedKey } = activeUser ?? {};
-
-    // If the key is expired, unauthorized, or has no money we can't do anything with it
-    if (!primaryDerivedKey?.IsValid) {
-      return false;
-    }
-
-    // if the key has no spending limits, we can't do anything with it
-    if (!primaryDerivedKey?.transactionSpendingLimits) {
-      return false;
-    }
-
-    return compareTransactionSpendingLimits(
-      permissionsToCheck,
-      primaryDerivedKey.transactionSpendingLimits
-    );
-  }
-
-  /**
-   * Use this if the storage provider is asynchronous (react native, etc). If a
-   * user's derived key has the permissions to perform a given action or batch
-   * of actions. The permissions are passed in as an object with the same shape
-   * as the `TransactionSpendingLimitResponseOptions` type, which is the same as
-   * the `spendingLimitOptions` passed to the configure method.
-   *
-   *
-   * @example
-   * Here we check if the user has the permissions to submit at least 1 post.
-   *
-   * ```typescript
-   * const hasPermissions = await identity.hasPermissions({
-   *   TransactionCountLimitMap: {
-   *     SUBMIT_POST: 1,
-   *    },
-   * });
-   * ```
-   */
-  async hasPermissionsAsync(
-    permissionsToCheck: Partial<TransactionSpendingLimitResponseOptions>
-  ): Promise<boolean> {
-    if (Object.keys(permissionsToCheck).length === 0) {
-      throw new Error('You must pass at least one permission to check');
-    }
-
-    const { primaryDerivedKey } = (await this.#getCurrentUser()) ?? {};
-
-    // If the key is expired, unauthorized, or has no money we can't do anything with it
-    if (!primaryDerivedKey?.IsValid) {
-      return false;
-    }
-
-    // if the key has no spending limits, we can't do anything with it
-    if (!primaryDerivedKey?.transactionSpendingLimits) {
-      return false;
-    }
-
-    return compareTransactionSpendingLimits(
-      permissionsToCheck,
-      primaryDerivedKey.transactionSpendingLimits
-    );
   }
 
   /**
@@ -1959,8 +1909,3 @@ const unencryptedHexToPlainText = (hex: string) => {
   const textDecoder = new TextDecoder();
   return textDecoder.decode(bytes);
 };
-
-const isSyncStorageData = (data: unknown) =>
-  typeof data === 'string' || data === null;
-
-export const identity = new Identity(globalThis, api);

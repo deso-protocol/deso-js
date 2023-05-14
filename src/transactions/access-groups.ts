@@ -16,7 +16,6 @@ import {
   bs58PublicKeyToCompressedBytes,
   encodeUTF8ToBytes,
 } from '../identity';
-import { guardTxPermission } from '../identity/permissions-utils';
 import {
   constructBalanceModelTx,
   convertExtraData,
@@ -25,6 +24,7 @@ import {
   sumTransactionFees,
 } from '../internal';
 import { ConstructedAndSubmittedTx, TxRequestOptions } from '../types';
+import { guardTxPermission } from './utils';
 
 const buildAccessGroupMetadata = (params: CreateAccessGroupRequestParams) => {
   const metadata = new TransactionMetadataAccessGroup();

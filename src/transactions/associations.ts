@@ -17,7 +17,6 @@ import {
   bs58PublicKeyToCompressedBytes,
   encodeUTF8ToBytes,
 } from '../identity';
-import { guardTxPermission } from '../identity/permissions-utils';
 import {
   constructBalanceModelTx,
   getTxWithFeeNanos,
@@ -25,6 +24,7 @@ import {
   sumTransactionFees,
 } from '../internal';
 import { ConstructedAndSubmittedTx, TxRequestOptions } from '../types';
+import { guardTxPermission } from './utils';
 
 /**
  * https://docs.deso.org/deso-backend/construct-transactions/associations-transactions-api#create-user-association

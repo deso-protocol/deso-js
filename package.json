@@ -9,6 +9,7 @@
     "build": "tsc",
     "test": "jest",
     "package": "./scripts/package.sh",
+    "package:react-native": "./scripts/package-react-native.sh",
     "link": "npm run package && cd ./lib && npm i && npm link && cd - && tsc -w",
     "prepare": "husky install",
     "precommit": "lint-staged && npm run test"

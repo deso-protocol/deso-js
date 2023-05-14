@@ -33,7 +33,6 @@ import {
   uvarint64ToBuf,
 } from '../identity';
 import { DIAMOND_LEVEL_MAP } from '../identity/constants';
-import { guardTxPermission } from '../identity/permissions-utils';
 import {
   constructBalanceModelTx,
   getTxWithFeeNanos,
@@ -45,6 +44,7 @@ import {
   TxRequestOptions,
   TypeWithOptionalFeesAndExtraData,
 } from '../types';
+import { guardTxPermission } from './utils';
 
 const buildUpdateProfileMetadata = (
   params: TypeWithOptionalFeesAndExtraData<UpdateProfileRequest>

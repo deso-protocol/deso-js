@@ -1,5 +1,4 @@
 import { TransactionSpendingLimitResponse } from '../backend-types';
-import { identity } from '../identity';
 import { TransactionSpendingLimitResponseOptions } from './types';
 
 export function compareTransactionSpendingLimits(
@@ -183,36 +182,6 @@ export function buildTransactionSpendingLimitResponse(
   }
 
   return result;
-}
-
-export async function guardTxPermission(
-  spendingLimitOptions: TransactionSpendingLimitResponseOptions
-) {
-  let hasPermissions = false;
-
-  try {
-    hasPermissions = identity.hasPermissionsSync(spendingLimitOptions);
-  } catch (e: any) {
-    if (
-      e?.message?.includes(
-        'You must be in a browser context to use hasPermissionsSync'
-      )
-    ) {
-      // Try falling back to hasPermissionsAsync
-      hasPermissions = await identity.hasPermissionsAsync(spendingLimitOptions);
-    }
-  }
-
-  if (!hasPermissions) {
-    return identity.requestPermissions({
-      ...spendingLimitOptions,
-      GlobalDESOLimit:
-        (identity.transactionSpendingLimitOptions.GlobalDESOLimit ?? 0) +
-        (spendingLimitOptions.GlobalDESOLimit ?? 0),
-    });
-  }
-
-  return Promise.resolve();
 }
 
 function walkObj(

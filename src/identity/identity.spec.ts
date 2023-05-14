@@ -102,7 +102,7 @@ describe('identity', () => {
         })
         .mockName('api.post'),
     });
-    identity = new Identity(windowFake, apiFake);
+    identity = new Identity<Storage>(windowFake, apiFake);
     identity.configure({
       storageProvider: windowFake.localStorage,
     });
@@ -211,7 +211,7 @@ describe('identity', () => {
         ),
       ]);
 
-      const { currentUser } = identity.snapshotSync();
+      const { currentUser } = identity.snapshot();
       expect(currentUser?.publicKey).toEqual(
         'BC1YLiot3hqKeKhK82soKAeK3BFdTnMjpd2w4HPfesaFzYHUpUzJ2ay'
       );
@@ -608,7 +608,7 @@ describe('identity', () => {
         })
       );
 
-      const hasPermissions = identity.hasPermissionsSync({
+      const hasPermissions = identity.hasPermissions({
         TransactionCountLimitMap: {
           BASIC_TRANSFER: 1,
           SUBMIT_POST: 1,
@@ -653,7 +653,7 @@ describe('identity', () => {
           },
         })
       );
-      const hasPermissions = identity.hasPermissionsSync({
+      const hasPermissions = identity.hasPermissions({
         TransactionCountLimitMap: {
           BASIC_TRANSFER: 1,
           SUBMIT_POST: 1,
@@ -698,7 +698,7 @@ describe('identity', () => {
           },
         })
       );
-      const hasPermissions = identity.hasPermissionsSync({
+      const hasPermissions = identity.hasPermissions({
         TransactionCountLimitMap: {
           SUBMIT_POST: 3, // more than the user can do
         },
@@ -725,7 +725,7 @@ describe('identity', () => {
           },
         })
       );
-      const hasPermissions = identity.hasPermissionsSync({
+      const hasPermissions = identity.hasPermissions({
         TransactionCountLimitMap: {
           SUBMIT_POST: 3, // doesn't matter what we check, it should be allowed
         },
@@ -762,7 +762,7 @@ describe('identity', () => {
           },
         })
       );
-      const hasPermissions = identity.hasPermissionsSync({
+      const hasPermissions = identity.hasPermissions({
         TransactionCountLimitMap: {
           BASIC_TRANSFER: 'UNLIMITED',
         },
@@ -798,7 +798,7 @@ describe('identity', () => {
           },
         })
       );
-      const hasPermissions = identity.hasPermissionsSync({
+      const hasPermissions = identity.hasPermissions({
         TransactionCountLimitMap: {
           // basic transfer is not in the user's actual permissions
           BASIC_TRANSFER: 1,

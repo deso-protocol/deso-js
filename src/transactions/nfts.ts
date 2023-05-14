@@ -32,7 +32,6 @@ import {
   encodeUTF8ToBytes,
   uvarint64ToBuf,
 } from '../identity';
-import { guardTxPermission } from '../identity/permissions-utils';
 import {
   constructBalanceModelTx,
   getTxWithFeeNanos,
@@ -40,6 +39,7 @@ import {
   sumTransactionFees,
 } from '../internal';
 import { ConstructedAndSubmittedTx, TxRequestOptions } from '../types';
+import { guardTxPermission } from './utils';
 /**
  * https://docs.deso.org/deso-backend/construct-transactions/nft-transactions-api#create-nft
  */
