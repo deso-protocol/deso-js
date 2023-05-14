@@ -7,7 +7,8 @@ set -e
 # difference the web version and the react-native version.
 mv ./src/identity/identity-instance.react-native.ts ./src/identity/identity-instance.ts
 npm run build
-cp {package.json,README.md,LICENSE} ./lib
+cp {package.json,LICENSE} ./lib
+cp REACT-NATIVE.md ./lib/README.md
 cd ./lib
 npm pkg delete scripts
 npm pkg set name='deso-protocol-react-native'
