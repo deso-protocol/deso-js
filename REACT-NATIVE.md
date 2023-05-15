@@ -85,3 +85,5 @@ configure({
   // ...rest of configs
 });
 ```
+
+Once everything is shimmed and configured properly, the [usage is the same as the web library](https://github.com/deso-protocol/deso-js/tree/main#usage), the major difference being you will import from `deso-protocol-react-native`.
