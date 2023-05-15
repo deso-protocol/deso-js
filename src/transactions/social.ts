@@ -339,7 +339,7 @@ export const sendDiamonds = async (
   return handleSignAndSubmit('api/v0/send-diamonds', params, options);
 };
 
-const buildSendDiamondsConsensusKVs = (
+export const buildSendDiamondsConsensusKVs = (
   params: TypeWithOptionalFeesAndExtraData<SendDiamondsRequest>
 ) => {
   const consensusExtraDataKVs: TransactionExtraDataKV[] = [];
