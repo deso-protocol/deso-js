@@ -93,7 +93,6 @@ export type BalanceModelTransactionFields = {
   ConsensusExtraDataKVs?: TransactionExtraDataKV[];
   MinFeeRateNanosPerKB?: number;
   TransactionFees?: TransactionFee[] | null;
-  BlockHeight?: number;
   Nonce?: DeSoNonce;
 };
 
@@ -128,9 +127,7 @@ export const getTxWithFeeNanos = (
     // a transaction, but just for calculating fees we can use a pseudo value, in
     // this case we just use the max safe integer.
     // TODO: put in real block height buffer.
-    nonce.expirationBlockHeight = txFields?.BlockHeight
-      ? txFields.BlockHeight + 275
-      : Number.MAX_SAFE_INTEGER;
+    nonce.expirationBlockHeight = Number.MAX_SAFE_INTEGER;
     // TODO: cache used partial IDs? Replace with better logic
     // for generating random uint64
     nonce.partialId = Math.floor(Math.random() * 1e18);
@@ -171,14 +168,18 @@ export const constructBalanceModelTx = async (
   txFields?: BalanceModelTransactionFields
 ): Promise<ConstructedTransactionResponse> => {
   // TODO: cache block height somewhere.
-  const { BlockHeight } = await (txFields?.Nonce
-    ? Promise.resolve({ BlockHeight: undefined })
-    : getAppState());
+  if (!txFields?.Nonce) {
+    const { BlockHeight } = await getAppState();
+    if (!txFields) {
+      txFields = {};
+    }
+    txFields.Nonce = {
+      ExpirationBlockHeight: BlockHeight + 275,
+      PartialID: Math.floor(Math.random() * 1e18),
+    };
+  }
 
-  const txnWithFee = getTxWithFeeNanos(pubKey, metadata, {
-    ...txFields,
-    BlockHeight,
-  });
+  const txnWithFee = getTxWithFeeNanos(pubKey, metadata, txFields);
 
   const txnBytes = txnWithFee.toBytes();
   const TransactionHex = bytesToHex(txnBytes);
