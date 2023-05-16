@@ -47,6 +47,7 @@ export const globalConfigOptions = {
  *
  * @param endpoint the endpoint for constructing the transaction
  * @param params tx specific params for the endpoint + optional fees and extra data
+ * @param options options for the request, including whether to broadcast
  */
 export const handleSignAndSubmit = async (
   endpoint: string,

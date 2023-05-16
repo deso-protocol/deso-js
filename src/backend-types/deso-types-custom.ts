@@ -7,6 +7,7 @@ import {
   TransactionFee,
   TransactionSpendingLimitResponse,
 } from './deso-types';
+import { PartialWithRequiredFields } from '../data';
 
 export interface GetApproveResponse {
   id?: string;
@@ -328,7 +329,7 @@ export interface OptionalFeesAndExtraData {
   MinFeeRateNanosPerKB?: number;
   TransactionFees?: TransactionFee[] | null;
   ExtraData?: { [key: string]: string };
-  Nonce?: DeSoNonce;
+  Nonce?: PartialWithRequiredFields<DeSoNonce, 'ExpirationBlockHeight'>;
 }
 
 export type TxRequestWithOptionalFeesAndExtraData<T> = Omit<
