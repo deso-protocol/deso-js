@@ -437,12 +437,18 @@ export class Identity<T extends StorageProvider> {
   async login(
     { getFreeDeso }: LoginOptions = { getFreeDeso: true }
   ): Promise<IdentityDerivePayload> {
+    if (!this.#storageProvider) {
+      throw new Error(
+        'No storage provider available. Did you forget to configure a custom storageProvider?'
+      );
+    }
+
     const event = NOTIFICATION_EVENTS.LOGIN_START;
     const state = await this.#getState();
     this.#subscriber?.({ event, ...state });
 
     let derivedPublicKey: string;
-    const loginKeyPair = await this.#storageProvider?.getItem(
+    const loginKeyPair = await this.#storageProvider.getItem(
       LOCAL_STORAGE_KEYS.loginKeyPair
     );
 
@@ -1794,6 +1800,12 @@ export class Identity<T extends StorageProvider> {
     if (typeof this.#identityPresenter === 'function') {
       this.#identityPresenter(url);
       return;
+    }
+
+    if (typeof this.#window.open !== 'function') {
+      throw new Error(
+        'No identity presenter is available. Did you forget to configure a custom identityPresenter?'
+      );
     }
 
     if (qps.get('redirect_uri')) {
