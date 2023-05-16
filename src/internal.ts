@@ -1,6 +1,7 @@
 import { bytesToHex } from '@noble/hashes/utils';
 import {
   ConstructedTransactionResponse,
+  DeSoNonce,
   OptionalFeesAndExtraData,
   RequestOptions,
   SubmitTransactionResponse,
@@ -93,6 +94,7 @@ export type BalanceModelTransactionFields = {
   MinFeeRateNanosPerKB?: number;
   TransactionFees?: TransactionFee[] | null;
   BlockHeight?: number;
+  Nonce?: DeSoNonce;
 };
 
 export const convertExtraData = (
@@ -118,16 +120,22 @@ export const getTxWithFeeNanos = (
   txFields?: BalanceModelTransactionFields
 ) => {
   const nonce = new TransactionNonce();
-  // NOTE: typically we would use the block height returned from a node to build
-  // a transaction, but just for calculating fees we can use a pseudo value, in
-  // this case we just use the max safe integer.
-  // TODO: put in real block height buffer.
-  nonce.expirationBlockHeight = txFields?.BlockHeight
-    ? txFields.BlockHeight + 275
-    : Number.MAX_SAFE_INTEGER;
-  // TODO: cache used partial IDs? Replace with better logic
-  // for generating random uint64
-  nonce.partialId = Math.floor(Math.random() * 1e18);
+  if (txFields?.Nonce) {
+    nonce.expirationBlockHeight = txFields.Nonce.ExpirationBlockHeight;
+    nonce.partialId = txFields.Nonce.PartialID;
+  } else {
+    // NOTE: typically we would use the block height returned from a node to build
+    // a transaction, but just for calculating fees we can use a pseudo value, in
+    // this case we just use the max safe integer.
+    // TODO: put in real block height buffer.
+    nonce.expirationBlockHeight = txFields?.BlockHeight
+      ? txFields.BlockHeight + 275
+      : Number.MAX_SAFE_INTEGER;
+    // TODO: cache used partial IDs? Replace with better logic
+    // for generating random uint64
+    nonce.partialId = Math.floor(Math.random() * 1e18);
+  }
+
   const transactionFeeOutputs = (txFields?.TransactionFees || []).map((tf) => {
     const newOutput = new TransactionOutput();
     newOutput.publicKey = bs58PublicKeyToCompressedBytes(
@@ -163,7 +171,9 @@ export const constructBalanceModelTx = async (
   txFields?: BalanceModelTransactionFields
 ): Promise<ConstructedTransactionResponse> => {
   // TODO: cache block height somewhere.
-  const { BlockHeight } = await getAppState();
+  const { BlockHeight } = await (txFields?.Nonce
+    ? Promise.resolve({ BlockHeight: undefined })
+    : getAppState());
 
   const txnWithFee = getTxWithFeeNanos(pubKey, metadata, {
     ...txFields,

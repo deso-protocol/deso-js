@@ -1,6 +1,7 @@
 import { ec } from 'elliptic';
 import {
   DAOCoinLimitOrderSimulatedExecutionResult,
+  DeSoNonce,
   MsgDeSoTxn,
   SubmitTransactionResponse,
   TransactionFee,
@@ -327,11 +328,16 @@ export interface OptionalFeesAndExtraData {
   MinFeeRateNanosPerKB?: number;
   TransactionFees?: TransactionFee[] | null;
   ExtraData?: { [key: string]: string };
+  Nonce?: DeSoNonce;
 }
 
 export type TxRequestWithOptionalFeesAndExtraData<T> = Omit<
   T,
-  'MinFeeRateNanosPerKB' | 'TransactionFees' | 'ExtraData' | 'InTutorial'
+  | 'MinFeeRateNanosPerKB'
+  | 'TransactionFees'
+  | 'ExtraData'
+  | 'InTutorial'
+  | 'Nonce'
 > &
   OptionalFeesAndExtraData;
 
