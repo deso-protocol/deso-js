@@ -110,6 +110,7 @@ export const constructSendDeSoTransaction = (
       ExtraData: params.ExtraData,
       MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
       TransactionFees: params.TransactionFees,
+      Nonce: params.Nonce,
     }
   );
 };

@@ -1,13 +1,14 @@
 import { bytesToHex } from '@noble/hashes/utils';
 import {
   ConstructedTransactionResponse,
+  DeSoNonce,
   OptionalFeesAndExtraData,
   RequestOptions,
   SubmitTransactionResponse,
   TransactionFee,
   TransactionType,
 } from './backend-types';
-import { api, cleanURL, getAppState } from './data';
+import { api, cleanURL, getAppState, PartialWithRequiredFields } from './data';
 import {
   Transaction,
   TransactionExtraData,
@@ -46,6 +47,7 @@ export const globalConfigOptions = {
  *
  * @param endpoint the endpoint for constructing the transaction
  * @param params tx specific params for the endpoint + optional fees and extra data
+ * @param options options for the request, including whether to broadcast
  */
 export const handleSignAndSubmit = async (
   endpoint: string,
@@ -92,7 +94,7 @@ export type BalanceModelTransactionFields = {
   ConsensusExtraDataKVs?: TransactionExtraDataKV[];
   MinFeeRateNanosPerKB?: number;
   TransactionFees?: TransactionFee[] | null;
-  BlockHeight?: number;
+  Nonce?: PartialWithRequiredFields<DeSoNonce, 'ExpirationBlockHeight'>;
 };
 
 export const convertExtraData = (
@@ -112,22 +114,26 @@ export const convertExtraData = (
   return realExtraData;
 };
 
+const makeTransactionNonce = (
+  desoNonce:
+    | PartialWithRequiredFields<DeSoNonce, 'ExpirationBlockHeight'>
+    | undefined
+): TransactionNonce => {
+  const nonce = new TransactionNonce();
+  nonce.expirationBlockHeight =
+    desoNonce?.ExpirationBlockHeight || Number.MAX_SAFE_INTEGER;
+  // TODO: cache partial IDs so we don't generate the same one twice.
+  nonce.partialId = desoNonce?.PartialID || Math.floor(Math.random() * 1e18);
+  return nonce;
+};
+
 export const getTxWithFeeNanos = (
   pubKey: string,
   metadata: TransactionMetadataRecord,
   txFields?: BalanceModelTransactionFields
 ) => {
-  const nonce = new TransactionNonce();
-  // NOTE: typically we would use the block height returned from a node to build
-  // a transaction, but just for calculating fees we can use a pseudo value, in
-  // this case we just use the max safe integer.
-  // TODO: put in real block height buffer.
-  nonce.expirationBlockHeight = txFields?.BlockHeight
-    ? txFields.BlockHeight + 275
-    : Number.MAX_SAFE_INTEGER;
-  // TODO: cache used partial IDs? Replace with better logic
-  // for generating random uint64
-  nonce.partialId = Math.floor(Math.random() * 1e18);
+  const nonce = makeTransactionNonce(txFields?.Nonce);
+
   const transactionFeeOutputs = (txFields?.TransactionFees || []).map((tf) => {
     const newOutput = new TransactionOutput();
     newOutput.publicKey = bs58PublicKeyToCompressedBytes(
@@ -163,12 +169,17 @@ export const constructBalanceModelTx = async (
   txFields?: BalanceModelTransactionFields
 ): Promise<ConstructedTransactionResponse> => {
   // TODO: cache block height somewhere.
-  const { BlockHeight } = await getAppState();
+  if (!txFields?.Nonce) {
+    const { BlockHeight } = await getAppState();
+    if (!txFields) {
+      txFields = {};
+    }
+    txFields.Nonce = {
+      ExpirationBlockHeight: BlockHeight + 275,
+    };
+  }
 
-  const txnWithFee = getTxWithFeeNanos(pubKey, metadata, {
-    ...txFields,
-    BlockHeight,
-  });
+  const txnWithFee = getTxWithFeeNanos(pubKey, metadata, txFields);
 
   const txnBytes = txnWithFee.toBytes();
   const TransactionHex = bytesToHex(txnBytes);
