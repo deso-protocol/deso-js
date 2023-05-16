@@ -2,7 +2,7 @@ import {
   RequestOptions,
   SubmitTransactionResponse,
   TransactionFee,
-} from './backend-types';
+} from './backend-types/index.js';
 export interface OptionalFeesAndExtraData {
   MinFeeRateNanosPerKB?: number;
   TransactionFees?: TransactionFee[] | null;

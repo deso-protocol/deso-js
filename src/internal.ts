@@ -7,8 +7,13 @@ import {
   SubmitTransactionResponse,
   TransactionFee,
   TransactionType,
-} from './backend-types';
-import { api, cleanURL, getAppState, PartialWithRequiredFields } from './data';
+} from './backend-types/index.js';
+import {
+  PartialWithRequiredFields,
+  api,
+  cleanURL,
+  getAppState,
+} from './data/index.js';
 import {
   Transaction,
   TransactionExtraData,
@@ -27,7 +32,7 @@ import {
   identity,
   publicKeyToBase58Check,
   sha256X2,
-} from './identity';
+} from './identity/index.js';
 ////////////////////////////////////////////////////////////////////////////////
 // This is all the stuff we don't export to consumers of the library. If
 // anything here needs to be exported, it should be moved to another file.

@@ -4,14 +4,22 @@
     "browser": true,
     "es2021": true
   },
+  "plugins": ["@typescript-eslint", "import"],
   "extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended"],
   "parser": "@typescript-eslint/parser",
-  "plugins": ["@typescript-eslint"],
   "overrides": [
     {
       "files": ["*.ts"],
       "rules": {
-        "@typescript-eslint/no-empty-function": "off"
+        "@typescript-eslint/no-empty-function": "off",
+        "import/extensions": [
+          "error",
+          "ignorePackages",
+          {
+            "js": "always",
+            "ts": "never"
+          }
+        ]
       }
     }
   ],
@@ -19,5 +27,12 @@
     "ecmaVersion": "latest",
     "sourceType": "module",
     "project": "./tsconfig.json"
+  },
+  "settings": {
+    "import/resolver": {
+      "node": {
+        "extensions": [".js", ".ts"]
+      }
+    }
   }
 }

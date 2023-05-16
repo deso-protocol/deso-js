@@ -1,4 +1,5 @@
 import { ec } from 'elliptic';
+import { PartialWithRequiredFields } from '../data/index.js';
 import {
   DAOCoinLimitOrderSimulatedExecutionResult,
   DeSoNonce,
@@ -6,8 +7,7 @@ import {
   SubmitTransactionResponse,
   TransactionFee,
   TransactionSpendingLimitResponse,
-} from './deso-types';
-import { PartialWithRequiredFields } from '../data';
+} from './deso-types.js';
 
 export interface GetApproveResponse {
   id?: string;

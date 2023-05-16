@@ -5,16 +5,16 @@ import {
   ConstructedTransactionResponse,
   RequestOptions,
   TxRequestWithOptionalFeesAndExtraData,
-} from '../backend-types';
-import { PartialWithRequiredFields } from '../data';
+} from '../backend-types/index.js';
+import { PartialWithRequiredFields } from '../data/index.js';
 import {
-  bs58PublicKeyToCompressedBytes,
-  encodeUTF8ToBytes,
   TransactionExtraDataKV,
   TransactionMetadataAuthorizeDerivedKey,
-} from '../identity';
-import { constructBalanceModelTx, handleSignAndSubmit } from '../internal';
-import { ConstructedAndSubmittedTx } from '../types';
+  bs58PublicKeyToCompressedBytes,
+  encodeUTF8ToBytes,
+} from '../identity/index.js';
+import { constructBalanceModelTx, handleSignAndSubmit } from '../internal.js';
+import { ConstructedAndSubmittedTx } from '../types.js';
 /**
  * https://docs.deso.org/deso-backend/construct-transactions/derived-keys-transaction-api#authorize-derived-key
  */
