@@ -944,13 +944,23 @@ export class Identity<T extends StorageProvider> {
    * identity.setActiveUser(someLoggedInPublicKey);
    * ```
    */
-  async setActiveUser(publicKey: string) {
+  setActiveUser(publicKey: string) {
     this.#setActiveUser(publicKey);
-    const state = await this.#getState();
-    this.#subscriber?.({
-      event: NOTIFICATION_EVENTS.CHANGE_ACTIVE_USER,
-      ...state,
-    });
+    const state = this.#getState();
+
+    if (typeof (state as Promise<IdentityState>).then === 'function') {
+      return (state as Promise<IdentityState>).then((state) => {
+        this.#subscriber?.({
+          event: NOTIFICATION_EVENTS.CHANGE_ACTIVE_USER,
+          ...state,
+        });
+      });
+    } else {
+      this.#subscriber?.({
+        event: NOTIFICATION_EVENTS.CHANGE_ACTIVE_USER,
+        ...(state as IdentityState),
+      });
+    }
   }
 
   /**
