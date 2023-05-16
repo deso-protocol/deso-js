@@ -8,7 +8,7 @@ import {
   TransactionFee,
   TransactionType,
 } from './backend-types';
-import { api, cleanURL, getAppState } from './data';
+import { api, cleanURL, getAppState, PartialWithRequiredFields } from './data';
 import {
   Transaction,
   TransactionExtraData,
@@ -93,7 +93,7 @@ export type BalanceModelTransactionFields = {
   ConsensusExtraDataKVs?: TransactionExtraDataKV[];
   MinFeeRateNanosPerKB?: number;
   TransactionFees?: TransactionFee[] | null;
-  Nonce?: DeSoNonce;
+  Nonce?: PartialWithRequiredFields<DeSoNonce, 'ExpirationBlockHeight'>;
 };
 
 export const convertExtraData = (
@@ -113,25 +113,25 @@ export const convertExtraData = (
   return realExtraData;
 };
 
+const makeTransactionNonce = (
+  desoNonce:
+    | PartialWithRequiredFields<DeSoNonce, 'ExpirationBlockHeight'>
+    | undefined
+): TransactionNonce => {
+  const nonce = new TransactionNonce();
+  nonce.expirationBlockHeight =
+    desoNonce?.ExpirationBlockHeight || Number.MAX_SAFE_INTEGER;
+  // TODO: cache partial IDs so we don't generate the same one twice.
+  nonce.partialId = desoNonce?.PartialID || Math.floor(Math.random() * 1e18);
+  return nonce;
+};
+
 export const getTxWithFeeNanos = (
   pubKey: string,
   metadata: TransactionMetadataRecord,
   txFields?: BalanceModelTransactionFields
 ) => {
-  const nonce = new TransactionNonce();
-  if (txFields?.Nonce) {
-    nonce.expirationBlockHeight = txFields.Nonce.ExpirationBlockHeight;
-    nonce.partialId = txFields.Nonce.PartialID;
-  } else {
-    // NOTE: typically we would use the block height returned from a node to build
-    // a transaction, but just for calculating fees we can use a pseudo value, in
-    // this case we just use the max safe integer.
-    // TODO: put in real block height buffer.
-    nonce.expirationBlockHeight = Number.MAX_SAFE_INTEGER;
-    // TODO: cache used partial IDs? Replace with better logic
-    // for generating random uint64
-    nonce.partialId = Math.floor(Math.random() * 1e18);
-  }
+  const nonce = makeTransactionNonce(txFields?.Nonce);
 
   const transactionFeeOutputs = (txFields?.TransactionFees || []).map((tf) => {
     const newOutput = new TransactionOutput();
@@ -175,7 +175,6 @@ export const constructBalanceModelTx = async (
     }
     txFields.Nonce = {
       ExpirationBlockHeight: BlockHeight + 275,
-      PartialID: Math.floor(Math.random() * 1e18),
     };
   }
 
