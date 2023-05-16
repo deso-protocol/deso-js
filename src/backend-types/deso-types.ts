@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/ban-types */
-import { type TransactionType } from '../backend-types/deso-types-custom';
+import { type TransactionType } from '../backend-types/deso-types-custom.js';
 
 // this file was automatically generated, DO NOT EDIT
 export type DB = any;

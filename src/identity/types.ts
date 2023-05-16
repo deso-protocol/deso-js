@@ -4,7 +4,7 @@ import {
   AssociationLimitMapItem,
   TransactionSpendingLimitResponse,
   TransactionType,
-} from '../backend-types';
+} from '../backend-types/index.js';
 export type Network = 'mainnet' | 'testnet';
 
 export interface IdentityResponse {

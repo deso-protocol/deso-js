@@ -1,5 +1,5 @@
-import { TransactionSpendingLimitResponse } from '../backend-types';
-import { TransactionSpendingLimitResponseOptions } from './types';
+import { TransactionSpendingLimitResponse } from '../backend-types/index.js';
+import { TransactionSpendingLimitResponseOptions } from './types.js';
 
 export function compareTransactionSpendingLimits(
   expectedPermissions: TransactionSpendingLimitResponseOptions,

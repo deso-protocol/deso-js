@@ -12,7 +12,7 @@ import {
   type NewMessageEntryResponse,
   type SubmitTransactionResponse,
   type TransactionSpendingLimitResponse,
-} from '../backend-types';
+} from '../backend-types/index.js';
 import {
   DEFAULT_IDENTITY_URI,
   DEFAULT_NODE_URI,
@@ -20,7 +20,7 @@ import {
   DESO_NETWORK_TO_ETH_NETWORK,
   IDENTITY_SERVICE_VALUE,
   LOCAL_STORAGE_KEYS,
-} from './constants';
+} from './constants.js';
 import {
   bs58PublicKeyToBytes,
   decrypt,
@@ -31,13 +31,13 @@ import {
   keygen,
   publicKeyToBase58Check,
   signTx,
-} from './crypto-utils';
-import { ERROR_TYPES } from './error-types';
+} from './crypto-utils.js';
+import { ERROR_TYPES } from './error-types.js';
 import {
   buildTransactionSpendingLimitResponse,
   compareTransactionSpendingLimits,
-} from './permissions-utils';
-import { parseQueryParams } from './query-param-utils';
+} from './permissions-utils.js';
+import { parseQueryParams } from './query-param-utils.js';
 import {
   EtherscanTransaction,
   IdentityResponse,
@@ -57,7 +57,7 @@ import {
   type SubscriberNotification,
   type TransactionSpendingLimitResponseOptions,
   type jwtAlgorithm,
-} from './types';
+} from './types.js';
 
 export class Identity<T extends StorageProvider> {
   /**

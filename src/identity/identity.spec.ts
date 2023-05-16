@@ -1,32 +1,29 @@
 import { utils as ecUtils, getPublicKey } from '@noble/secp256k1';
 import { verify } from 'jsonwebtoken';
 import KeyEncoder from 'key-encoder';
-import { ChatType, NewMessageEntryResponse } from '../backend-types';
-import { getAPIFake, getWindowFake } from '../test-utils';
-import { APIError } from './api';
-import { DEFAULT_IDENTITY_URI, LOCAL_STORAGE_KEYS } from './constants';
+import { ChatType, NewMessageEntryResponse } from '../backend-types/index.js';
+import { getAPIFake, getWindowFake } from '../test-utils.js';
+import { APIError } from './api.js';
+import { DEFAULT_IDENTITY_URI, LOCAL_STORAGE_KEYS } from './constants.js';
 import {
   bs58PublicKeyToCompressedBytes,
   keygen,
   publicKeyToBase58Check,
-} from './crypto-utils';
-import { ERROR_TYPES } from './error-types';
-import { Identity } from './identity';
+} from './crypto-utils.js';
+import { ERROR_TYPES } from './error-types.js';
+import { Identity } from './identity.js';
 import {
   Transaction,
   TransactionExtraData,
   TransactionMetadataBasicTransfer,
   TransactionNonce,
-} from './transaction-transcoders';
-import { APIProvider } from './types';
+} from './transaction-transcoders.js';
+import { APIProvider } from './types.js';
 
 function getPemEncodePublicKey(privateKey: Uint8Array): string {
   const publicKey = getPublicKey(privateKey, true);
-  return new KeyEncoder('secp256k1').encodePublic(
-    ecUtils.bytesToHex(publicKey),
-    'raw',
-    'pem'
-  );
+  const keyEncoder = new KeyEncoder('secp256k1');
+  return keyEncoder.encodePublic(ecUtils.bytesToHex(publicKey), 'raw', 'pem');
 }
 
 describe('identity', () => {

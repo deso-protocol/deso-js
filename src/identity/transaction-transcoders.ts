@@ -3,9 +3,9 @@ import {
   DeSoOutput,
   MsgDeSoTxn,
   TransactionType,
-} from '../backend-types';
-import { bufToUvarint64, publicKeyToBase58Check } from './crypto-utils';
-import { decodeBytesToUTF8 } from './transcoder-utils';
+} from '../backend-types/index.js';
+import { bufToUvarint64, publicKeyToBase58Check } from './crypto-utils.js';
+import { decodeBytesToUTF8 } from './transcoder-utils.js';
 import {
   ArrayOf,
   BinaryRecord,
@@ -13,7 +13,6 @@ import {
   ChunkBuffer,
   Enum,
   FixedBuffer,
-  instanceToType,
   Optional,
   Record,
   TransactionNonceTranscoder,
@@ -21,7 +20,8 @@ import {
   Uint8,
   Uvarint64,
   VarBuffer,
-} from './transcoders';
+  instanceToType,
+} from './transcoders.js';
 export class TransactionInput extends BinaryRecord {
   @Transcode(FixedBuffer(32))
   id: Uint8Array = new Uint8Array(0);

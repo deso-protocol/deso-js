@@ -1,4 +1,4 @@
-import { APIProvider } from './identity';
+import { APIProvider } from './identity/index.js';
 
 class LocalStorageFake implements Storage {
   db: Record<string, string> = {};

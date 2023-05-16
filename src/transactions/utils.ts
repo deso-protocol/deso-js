@@ -1,4 +1,7 @@
-import { TransactionSpendingLimitResponseOptions, identity } from '../identity';
+import {
+  TransactionSpendingLimitResponseOptions,
+  identity,
+} from '../identity/index.js';
 
 export async function guardTxPermission(
   spendingLimitOptions: TransactionSpendingLimitResponseOptions

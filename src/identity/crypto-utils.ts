@@ -7,9 +7,9 @@ import {
   getSharedSecret as nobleGetSharedSecret,
 } from '@noble/secp256k1';
 import * as bs58 from 'bs58';
-import { PUBLIC_KEY_PREFIXES } from './constants';
-import { TransactionV0 } from './transaction-transcoders';
-import { KeyPair, Network, jwtAlgorithm } from './types';
+import { PUBLIC_KEY_PREFIXES } from './constants.js';
+import { TransactionV0 } from './transaction-transcoders.js';
+import { KeyPair, Network, jwtAlgorithm } from './types.js';
 
 // Browser friendly version of node's Buffer.concat.
 export function concatUint8Arrays(arrays: Uint8Array[], length?: number) {

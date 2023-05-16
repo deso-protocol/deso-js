@@ -7,8 +7,8 @@ import {
   DeleteAssociationRequest,
   RequestOptions,
   TxRequestWithOptionalFeesAndExtraData,
-} from '../backend-types';
-import { PartialWithRequiredFields } from '../data';
+} from '../backend-types/index.js';
+import { PartialWithRequiredFields } from '../data/index.js';
 import {
   TransactionMetadataCreatePostAssociation,
   TransactionMetadataCreateUserAssociation,
@@ -16,15 +16,15 @@ import {
   TransactionMetadataDeleteUserAssociation,
   bs58PublicKeyToCompressedBytes,
   encodeUTF8ToBytes,
-} from '../identity';
+} from '../identity/index.js';
 import {
   constructBalanceModelTx,
   getTxWithFeeNanos,
   handleSignAndSubmit,
   sumTransactionFees,
-} from '../internal';
-import { ConstructedAndSubmittedTx, TxRequestOptions } from '../types';
-import { guardTxPermission } from './utils';
+} from '../internal.js';
+import { ConstructedAndSubmittedTx, TxRequestOptions } from '../types.js';
+import { guardTxPermission } from './utils.js';
 
 /**
  * https://docs.deso.org/deso-backend/construct-transactions/associations-transactions-api#create-user-association

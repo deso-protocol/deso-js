@@ -16,8 +16,8 @@ import {
   TxRequestWithOptionalFeesAndExtraData,
   UpdateNFTRequest,
   UpdateNFTResponse,
-} from '../backend-types';
-import { PartialWithRequiredFields } from '../data';
+} from '../backend-types/index.js';
+import { PartialWithRequiredFields } from '../data/index.js';
 import {
   TransactionExtraDataKV,
   TransactionMetadataAcceptNFTBid,
@@ -31,15 +31,15 @@ import {
   concatUint8Arrays,
   encodeUTF8ToBytes,
   uvarint64ToBuf,
-} from '../identity';
+} from '../identity/index.js';
 import {
   constructBalanceModelTx,
   getTxWithFeeNanos,
   handleSignAndSubmit,
   sumTransactionFees,
-} from '../internal';
-import { ConstructedAndSubmittedTx, TxRequestOptions } from '../types';
-import { guardTxPermission } from './utils';
+} from '../internal.js';
+import { ConstructedAndSubmittedTx, TxRequestOptions } from '../types.js';
+import { guardTxPermission } from './utils.js';
 /**
  * https://docs.deso.org/deso-backend/construct-transactions/nft-transactions-api#create-nft
  */

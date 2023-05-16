@@ -10,19 +10,19 @@ import {
   TransferDAOCoinRequest,
   TransferDAOCoinResponse,
   TxRequestWithOptionalFeesAndExtraData,
-} from '../backend-types';
-import { PartialWithRequiredFields } from '../data';
+} from '../backend-types/index.js';
+import { PartialWithRequiredFields } from '../data/index.js';
 import {
-  bs58PublicKeyToCompressedBytes,
   TransactionMetadataDAOCoin,
   TransactionMetadataTransferDAOCoin,
-} from '../identity';
+  bs58PublicKeyToCompressedBytes,
+} from '../identity/index.js';
 import {
   constructBalanceModelTx,
   handleSignAndSubmit,
   isMaybeDeSoPublicKey,
-} from '../internal';
-import { ConstructedAndSubmittedTx } from '../types';
+} from '../internal.js';
+import { ConstructedAndSubmittedTx } from '../types.js';
 /**
  * https://docs.deso.org/deso-backend/construct-transactions/dao-transactions-api#create-deso-token-dao-coin
  */
