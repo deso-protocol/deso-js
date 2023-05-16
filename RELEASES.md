@@ -1,4 +1,4 @@
-## How to publish a new production ready version of a library
+## How to publish a new production ready version
 
 1. Click the "Releases" link in the right rail of the repo on github (should take you here https://github.com/deso-protocol/deso-js/releases)
 
@@ -22,7 +22,7 @@
 
 NOTE: To track the status of the publish workflow, you can visit the [Actions tab](https://github.com/deso-protocol/deso-js/actions) of the repo. If the action completes without any errors then you should be ready to use the new version published to npm.
 
-## How to publish a new pre-release (beta) version of a library
+## How to publish a new pre-release (beta) version
 
 1. Click the "Releases" link in the right rail of the repo on github (should take you here https://github.com/deso-protocol/deso-js/releases)
 
