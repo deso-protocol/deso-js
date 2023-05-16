@@ -6,7 +6,7 @@ import {
   getPublicKey,
   getSharedSecret as nobleGetSharedSecret,
 } from '@noble/secp256k1';
-import * as bs58 from 'bs58';
+import bs58 from 'bs58';
 import { PUBLIC_KEY_PREFIXES } from './constants.js';
 import { TransactionV0 } from './transaction-transcoders.js';
 import { KeyPair, Network, jwtAlgorithm } from './types.js';
