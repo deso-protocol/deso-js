@@ -7,7 +7,7 @@ support is available.
 ### Installation
 
 ```sh
-npm i deso-protocol-react-native@beta
+npm i deso-protocol-react-native
 ```
 
 There are a few peer dependencies that are required for everything to work smoothly.
