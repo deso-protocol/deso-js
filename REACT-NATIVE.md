@@ -1,7 +1,6 @@
 # deso-protocol-react-native
 
-The support for react native is currently in beta. You will need to run [React
-native](https://reactnative.dev) version `0.71.7` or later to ensure `BigInt`
+You will need to run [React native](https://reactnative.dev) version `0.71.7` or later to ensure `BigInt`
 support is available.
 
 ### Installation
