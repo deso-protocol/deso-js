@@ -970,6 +970,37 @@ describe('identity', () => {
       ).toEqual('tBCKXZpzthFjXpopawpaFNbvKaw55ZFvMt1T2Psh56c7CDH7dRU7fm');
     });
   });
+  describe('setActiveUser', () => {
+    it('sets the active user', () => {
+      const pubKey1 = 'fake-pub-key-1';
+      const pubKey2 = 'fake-pub-key-2';
+      windowFake.localStorage.setItem(
+        LOCAL_STORAGE_KEYS.activePublicKey,
+        pubKey1
+      );
+      windowFake.localStorage.setItem(
+        LOCAL_STORAGE_KEYS.identityUsers,
+        JSON.stringify({
+          [pubKey1]: {
+            publicKey: pubKey1,
+            primaryDerivedKey: {
+              publicKeyBase58Check: pubKey1,
+            },
+          },
+          [pubKey2]: {
+            publicKey: pubKey2,
+            primaryDerivedKey: {
+              publicKeyBase58Check: pubKey2,
+            },
+          },
+        })
+      );
+
+      identity.setActiveUser(pubKey2);
+      const snapshot = identity.snapshot();
+      expect(snapshot.currentUser?.publicKey).toEqual(pubKey2);
+    });
+  });
   describe('.subscribe()', () => {
     it.todo('it notifies the caller of the correct events');
   });

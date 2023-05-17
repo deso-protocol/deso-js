@@ -944,23 +944,31 @@ export class Identity<T extends StorageProvider> {
    * identity.setActiveUser(someLoggedInPublicKey);
    * ```
    */
-  setActiveUser(publicKey: string) {
-    this.#setActiveUser(publicKey);
-    const state = this.#getState();
+  setActiveUser(publicKey: string): T extends Storage ? void : Promise<void> {
+    const maybePromise = this.#setActiveUser(publicKey);
 
-    if (typeof (state as Promise<IdentityState>).then === 'function') {
-      return (state as Promise<IdentityState>).then((state) => {
-        this.#subscriber?.({
-          event: NOTIFICATION_EVENTS.CHANGE_ACTIVE_USER,
-          ...state,
+    if (typeof maybePromise?.then === 'function') {
+      // we're in async storage mode
+      return maybePromise.then(() => {
+        return (this.#getState() as Promise<IdentityState>).then((state) => {
+          this.refreshDerivedKeyPermissions();
+          this.#subscriber?.({
+            event: NOTIFICATION_EVENTS.CHANGE_ACTIVE_USER,
+            ...state,
+          });
         });
-      });
-    } else {
-      this.#subscriber?.({
-        event: NOTIFICATION_EVENTS.CHANGE_ACTIVE_USER,
-        ...(state as IdentityState),
-      });
+      }) as any;
     }
+
+    // sync storage
+    const state = this.#getState() as IdentityState;
+    this.refreshDerivedKeyPermissions();
+    this.#subscriber?.({
+      event: NOTIFICATION_EVENTS.CHANGE_ACTIVE_USER,
+      ...state,
+    });
+
+    return undefined as any;
   }
 
   /**
@@ -1356,24 +1364,40 @@ export class Identity<T extends StorageProvider> {
   /**
    * @private
    */
-  async #setActiveUser(publicKey: string) {
-    const users = await this.#getUsers();
-    if (users?.[publicKey] == null) {
-      throw new Error(
-        `No user found for public key. Known users: ${JSON.stringify(
-          users ?? {}
-        )}`
-      );
-    }
+  #setActiveUser(publicKey: string): T extends Storage ? void : Promise<void> {
+    const users = this.#getUsers();
+    const updateActiveKey = (
+      users: Record<string, StoredUser> | null,
+      newActivePublicKey: string | null
+    ): T extends Storage ? void : Promise<void> => {
+      if (!(newActivePublicKey && users?.[newActivePublicKey])) {
+        throw new Error(
+          `No user found for public key. Stored users: ${JSON.stringify(
+            users ?? {}
+          )}`
+        );
+      }
 
-    if (!this.#storageProvider) {
-      throw new Error('No storage provider available.');
-    }
+      if (!this.#storageProvider) {
+        throw new Error(
+          'No storage provider available. Did you forget to configure a storageProvider?'
+        );
+      }
 
-    this.#storageProvider.setItem(
-      LOCAL_STORAGE_KEYS.activePublicKey,
-      publicKey
-    );
+      return this.#storageProvider.setItem(
+        LOCAL_STORAGE_KEYS.activePublicKey,
+        publicKey
+      ) as any;
+    };
+
+    if (typeof users?.then === 'function') {
+      return users.then((users) => updateActiveKey(users, publicKey)) as any;
+    } else {
+      return updateActiveKey(
+        users as Record<string, StoredUser> | null,
+        publicKey
+      ) as any;
+    }
   }
 
   /**
@@ -1688,7 +1712,7 @@ export class Identity<T extends StorageProvider> {
       users?.[payload.publicKeyBase58Check] != null &&
       payload.publicKeyBase58Check !== activePublicKey
     ) {
-      this.#setActiveUser(payload.publicKeyBase58Check);
+      await this.#setActiveUser(payload.publicKeyBase58Check);
       // if the logged in user changes, we try to refresh the derived key permissions in the background
       // and just return the payload immediately.
       this.refreshDerivedKeyPermissions();
