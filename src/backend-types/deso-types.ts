@@ -3189,10 +3189,6 @@ export interface APITransactionInfoRequest {
   LastTransactionIDBase58Check: string;
   LastPublicKeyTransactionIndex: number;
   Limit: number;
-  FilterByTxnType?: string;
-  FilterByTransactorPublicKeyBase58Check?: string;
-  StartTime?: string;
-  EndTime?: string;
 }
 
 // struct2ts:types/generated/types.APITransactionInfoResponse
