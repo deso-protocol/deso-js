@@ -1,6 +1,6 @@
 # deso-protocol-react-native
 
-You will need to run [React native](https://reactnative.dev) version `0.71.7` or later to ensure `BigInt`
+You will need to run [React Native](https://reactnative.dev) version `0.71.7` or later to ensure `BigInt`
 support is available.
 
 ### Installation
