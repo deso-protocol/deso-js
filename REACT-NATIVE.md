@@ -15,7 +15,7 @@ There are a few peer dependencies that are required for everything to work smoot
 npm i react-native-get-random-values react-native-webview react-native-webview-crypto text-encoding @react-native-async-storage/async-storage @ethersproject/shims
 ```
 
-NOTE: you may need to install native modules for the target platform. For iOS you can do this via cocoapods:
+Install native modules for the target platform. For iOS you can do this via cocoapods:
 
 ```sh
 cd ios && pod install && cd -
