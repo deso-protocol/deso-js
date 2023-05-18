@@ -210,7 +210,10 @@ export class Identity<T extends StorageProvider> {
   #getActivePublicKey(): T extends Storage
     ? string | null
     : Promise<string | null> {
-    const activePublicKey = this.#storageProvider?.getItem(
+    if (!this.#storageProvider) {
+      throw new Error('No storage provider available.');
+    }
+    const activePublicKey = this.#storageProvider.getItem(
       LOCAL_STORAGE_KEYS.activePublicKey
     );
 
@@ -227,7 +230,10 @@ export class Identity<T extends StorageProvider> {
   #getUsers(): T extends Storage
     ? Record<string, StoredUser> | null
     : Promise<Record<string, StoredUser> | null> {
-    const storedUsers = this.#storageProvider?.getItem(
+    if (!this.#storageProvider) {
+      throw new Error('No storage provider available.');
+    }
+    const storedUsers = this.#storageProvider.getItem(
       LOCAL_STORAGE_KEYS.identityUsers
     );
 
@@ -349,12 +355,6 @@ export class Identity<T extends StorageProvider> {
       this.#storageProvider = storageProvider as T;
     }
 
-    if (!this.#storageProvider) {
-      throw new Error(
-        'Could not find a storage provider. Please provide a storage provider or use a browser that supports localStorage.'
-      );
-    }
-
     if (!this.#didConfigure) {
       this.#defaultTransactionSpendingLimit =
         buildTransactionSpendingLimitResponse(spendingLimitOptions);
@@ -459,7 +459,7 @@ export class Identity<T extends StorageProvider> {
       derivedPublicKey = publicKeyToBase58Check(keys.public, {
         network: this.#network,
       });
-      await this.#storageProvider?.setItem(
+      await this.#storageProvider.setItem(
         LOCAL_STORAGE_KEYS.loginKeyPair,
         JSON.stringify({
           publicKey: derivedPublicKey,
