@@ -42,6 +42,7 @@ import {
   EtherscanTransaction,
   IdentityResponse,
   IdentityState,
+  LoginOptions,
   NOTIFICATION_EVENTS,
   StorageProvider,
   type APIProvider,
@@ -51,7 +52,6 @@ import {
   type IdentityConfiguration,
   type IdentityDerivePayload,
   type IdentityLoginPayload,
-  type LoginOptions,
   type Network,
   type StoredUser,
   type SubscriberNotification,
@@ -359,7 +359,14 @@ export class Identity<T extends StorageProvider> {
       this.#defaultTransactionSpendingLimit =
         buildTransactionSpendingLimitResponse(spendingLimitOptions);
 
-      this.refreshDerivedKeyPermissions();
+      if (this.#storageProvider) {
+        // If we don't have a storage provider it means we are likely running in
+        // a node environment (SSR, etc). In this case we will skip
+        // refreshDerivedKeyPermissions since it relies on the storage provider.
+        // Once the code executes in a UI environment, the storage provider
+        // should be available and we can refresh the derived key permissions.
+        this.refreshDerivedKeyPermissions();
+      }
     }
 
     this.#didConfigure = true;
