@@ -83,6 +83,10 @@ configure({
 
 ## Usage
 
+See our [react examples repo](https://github.com/deso-protocol/deso-examples-react)
+
+## API
+
 ### Identity: (logging in and out, creating new accounts, etc)
 
 ```ts
