@@ -1,4 +1,4 @@
-# deso-protocol-react-native
+# React Native
 
 You will need to run [React Native](https://reactnative.dev) version `0.71.7` or later to ensure `BigInt`
 support is available.
@@ -6,7 +6,7 @@ support is available.
 ### Installation
 
 ```sh
-npm i deso-protocol-react-native
+npm i deso-protocol react-deso-protocol
 ```
 
 There are a few peer dependencies that are required for everything to work smoothly.
@@ -56,7 +56,7 @@ If you are using [Expo](https://expo.dev) it is very easy to set things up.
 
 ```ts
 // App.tsx
-import { configure } from 'deso-protocol-react-native';
+import { configure } from 'deso-protocol';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
@@ -85,4 +85,4 @@ configure({
 });
 ```
 
-Once everything is shimmed and configured properly, the [usage is the same as the web library](https://github.com/deso-protocol/deso-js/tree/main#usage), the major difference being you will import from `deso-protocol-react-native`.
+Once everything is shimmed and configured properly, the [usage is the same as the web library](https://github.com/deso-protocol/deso-js/tree/main#usage).

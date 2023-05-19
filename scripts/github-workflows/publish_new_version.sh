@@ -37,23 +37,6 @@ fi
 
 cd -
 
-# Now publish the react-native package.
-npm run package:react-native
-cd ./lib
-
-# If the version is a pre-release (beta), publish with the --tag flag.
-if [[ $NPM_PRERELEASE_TAG == beta ]]; then
-  echo "Publishing pre-release version $NEW_VERSION"
-  npm publish --tag $NPM_PRERELEASE_TAG --access public
-# if the parsed prelease tag is a number, it's just a regular release.
-elif [[ $NPM_PRERELEASE_TAG =~ ^[0-9]+$ ]]; then
-  echo "Publishing latest stable version $NEW_VERSION"
-  npm publish --access public
-else
-  echo "Invalid version format for $NEW_VERSION. Please use the following format: v<version-number> or v<version-number>-beta.<pre-release-version>"
-  exit 1
-fi
-
 RELEASE_VERSION=$(grep version package.json | awk -F \" '{print $4}')
 echo "::notice::New version successfully released: $RELEASE_VERSION"
 cd -
