@@ -19,8 +19,8 @@ export async function guardTxPermission(
   };
 
   if (typeof hasPermissions === 'boolean') {
-    guard(hasPermissions);
+    return guard(hasPermissions);
   } else {
-    (hasPermissions as Promise<boolean>).then(guard);
+    return (hasPermissions as Promise<boolean>).then(guard);
   }
 }
