@@ -147,6 +147,11 @@ export class Identity<T extends StorageProvider> {
   #storageProvider: T;
 
   /**
+   * @private
+   */
+  #showSkip = false;
+
+  /**
    * The current internal state of identity. This is a combination of the
    * current user and all other users stored in local storage.
    * @private
@@ -342,6 +347,7 @@ export class Identity<T extends StorageProvider> {
     appName = '',
     storageProvider,
     identityPresenter,
+    showSkip,
   }: IdentityConfiguration) {
     this.#identityURI = identityURI;
     this.#network = network;
@@ -350,6 +356,7 @@ export class Identity<T extends StorageProvider> {
     this.#jwtAlgorithm = jwtAlgorithm;
     this.#appName = appName;
     this.#identityPresenter = identityPresenter;
+    this.#showSkip = !!showSkip;
 
     if (storageProvider) {
       this.#storageProvider = storageProvider as T;
@@ -484,11 +491,13 @@ export class Identity<T extends StorageProvider> {
         derive: boolean;
         getFreeDeso?: boolean;
         expirationDays: number;
+        showSkip?: boolean;
       } = {
         derive: true,
         derivedPublicKey,
         transactionSpendingLimitResponse: this.#defaultTransactionSpendingLimit,
         expirationDays: 3650, // 10 years. these login keys should essentially never expire.
+        showSkip: this.#showSkip,
       };
 
       if (getFreeDeso) {
@@ -881,6 +890,7 @@ export class Identity<T extends StorageProvider> {
         this.#launchIdentity('get-deso', {
           publicKey: activePublicKey,
           getFreeDeso: true,
+          showSkip: this.#showSkip,
         });
       };
 
@@ -922,6 +932,7 @@ export class Identity<T extends StorageProvider> {
 
         this.#launchIdentity('verify-phone-number', {
           public_key: activePublicKey,
+          showSkip: this.#showSkip,
         });
       };
 
@@ -1176,6 +1187,7 @@ export class Identity<T extends StorageProvider> {
         transactionSpendingLimitResponse: buildTransactionSpendingLimitResponse(
           transactionSpendingLimitResponse
         ),
+        showSkip: this.#showSkip,
       };
 
       this.#launchIdentity('derive', params);

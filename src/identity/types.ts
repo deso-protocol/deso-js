@@ -136,6 +136,8 @@ export interface IdentityConfiguration {
    * ```
    */
   identityPresenter?: (url: string) => void;
+
+  showSkip?: boolean;
 }
 
 export interface APIProvider {
