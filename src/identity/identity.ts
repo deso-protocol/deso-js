@@ -158,54 +158,50 @@ export class Identity<T extends StorageProvider> {
    */
   #getState(): T extends Storage ? IdentityState : Promise<IdentityState> {
     const users = this.#getUsers();
-
-    if (typeof users?.then === 'function') {
-      // we're in async mode
-      return Promise.all([
-        users,
-        this.#getActivePublicKey(),
-        this.#getCurrentUser(),
-      ]).then(([allStoredUsers, activePublicKey, currentUser]) => ({
-        currentUser: currentUser && {
-          ...currentUser,
-          publicKey: currentUser.primaryDerivedKey.publicKeyBase58Check,
-        },
-        alternateUsers:
-          allStoredUsers &&
-          Object.keys(allStoredUsers).reduce<Record<string, StoredUser>>(
-            (res, publicKey) => {
-              if (publicKey !== activePublicKey) {
-                res[publicKey] = allStoredUsers[publicKey];
-              }
-              return res;
-            },
-            {}
-          ),
-      })) as any;
-    } else {
-      // we're in sync mode
-      const activePublicKey = this.#getActivePublicKey() as string | null;
-      const currentUser = this.#getCurrentUser() as StoredUser | null;
+    const constructState = (
+      users: Record<string, StoredUser> | null,
+      activePublicKey: string | null
+    ) => {
+      const currentUser =
+        activePublicKey && users && (users[activePublicKey] ?? null);
+      const alternateUsers =
+        users &&
+        Object.keys(users).reduce<Record<string, StoredUser>>(
+          (res, publicKey) => {
+            if (publicKey !== activePublicKey) {
+              res[publicKey] = (users as Record<string, StoredUser>)?.[
+                publicKey
+              ];
+            }
+            return res;
+          },
+          {}
+        );
 
       return {
         currentUser: currentUser && {
           ...currentUser,
           publicKey: currentUser.primaryDerivedKey.publicKeyBase58Check,
         },
-        alternateUsers:
-          users &&
-          Object.keys(users).reduce<Record<string, StoredUser>>(
-            (res, publicKey) => {
-              if (publicKey !== activePublicKey) {
-                res[publicKey] = (users as Record<string, StoredUser>)?.[
-                  publicKey
-                ];
-              }
-              return res;
-            },
-            {}
-          ),
-      } as any;
+        alternateUsers: Object.keys(alternateUsers ?? {})?.length
+          ? alternateUsers
+          : null,
+      };
+    };
+
+    if (typeof users?.then === 'function') {
+      // we're in async mode
+      return Promise.all([users, this.#getActivePublicKey()]).then((args) =>
+        constructState(...args)
+      ) as T extends Storage ? IdentityState : Promise<IdentityState>;
+    } else {
+      // we're in sync mode
+      const activePublicKey = this.#getActivePublicKey() as string | null;
+
+      return constructState(
+        users as Record<string, StoredUser> | null,
+        activePublicKey
+      ) as T extends Storage ? IdentityState : Promise<IdentityState>;
     }
   }
 
@@ -1600,7 +1596,8 @@ export class Identity<T extends StorageProvider> {
       await this.#storageProvider.removeItem(
         LOCAL_STORAGE_KEYS.activePublicKey
       );
-      this.#purgeUserDataForPublicKey(activePublicKey);
+
+      await this.#purgeUserDataForPublicKey(activePublicKey);
 
       const state = await this.#getState();
       this.#subscriber?.({
