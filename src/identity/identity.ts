@@ -1555,7 +1555,6 @@ export class Identity<T extends StorageProvider> {
               this.#showSkip &&
               e.message.indexOf('RuleErrorInsufficientBalance') >= 0;
             if (showSkipAndNoMoney && currentUser != null) {
-              console.log(currentUser);
               await this.#updateUser(
                 currentUser.publicKey ||
                   currentUser.primaryDerivedKey?.publicKeyBase58Check,
