@@ -169,6 +169,7 @@ export interface LoginOptions {
 export type PrimaryDerivedKeyInfo = IdentityDerivePayload & {
   transactionSpendingLimits: TransactionSpendingLimitResponse;
   IsValid?: boolean;
+  derivedKeyRegistered?: boolean;
 };
 
 export type StoredUser = {

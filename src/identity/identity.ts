@@ -1009,7 +1009,10 @@ export class Identity<T extends StorageProvider> {
   async refreshDerivedKeyPermissions() {
     const { primaryDerivedKey } = (await this.#getCurrentUser()) ?? {};
 
-    if (primaryDerivedKey == null) {
+    if (
+      primaryDerivedKey == null ||
+      primaryDerivedKey.derivedKeyRegistered === false
+    ) {
       // if we don't have a logged in user, we just bail
       return;
     }
@@ -1020,7 +1023,6 @@ export class Identity<T extends StorageProvider> {
           primaryDerivedKey.publicKeyBase58Check
         }/${primaryDerivedKey.derivedPublicKeyBase58Check}`
       );
-
       await this.#updateUser(primaryDerivedKey.publicKeyBase58Check, {
         primaryDerivedKey: {
           ...primaryDerivedKey,
@@ -1081,7 +1083,10 @@ export class Identity<T extends StorageProvider> {
       const { primaryDerivedKey } = activeUser ?? {};
 
       // If the key is expired, unauthorized, or has no money we can't do anything with it
-      if (!primaryDerivedKey?.IsValid) {
+      if (
+        !primaryDerivedKey?.IsValid ||
+        primaryDerivedKey?.derivedKeyRegistered === false
+      ) {
         return false as any;
       }
 
@@ -1561,7 +1566,18 @@ export class Identity<T extends StorageProvider> {
             // in local storage before attempting to authorize, so we remove
             // their data.
             const currentUser = await this.#getCurrentUser();
-            if (
+            const showSkipAndNoMoney =
+              this.#showSkip &&
+              e.message.indexOf('RuleErrorInsufficientBalance') >= 0;
+            if (showSkipAndNoMoney && currentUser != null) {
+              await this.#updateUser(currentUser.publicKey, {
+                primaryDerivedKey: {
+                  ...currentUser.primaryDerivedKey,
+                  ...payload,
+                  derivedKeyRegistered: false,
+                },
+              });
+            } else if (
               this.#pendingWindowRequest?.event ===
                 NOTIFICATION_EVENTS.LOGIN_START &&
               currentUser != null
@@ -1739,7 +1755,16 @@ export class Identity<T extends StorageProvider> {
 
       return await this.#authorizePrimaryDerivedKey(
         payload.publicKeyBase58Check
-      ).then(() => payload);
+      ).then(async () => {
+        const { primaryDerivedKey } = (await this.#getCurrentUser()) ?? {};
+        await this.#updateUser(payload.publicKeyBase58Check, {
+          primaryDerivedKey: {
+            ...primaryDerivedKey,
+            derivedKeyRegistered: true,
+          },
+        });
+        return payload;
+      });
     }
 
     const [users, activePublicKey] = await Promise.all([
@@ -1763,15 +1788,29 @@ export class Identity<T extends StorageProvider> {
     } else if (maybeLoginKeyPair) {
       const { seedHex } = JSON.parse(maybeLoginKeyPair);
       await this.#updateUser(payload.publicKeyBase58Check, {
-        primaryDerivedKey: { ...payload, derivedSeedHex: seedHex },
+        primaryDerivedKey: {
+          ...primaryDerivedKey,
+          ...payload,
+          derivedSeedHex: seedHex,
+        },
       });
 
       return await this.#authorizePrimaryDerivedKey(
         payload.publicKeyBase58Check
-      ).then(() => ({
-        ...payload,
-        publicKeyAdded: payload.publicKeyBase58Check,
-      }));
+      ).then(async () => {
+        const { primaryDerivedKey } = (await this.#getCurrentUser()) ?? {};
+        await this.#updateUser(payload.publicKeyBase58Check, {
+          primaryDerivedKey: {
+            ...primaryDerivedKey,
+            derivedSeedHex: seedHex,
+            derivedKeyRegistered: true,
+          },
+        });
+        return {
+          ...payload,
+          publicKeyAdded: payload.publicKeyBase58Check,
+        };
+      });
     }
 
     // For all other derive flows, we just return the payload directly.
@@ -1792,7 +1831,10 @@ export class Identity<T extends StorageProvider> {
     if (users) {
       const usersObj = JSON.parse(users);
       if (!usersObj[masterPublicKey]) {
-        usersObj[masterPublicKey] = attributes;
+        usersObj[masterPublicKey] = {
+          publicKey: masterPublicKey,
+          ...attributes,
+        };
       } else {
         usersObj[masterPublicKey] = {
           publicKey: masterPublicKey,
