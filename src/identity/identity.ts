@@ -998,9 +998,10 @@ export class Identity<T extends StorageProvider> {
    * @returns void
    */
   async refreshDerivedKeyPermissions() {
-    const { primaryDerivedKey } = (await this.#getCurrentUser()) ?? {};
+    const { primaryDerivedKey, derivedKeyRegistered } =
+      (await this.#getCurrentUser()) ?? {};
 
-    if (primaryDerivedKey == null) {
+    if (primaryDerivedKey == null || derivedKeyRegistered === false) {
       // if we don't have a logged in user, we just bail
       return;
     }
@@ -1069,7 +1070,11 @@ export class Identity<T extends StorageProvider> {
         activeKey as string
       ];
 
-      const { primaryDerivedKey } = activeUser ?? {};
+      const { primaryDerivedKey, derivedKeyRegistered } = activeUser ?? {};
+
+      if (derivedKeyRegistered === false) {
+        return false as any;
+      }
 
       // If the key is expired, unauthorized, or has no money we can't do anything with it
       if (!primaryDerivedKey?.IsValid) {
@@ -1546,12 +1551,20 @@ export class Identity<T extends StorageProvider> {
             // in local storage before attempting to authorize, so we remove
             // their data.
             const currentUser = await this.#getCurrentUser();
-            if (
+            const showSkipAndNoMoney =
+              this.#showSkip &&
+              e.message.indexOf('RuleErrorInsufficientBalance') >= 0;
+            if (showSkipAndNoMoney && currentUser != null) {
+              await this.#updateUser(currentUser.publicKey, {
+                derivedKeyRegistered: false,
+                primaryDerivedKey: payload,
+              });
+            } else if (
               this.#pendingWindowRequest?.event ===
                 NOTIFICATION_EVENTS.LOGIN_START &&
               currentUser != null
             ) {
-              this.#purgeUserDataForPublicKey(currentUser.publicKey);
+              await this.#purgeUserDataForPublicKey(currentUser.publicKey);
 
               if (!this.#storageProvider) {
                 throw new Error('No storage provider available.');

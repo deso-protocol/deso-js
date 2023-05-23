@@ -174,6 +174,7 @@ export type PrimaryDerivedKeyInfo = IdentityDerivePayload & {
 export type StoredUser = {
   publicKey: string;
   primaryDerivedKey: PrimaryDerivedKeyInfo;
+  derivedKeyRegistered?: boolean;
 };
 
 export interface IdentityUser {
