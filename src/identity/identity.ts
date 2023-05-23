@@ -1557,7 +1557,10 @@ export class Identity<T extends StorageProvider> {
             if (showSkipAndNoMoney && currentUser != null) {
               await this.#updateUser(currentUser.publicKey, {
                 derivedKeyRegistered: false,
-                primaryDerivedKey: payload,
+                primaryDerivedKey: {
+                  ...currentUser.primaryDerivedKey,
+                  payload,
+                },
               });
             } else if (
               this.#pendingWindowRequest?.event ===
