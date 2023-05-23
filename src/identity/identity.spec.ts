@@ -214,8 +214,6 @@ describe('identity', () => {
       );
       expect(loginKeyPair.seedHex.length > 0).toBe(true);
       expect(loginKeyPair.publicKey.length > 0).toBe(true);
-      console.log(derivePayload);
-      console.log(currentUser);
       expect(currentUser).toEqual({
         publicKey: derivePayload.publicKeyBase58Check,
         primaryDerivedKey: {
