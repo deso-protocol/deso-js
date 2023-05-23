@@ -1555,15 +1555,24 @@ export class Identity<T extends StorageProvider> {
               this.#showSkip &&
               e.message.indexOf('RuleErrorInsufficientBalance') >= 0;
             if (showSkipAndNoMoney && currentUser != null) {
-              await this.#updateUser(currentUser.publicKey, {
-                derivedKeyRegistered: false,
-              });
+              console.log(currentUser);
+              await this.#updateUser(
+                currentUser.publicKey ||
+                  currentUser.primaryDerivedKey?.publicKeyBase58Check,
+                {
+                  derivedKeyRegistered: false,
+                  primaryDerivedKey: {
+                    ...currentUser.primaryDerivedKey,
+                    ...payload,
+                  },
+                }
+              );
             } else if (
               this.#pendingWindowRequest?.event ===
                 NOTIFICATION_EVENTS.LOGIN_START &&
               currentUser != null
             ) {
-              await this.#purgeUserDataForPublicKey(currentUser.publicKey);
+              this.#purgeUserDataForPublicKey(currentUser.publicKey);
 
               if (!this.#storageProvider) {
                 throw new Error('No storage provider available.');
@@ -1729,7 +1738,12 @@ export class Identity<T extends StorageProvider> {
 
       return await this.#authorizePrimaryDerivedKey(
         payload.publicKeyBase58Check
-      ).then(() => payload);
+      ).then(async () => {
+        await this.#updateUser(payload.publicKeyBase58Check, {
+          derivedKeyRegistered: true,
+        });
+        return payload;
+      });
     }
 
     const [users, activePublicKey] = await Promise.all([
@@ -1758,10 +1772,15 @@ export class Identity<T extends StorageProvider> {
 
       return await this.#authorizePrimaryDerivedKey(
         payload.publicKeyBase58Check
-      ).then(() => ({
-        ...payload,
-        publicKeyAdded: payload.publicKeyBase58Check,
-      }));
+      ).then(async () => {
+        await this.#updateUser(payload.publicKeyBase58Check, {
+          derivedKeyRegistered: true,
+        });
+        return {
+          ...payload,
+          publicKeyAdded: payload.publicKeyBase58Check,
+        };
+      });
     }
 
     // For all other derive flows, we just return the payload directly.

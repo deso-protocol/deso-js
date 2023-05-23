@@ -226,6 +226,7 @@ describe('identity', () => {
           // the key has its fetched permissions cached
           transactionSpendingLimits: mockTxSpendingLimit,
         },
+        derivedKeyRegistered: true,
       });
       // login keys cleaned up from local storage
       expect(
