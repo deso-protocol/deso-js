@@ -214,6 +214,8 @@ describe('identity', () => {
       );
       expect(loginKeyPair.seedHex.length > 0).toBe(true);
       expect(loginKeyPair.publicKey.length > 0).toBe(true);
+      console.log(derivePayload);
+      console.log(currentUser);
       expect(currentUser).toEqual({
         publicKey: derivePayload.publicKeyBase58Check,
         primaryDerivedKey: {
@@ -225,8 +227,8 @@ describe('identity', () => {
           IsValid: true,
           // the key has its fetched permissions cached
           transactionSpendingLimits: mockTxSpendingLimit,
+          derivedKeyRegistered: true,
         },
-        derivedKeyRegistered: true,
       });
       // login keys cleaned up from local storage
       expect(

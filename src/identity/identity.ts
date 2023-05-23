@@ -998,10 +998,12 @@ export class Identity<T extends StorageProvider> {
    * @returns void
    */
   async refreshDerivedKeyPermissions() {
-    const { primaryDerivedKey, derivedKeyRegistered } =
-      (await this.#getCurrentUser()) ?? {};
+    const { primaryDerivedKey } = (await this.#getCurrentUser()) ?? {};
 
-    if (primaryDerivedKey == null || derivedKeyRegistered === false) {
+    if (
+      primaryDerivedKey == null ||
+      primaryDerivedKey.derivedKeyRegistered === false
+    ) {
       // if we don't have a logged in user, we just bail
       return;
     }
@@ -1012,7 +1014,6 @@ export class Identity<T extends StorageProvider> {
           primaryDerivedKey.publicKeyBase58Check
         }/${primaryDerivedKey.derivedPublicKeyBase58Check}`
       );
-
       await this.#updateUser(primaryDerivedKey.publicKeyBase58Check, {
         primaryDerivedKey: {
           ...primaryDerivedKey,
@@ -1070,14 +1071,13 @@ export class Identity<T extends StorageProvider> {
         activeKey as string
       ];
 
-      const { primaryDerivedKey, derivedKeyRegistered } = activeUser ?? {};
-
-      if (derivedKeyRegistered === false) {
-        return false as any;
-      }
+      const { primaryDerivedKey } = activeUser ?? {};
 
       // If the key is expired, unauthorized, or has no money we can't do anything with it
-      if (!primaryDerivedKey?.IsValid) {
+      if (
+        !primaryDerivedKey?.IsValid ||
+        primaryDerivedKey?.derivedKeyRegistered === false
+      ) {
         return false as any;
       }
 
@@ -1555,17 +1555,13 @@ export class Identity<T extends StorageProvider> {
               this.#showSkip &&
               e.message.indexOf('RuleErrorInsufficientBalance') >= 0;
             if (showSkipAndNoMoney && currentUser != null) {
-              await this.#updateUser(
-                currentUser.publicKey ||
-                  currentUser.primaryDerivedKey?.publicKeyBase58Check,
-                {
+              await this.#updateUser(currentUser.publicKey, {
+                primaryDerivedKey: {
+                  ...currentUser.primaryDerivedKey,
+                  ...payload,
                   derivedKeyRegistered: false,
-                  primaryDerivedKey: {
-                    ...currentUser.primaryDerivedKey,
-                    ...payload,
-                  },
-                }
-              );
+                },
+              });
             } else if (
               this.#pendingWindowRequest?.event ===
                 NOTIFICATION_EVENTS.LOGIN_START &&
@@ -1738,8 +1734,12 @@ export class Identity<T extends StorageProvider> {
       return await this.#authorizePrimaryDerivedKey(
         payload.publicKeyBase58Check
       ).then(async () => {
+        const { primaryDerivedKey } = (await this.#getCurrentUser()) ?? {};
         await this.#updateUser(payload.publicKeyBase58Check, {
-          derivedKeyRegistered: true,
+          primaryDerivedKey: {
+            ...primaryDerivedKey,
+            derivedKeyRegistered: true,
+          },
         });
         return payload;
       });
@@ -1766,14 +1766,23 @@ export class Identity<T extends StorageProvider> {
     } else if (maybeLoginKeyPair) {
       const { seedHex } = JSON.parse(maybeLoginKeyPair);
       await this.#updateUser(payload.publicKeyBase58Check, {
-        primaryDerivedKey: { ...payload, derivedSeedHex: seedHex },
+        primaryDerivedKey: {
+          ...primaryDerivedKey,
+          ...payload,
+          derivedSeedHex: seedHex,
+        },
       });
 
       return await this.#authorizePrimaryDerivedKey(
         payload.publicKeyBase58Check
       ).then(async () => {
+        const { primaryDerivedKey } = (await this.#getCurrentUser()) ?? {};
         await this.#updateUser(payload.publicKeyBase58Check, {
-          derivedKeyRegistered: true,
+          primaryDerivedKey: {
+            ...primaryDerivedKey,
+            derivedSeedHex: seedHex,
+            derivedKeyRegistered: true,
+          },
         });
         return {
           ...payload,
@@ -1800,7 +1809,10 @@ export class Identity<T extends StorageProvider> {
     if (users) {
       const usersObj = JSON.parse(users);
       if (!usersObj[masterPublicKey]) {
-        usersObj[masterPublicKey] = attributes;
+        usersObj[masterPublicKey] = {
+          publicKey: masterPublicKey,
+          ...attributes,
+        };
       } else {
         usersObj[masterPublicKey] = {
           publicKey: masterPublicKey,
