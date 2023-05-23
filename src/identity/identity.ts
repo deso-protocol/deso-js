@@ -124,7 +124,7 @@ export class Identity<T extends StorageProvider> {
   /**
    * @private
    */
-  #subscriber?: (notification: SubscriberNotification) => void;
+  #subscribers: ((notification: SubscriberNotification) => void)[] = [];
 
   /**
    * @private
@@ -405,9 +405,18 @@ export class Identity<T extends StorageProvider> {
    * state and the event that triggered the change.
    */
   async subscribe(subscriber: (notification: SubscriberNotification) => void) {
-    this.#subscriber = subscriber;
+    this.#subscribers.push(subscriber);
     const state = await this.#getState();
-    this.#subscriber({ event: NOTIFICATION_EVENTS.SUBSCRIBE, ...state });
+    this.#subscribers.forEach((s) =>
+      s({ event: NOTIFICATION_EVENTS.SUBSCRIBE, ...state })
+    );
+  }
+
+  /**
+   * Remove a subscriber so it no longer gets called when identity state changes.
+   */
+  unsubscribe(subscriber: (notification: SubscriberNotification) => void) {
+    this.#subscribers = this.#subscribers.filter((s) => s !== subscriber);
   }
 
   /**
@@ -455,7 +464,7 @@ export class Identity<T extends StorageProvider> {
 
     const event = NOTIFICATION_EVENTS.LOGIN_START;
     const state = await this.#getState();
-    this.#subscriber?.({ event, ...state });
+    this.#subscribers.forEach((s) => s({ event, ...state }));
 
     let derivedPublicKey: string;
     const loginKeyPair = await this.#storageProvider.getItem(
@@ -525,7 +534,7 @@ export class Identity<T extends StorageProvider> {
   async logout(): Promise<undefined> {
     const event = NOTIFICATION_EVENTS.LOGOUT_START;
     const state = await this.#getState();
-    this.#subscriber?.({ event, ...state });
+    this.#subscribers.forEach((s) => s({ event, ...state }));
 
     return new Promise((resolve, reject) => {
       const activePublicKey = this.#getActivePublicKey();
@@ -869,7 +878,7 @@ export class Identity<T extends StorageProvider> {
   async getDeso() {
     const event = NOTIFICATION_EVENTS.GET_FREE_DESO_START;
     const state = await this.#getState();
-    this.#subscriber?.({ event, ...state });
+    this.#subscribers.forEach((s) => s({ event, ...state }));
 
     return await new Promise((resolve, reject) => {
       const activePublicKey = this.#getActivePublicKey();
@@ -914,7 +923,7 @@ export class Identity<T extends StorageProvider> {
   async verifyPhoneNumber() {
     const event = NOTIFICATION_EVENTS.VERIFY_PHONE_NUMBER_START;
     const state = await this.#getState();
-    this.#subscriber?.({ event, ...state });
+    this.#subscribers.forEach((s) => s({ event, ...state }));
     return await new Promise((resolve, reject) => {
       const activePublicKey = this.#getActivePublicKey();
       const launchIdentity = (activePublicKey: string | null) => {
@@ -966,23 +975,27 @@ export class Identity<T extends StorageProvider> {
       return maybePromise.then(() => {
         return (this.#getState() as Promise<IdentityState>).then((state) => {
           this.refreshDerivedKeyPermissions();
-          this.#subscriber?.({
-            event: NOTIFICATION_EVENTS.CHANGE_ACTIVE_USER,
-            ...state,
-          });
+          this.#subscribers.forEach((s) =>
+            s({
+              event: NOTIFICATION_EVENTS.CHANGE_ACTIVE_USER,
+              ...state,
+            })
+          );
         });
-      }) as any;
+      }) as T extends Storage ? void : Promise<void>;
     }
 
     // sync storage
     const state = this.#getState() as IdentityState;
     this.refreshDerivedKeyPermissions();
-    this.#subscriber?.({
-      event: NOTIFICATION_EVENTS.CHANGE_ACTIVE_USER,
-      ...state,
-    });
+    this.#subscribers.forEach((s) =>
+      s({
+        event: NOTIFICATION_EVENTS.CHANGE_ACTIVE_USER,
+        ...state,
+      })
+    );
 
-    return undefined as any;
+    return undefined as T extends Storage ? void : Promise<void>;
   }
 
   /**
@@ -1163,7 +1176,7 @@ export class Identity<T extends StorageProvider> {
   ) {
     const event = NOTIFICATION_EVENTS.REQUEST_PERMISSIONS_START;
     const state = await this.#getState();
-    this.#subscriber?.({ event, ...state });
+    this.#subscribers.forEach((s) => s({ event, ...state }));
 
     return await new Promise((resolve, reject) => {
       this.#pendingWindowRequest = { resolve, reject, event };
@@ -1435,10 +1448,12 @@ export class Identity<T extends StorageProvider> {
    */
   async #authorizePrimaryDerivedKey(ownerPublicKey: string) {
     const state1 = await this.#getState();
-    this.#subscriber?.({
-      event: NOTIFICATION_EVENTS.AUTHORIZE_DERIVED_KEY_START,
-      ...state1,
-    });
+    this.#subscribers.forEach((s) =>
+      s({
+        event: NOTIFICATION_EVENTS.AUTHORIZE_DERIVED_KEY_START,
+        ...state1,
+      })
+    );
     const users = await this.#getUsers();
     const primaryDerivedKey = users?.[ownerPublicKey]?.primaryDerivedKey;
 
@@ -1475,10 +1490,12 @@ export class Identity<T extends StorageProvider> {
     const result = await this.submitTx(signedTx);
     const state2 = await this.#getState();
 
-    this.#subscriber?.({
-      event: NOTIFICATION_EVENTS.AUTHORIZE_DERIVED_KEY_END,
-      ...state2,
-    });
+    this.#subscribers.forEach((s) =>
+      s({
+        event: NOTIFICATION_EVENTS.AUTHORIZE_DERIVED_KEY_END,
+        ...state2,
+      })
+    );
 
     return result;
   }
@@ -1526,14 +1543,16 @@ export class Identity<T extends StorageProvider> {
         this.#handleDeriveMethod(payload as IdentityDerivePayload)
           .then(async (res) => {
             const state = await this.#getState();
-            this.#subscriber?.({
-              event:
-                this.#pendingWindowRequest?.event ===
-                NOTIFICATION_EVENTS.LOGIN_START
-                  ? NOTIFICATION_EVENTS.LOGIN_END
-                  : NOTIFICATION_EVENTS.REQUEST_PERMISSIONS_END,
-              ...state,
-            });
+            this.#subscribers.forEach((s) =>
+              s({
+                event:
+                  this.#pendingWindowRequest?.event ===
+                  NOTIFICATION_EVENTS.LOGIN_START
+                    ? NOTIFICATION_EVENTS.LOGIN_END
+                    : NOTIFICATION_EVENTS.REQUEST_PERMISSIONS_END,
+                ...state,
+              })
+            );
             this.#pendingWindowRequest?.resolve(res);
           })
           .catch(async (e) => {
@@ -1558,10 +1577,12 @@ export class Identity<T extends StorageProvider> {
               );
             }
             const state = await this.#getState();
-            this.#subscriber?.({
-              event: NOTIFICATION_EVENTS.AUTHORIZE_DERIVED_KEY_FAIL,
-              ...state,
-            });
+            this.#subscribers.forEach((s) =>
+              s({
+                event: NOTIFICATION_EVENTS.AUTHORIZE_DERIVED_KEY_FAIL,
+                ...state,
+              })
+            );
             // propagate the error to the external caller
             this.#pendingWindowRequest?.reject(this.#getErrorInstance(e));
           });
@@ -1600,10 +1621,12 @@ export class Identity<T extends StorageProvider> {
       await this.#purgeUserDataForPublicKey(activePublicKey);
 
       const state = await this.#getState();
-      this.#subscriber?.({
-        event: NOTIFICATION_EVENTS.LOGOUT_END,
-        ...state,
-      });
+      this.#subscribers.forEach((s) =>
+        s({
+          event: NOTIFICATION_EVENTS.LOGOUT_END,
+          ...state,
+        })
+      );
       this.#pendingWindowRequest?.resolve(payload);
 
       // This condition identifies the "get deso" flow where a user did not
@@ -1629,14 +1652,16 @@ export class Identity<T extends StorageProvider> {
         .then(async () => {
           this.#pendingWindowRequest?.resolve(payload);
           const state = await this.#getState();
-          this.#subscriber?.({ event: endEvent, ...state });
+          this.#subscribers.forEach((s) => s({ event: endEvent, ...state }));
         })
         .catch(async (e) => {
           const state = await this.#getState();
-          this.#subscriber?.({
-            event: NOTIFICATION_EVENTS.AUTHORIZE_DERIVED_KEY_FAIL,
-            ...state,
-          });
+          this.#subscribers.forEach((s) =>
+            s({
+              event: NOTIFICATION_EVENTS.AUTHORIZE_DERIVED_KEY_FAIL,
+              ...state,
+            })
+          );
           this.#pendingWindowRequest?.reject(this.#getErrorInstance(e));
         });
     } else {
