@@ -6,7 +6,9 @@ import { getAPIFake, getWindowFake } from '../test-utils.js';
 import { APIError } from './api.js';
 import { DEFAULT_IDENTITY_URI, LOCAL_STORAGE_KEYS } from './constants.js';
 import {
+  bs58PublicKeyToBytes,
   bs58PublicKeyToCompressedBytes,
+  isValidBS58PublicKey,
   keygen,
   publicKeyToBase58Check,
 } from './crypto-utils.js';
@@ -1009,5 +1011,19 @@ describe('identity', () => {
     it.todo(
       'it properly handles the case where a users derived key cannot be authorized'
     );
+  });
+  describe('verifyPubkey', () => {
+    it('testnet pubkey verification', () => {
+      const pubKey = 'tBCKXZpzthFjXpopawpaFNbvKaw55ZFvMt1T2Psh56c7CDH7dRU7fm';
+      expect(isValidBS58PublicKey(pubKey, true)).toBeTruthy();
+      expect(isValidBS58PublicKey(pubKey.slice(0, -1), true)).toBeFalsy();
+      expect(isValidBS58PublicKey(pubKey.slice(0, -1) + 'x', true)).toBeFalsy();
+    });
+    it('mainnet pubkey verification', () => {
+      const pubKey = 'BC1YLhtBTFXAsKZgoaoYNW8mWAJWdfQjycheAeYjaX46azVrnZfJ94s';
+      expect(isValidBS58PublicKey(pubKey)).toBeTruthy();
+      expect(isValidBS58PublicKey(pubKey.slice(0, -1))).toBeFalsy();
+      expect(isValidBS58PublicKey(pubKey.slice(0, -1) + 'x')).toBeFalsy();
+    });
   });
 });

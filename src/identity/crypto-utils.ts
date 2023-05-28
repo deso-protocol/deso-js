@@ -302,6 +302,22 @@ export const bs58PublicKeyToBytes = (str: string) => {
   return Point.fromHex(ecUtils.bytesToHex(payload.slice(3))).toRawBytes(false);
 };
 
+const regexMainnet = /^BC[1-9A-HJ-NP-Za-km-z]{53}$/;
+const regexTestnet = /^tBC[1-9A-HJ-NP-Za-km-z]{51}$/;
+
+export const isValidBS58PublicKey = (publicKey: string, isTestnet = false) => {
+  const regexPattern = isTestnet ? regexTestnet : regexMainnet;
+  if (!regexPattern.test(publicKey)) {
+    return false;
+  }
+  try {
+    bs58PublicKeyToBytes(publicKey);
+    return true;
+  } catch (e) {
+    return false;
+  }
+};
+
 const isValidHmac = (candidate: Uint8Array, knownGood: Uint8Array) => {
   if (candidate.length !== knownGood.length) {
     return false;
