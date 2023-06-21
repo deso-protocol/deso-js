@@ -561,6 +561,10 @@ export class Identity<T extends StorageProvider> {
 
     return new Promise((resolve, reject) => {
       this.#pendingWindowRequest = { resolve, reject, event };
+      // NOTE: this is a bit hacky, but we need to ensure showSkip is true so we
+      // don't get stuck when the user has no money and we can't authorize the
+      // derived key.
+      this.#showSkip = true;
       return this.#handleIdentityResponse({
         service: 'identity',
         method: 'derive',
