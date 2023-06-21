@@ -130,7 +130,7 @@ export interface SignOptions {
   isDerivedKey: boolean;
 }
 
-const sign = (msgHashHex: string, privateKey: Uint8Array) => {
+export const sign = (msgHashHex: string, privateKey: Uint8Array) => {
   return ecSign(msgHashHex, privateKey, {
     // For details about the signing options see: https://github.com/paulmillr/noble-secp256k1#signmsghash-privatekey
     canonical: true,

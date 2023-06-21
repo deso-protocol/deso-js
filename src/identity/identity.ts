@@ -31,8 +31,11 @@ import {
   getSignedJWT,
   keygen,
   publicKeyToBase58Check,
+  sha256X2,
+  sign,
   signTx,
-} from './crypto-utils';
+  uvarint64ToBuf
+} from "./crypto-utils";
 import { ERROR_TYPES } from './error-types';
 import {
   buildTransactionSpendingLimitResponse,
@@ -57,6 +60,8 @@ import {
   type TransactionSpendingLimitResponseOptions,
   type jwtAlgorithm,
 } from './types';
+import { ec } from "elliptic";
+import { TextEncoder } from "util";
 export class Identity {
   /**
    * @private
@@ -113,6 +118,11 @@ export class Identity {
    * @private
    */
   #jwtAlgorithm: jwtAlgorithm = 'ES256';
+
+  /**
+   * @private
+   */
+  #defaultGroupName = 'default-key';
 
   /**
    * @private
@@ -357,7 +367,13 @@ export class Identity {
    * payload, or rejects if there was an error.
    */
   async login(
-    { getFreeDeso }: LoginOptions = { getFreeDeso: true }
+    {
+      getFreeDeso,
+      deriveOptions: {
+        seedHex: string,
+        expirationBlock: number
+      }
+    }: LoginOptions = { getFreeDeso: true }
   ): Promise<IdentityDerivePayload> {
     const event = NOTIFICATION_EVENTS.LOGIN_START;
     this.#subscriber?.({
@@ -407,6 +423,103 @@ export class Identity {
       }
 
       this.#launchIdentity('derive', identityParams);
+    });
+  }
+
+
+  async loginV2({ seedHex }: { seedHex?: string }): Promise<IdentityDerivePayload> {
+    const event = NOTIFICATION_EVENTS.LOGIN_START;
+    this.#subscriber?.({
+      event,
+      ...this.#state,
+    });
+
+    let derivedPublicKey: string;
+
+    const keys = keygen(seedHex);
+
+    derivedPublicKey = publicKeyToBase58Check(keys.public, {
+      network: this.#network,
+    });
+    this.#window.localStorage?.setItem(
+      LOCAL_STORAGE_KEYS.loginKeyPair,
+      JSON.stringify({
+        publicKey: derivedPublicKey,
+        seedHex: keys.seedHex,
+      })
+    );
+
+    return await new Promise((resolve, reject) => {
+      this.#pendingWindowRequest = { resolve, reject, event };
+
+      const blockHeight = 99999;  // TODO: either accept a param or calculate days -> block height
+
+      return this.#api.post('get-access-bytes', {
+        DerivedPublicKeyBase58Check: derivedPublicKey,
+        ExpirationBlock: blockHeight,
+        TransactionSpendingLimit: this.#defaultTransactionSpendingLimit,
+      })
+        .then((res) => {
+          const { TransactionSpendingLimitHex } = res;
+
+          const transactionSpendingLimitBytes = TransactionSpendingLimitHex
+            ? ecUtils.hexToBytes(TransactionSpendingLimitHex)
+            : [];
+
+          let accessBytes: Uint8Array = new Uint8Array([
+            ...keys.public,
+            ...uvarint64ToBuf(blockHeight),
+            ...transactionSpendingLimitBytes
+          ]);
+
+          const accessHash = sha256X2(accessBytes);
+
+          return sign(ecUtils.bytesToHex(accessHash), ecUtils.hexToBytes(keys.seedHex))
+            .then((accessSignatureResponse) => {
+              const [accessSignature] = accessSignatureResponse;
+
+              const messagingKey = deriveAccessGroupKeyPair(keys.seedHex, this.#defaultGroupName);
+              const {
+                AccessGroupPublicKeyBase58Check,
+                AccessGroupPrivateKeyHex,
+                AccessGroupKeyName,
+              } = this.accessGroupStandardDerivation(this.#defaultGroupName, messagingKey.seedHex);
+
+              const messagingKeyHash = sha256X2(new Uint8Array([
+                ...messagingKey.public,
+                ...new TextEncoder().encode(this.#defaultGroupName)
+              ]));
+
+              return sign(ecUtils.bytesToHex(messagingKeyHash), ecUtils.hexToBytes(keys.seedHex))
+                .then((messagingKeySignatureResponse) => {
+                  const [messagingKeySignature] = messagingKeySignatureResponse;
+
+                  return this.#handleIdentityResponse({
+                    service: 'identity',
+                    method: 'derive',
+                    payload: {
+                      derivedSeedHex: keys.seedHex,
+                      derivedPublicKeyBase58Check: derivedPublicKey,
+                      publicKeyBase58Check: '', // TODO: public key is missing because they didn't create a wallet
+                      btcDepositAddress: '',
+                      ethDepositAddress: '',
+                      expirationBlock: blockHeight,
+                      network: this.#network,
+                      accessSignature: ecUtils.bytesToHex(accessSignature),
+                      jwt: '', // TODO: check if they really need JWT
+                      derivedJwt: '', // TODO: check if they really need JWT
+                      messagingPublicKeyBase58Check: AccessGroupPublicKeyBase58Check,
+                      messagingPrivateKey: AccessGroupPrivateKeyHex,
+                      messagingKeyName: AccessGroupKeyName,
+                      messagingKeySignature: ecUtils.bytesToHex(messagingKeySignature),
+                      transactionSpendingLimitHex: TransactionSpendingLimitHex,
+                      signedUp: false,
+                      publicKeyAdded: '', // TODO: public key is missing because they didn't create a wallet
+                    }
+                  });
+                });
+            });
+        });
     });
   }
 
@@ -616,7 +729,7 @@ export class Identity {
     const isSender =
       message.SenderInfo.OwnerPublicKeyBase58Check ===
         userPublicKeyBase58Check &&
-      (message.SenderInfo.AccessGroupKeyName === 'default-key' ||
+      (message.SenderInfo.AccessGroupKeyName === this.#defaultGroupName ||
         !message.SenderInfo.AccessGroupKeyName);
     let DecryptedMessage = '';
     let errorMsg = '';
@@ -685,20 +798,19 @@ export class Identity {
    * decrypt group messages.
    *
    * @param groupName the plaintext name of the group chat
+   * @param messagingPrivateKey the optional messaging private key
    * @returns a promise that resolves to the new key info.
    */
-  accessGroupStandardDerivation(groupName: string): AccessGroupPrivateInfo {
+  accessGroupStandardDerivation(groupName: string, messagingPrivateKey?: string): AccessGroupPrivateInfo {
     const { primaryDerivedKey } = this.#currentUser ?? {};
+    const messagingKey = messagingPrivateKey || primaryDerivedKey?.messagingPrivateKey;
 
-    if (!primaryDerivedKey?.messagingPrivateKey) {
+    if (!messagingKey) {
       // This *should* never happen, but just in case we throw here to surface any bugs.
       throw new Error('Cannot derive access group without a messaging key');
     }
 
-    const keys = deriveAccessGroupKeyPair(
-      primaryDerivedKey.messagingPrivateKey,
-      groupName
-    );
+    const keys = deriveAccessGroupKeyPair(messagingKey, groupName);
     const publicKeyBase58Check = publicKeyToBase58Check(keys.public, {
       network: this.#network,
     });
@@ -864,6 +976,10 @@ export class Identity {
         console.error(e);
       }
     }
+  }
+
+  async generateDerivedKey(seedHex: string) {
+
   }
 
   /**
