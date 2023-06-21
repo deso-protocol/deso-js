@@ -17,8 +17,12 @@ import {
   TransactionFee,
   UpdateProfileRequest,
   UpdateProfileResponse,
-} from '../backend-types';
-import { PartialWithRequiredFields, checkPartyAccessGroups } from '../data';
+} from '../backend-types/index.js';
+import {
+  PartialWithRequiredFields,
+  checkPartyAccessGroups,
+} from '../data/index.js';
+import { DIAMOND_LEVEL_MAP } from '../identity/constants.js';
 import {
   TransactionExtraDataKV,
   TransactionMetadataBasicTransfer,
@@ -31,20 +35,19 @@ import {
   encodeUTF8ToBytes,
   identity,
   uvarint64ToBuf,
-} from '../identity';
-import { DIAMOND_LEVEL_MAP } from '../identity/constants';
-import { guardTxPermission } from '../identity/permissions-utils';
+} from '../identity/index.js';
 import {
   constructBalanceModelTx,
   getTxWithFeeNanos,
   handleSignAndSubmit,
   sumTransactionFees,
-} from '../internal';
+} from '../internal.js';
 import {
   ConstructedAndSubmittedTx,
   TxRequestOptions,
   TypeWithOptionalFeesAndExtraData,
-} from '../types';
+} from '../types.js';
+import { guardTxPermission } from './utils.js';
 
 const buildUpdateProfileMetadata = (
   params: TypeWithOptionalFeesAndExtraData<UpdateProfileRequest>

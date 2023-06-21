@@ -1,4 +1,4 @@
-import { APIProvider } from "./identity";
+import { APIProvider } from './identity/index.js';
 
 class LocalStorageFake implements Storage {
   db: Record<string, string> = {};
@@ -18,9 +18,11 @@ class LocalStorageFake implements Storage {
   getItem(key: string) {
     return this.db[key] ?? null;
   }
+
   setItem(key: string, value: string) {
     this.db[key] = value;
   }
+
   removeItem(key: string) {
     delete this.db[key];
   }
@@ -29,7 +31,7 @@ class LocalStorageFake implements Storage {
 export function getWindowFake(overrides: Partial<Window> = {}): Window {
   overrides.location = {
     ...window.location,
-    hostname: "localhost.test",
+    hostname: 'localhost.test',
     ...(overrides.location ?? {}),
   };
 

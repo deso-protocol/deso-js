@@ -1,4 +1,4 @@
-import { APIProvider } from './types';
+import { APIProvider } from './types.js';
 
 function buildOptions(customOptions: any = {}) {
   const headers = customOptions.headers ?? {};

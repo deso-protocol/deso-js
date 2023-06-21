@@ -6,8 +6,8 @@ import {
   CreateAccessGroupResponse,
   RequestOptions,
   TxRequestWithOptionalFeesAndExtraData,
-} from '../backend-types';
-import { PartialWithRequiredFields } from '../data';
+} from '../backend-types/index.js';
+import { PartialWithRequiredFields } from '../data/index.js';
 import {
   AccessGroupMemberRecord,
   TransactionExtraData,
@@ -15,16 +15,16 @@ import {
   TransactionMetadataAccessGroupMembers,
   bs58PublicKeyToCompressedBytes,
   encodeUTF8ToBytes,
-} from '../identity';
-import { guardTxPermission } from '../identity/permissions-utils';
+} from '../identity/index.js';
 import {
   constructBalanceModelTx,
   convertExtraData,
   getTxWithFeeNanos,
   handleSignAndSubmit,
   sumTransactionFees,
-} from '../internal';
-import { ConstructedAndSubmittedTx, TxRequestOptions } from '../types';
+} from '../internal.js';
+import { ConstructedAndSubmittedTx, TxRequestOptions } from '../types.js';
+import { guardTxPermission } from './utils.js';
 
 const buildAccessGroupMetadata = (params: CreateAccessGroupRequestParams) => {
   const metadata = new TransactionMetadataAccessGroup();

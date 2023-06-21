@@ -8,24 +8,24 @@ import {
   TransferCreatorCoinRequest,
   TransferCreatorCoinResponse,
   TxRequestWithOptionalFeesAndExtraData,
-} from '../backend-types';
-import { PartialWithRequiredFields } from '../data';
+} from '../backend-types/index.js';
+import { PartialWithRequiredFields } from '../data/index.js';
 import {
   TransactionMetadataBasicTransfer,
   TransactionMetadataCreatorCoinTransfer,
   TransactionOutput,
   bs58PublicKeyToCompressedBytes,
   identity,
-} from '../identity';
-import { guardTxPermission } from '../identity/permissions-utils';
+} from '../identity/index.js';
 import {
   constructBalanceModelTx,
   getTxWithFeeNanos,
   handleSignAndSubmit,
   isMaybeDeSoPublicKey,
   sumTransactionFees,
-} from '../internal';
-import { ConstructedAndSubmittedTx, TxRequestOptions } from '../types';
+} from '../internal.js';
+import { ConstructedAndSubmittedTx, TxRequestOptions } from '../types.js';
+import { guardTxPermission } from './utils.js';
 
 /**
  * https://docs.deso.org/deso-backend/construct-transactions/financial-transactions-api#send-deso
@@ -110,6 +110,7 @@ export const constructSendDeSoTransaction = (
       ExtraData: params.ExtraData,
       MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
       TransactionFees: params.TransactionFees,
+      Nonce: params.Nonce,
     }
   );
 };

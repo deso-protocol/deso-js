@@ -1,14 +1,16 @@
 {
   "name": "deso-protocol",
-  "version": "1.1.15-beta.1",
+  "version": "2.1.2",
   "license": "MIT",
   "description": "Client side typescript/javascript SDK for building web3 applications for the DeSo blockchain.",
+  "type": "module",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
   "scripts": {
     "build": "tsc",
     "test": "jest",
     "package": "./scripts/package.sh",
+    "package:react-native": "./scripts/package-react-native.sh",
     "link": "npm run package && cd ./lib && npm i && npm link && cd - && tsc -w",
     "prepare": "husky install",
     "precommit": "lint-staged && npm run test"
@@ -56,6 +58,7 @@
     "elliptic": "^6.5.4",
     "eslint": "^8.39.0",
     "eslint-config-standard-with-typescript": "^34.0.1",
+    "eslint-import-resolver-typescript": "^3.5.5",
     "eslint-plugin-import": "^2.27.5",
     "eslint-plugin-n": "^15.7.0",
     "eslint-plugin-promise": "^6.1.1",

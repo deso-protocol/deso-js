@@ -1,6 +1,6 @@
-import { api, media } from './data';
-import { identity, IdentityConfiguration } from './identity';
-import { globalConfigOptions } from './internal';
+import { api, media } from './data/index.js';
+import { IdentityConfiguration, identity } from './identity/index.js';
+import { globalConfigOptions } from './internal.js';
 
 export type DesoProtocolConfiguration = IdentityConfiguration & {
   /**

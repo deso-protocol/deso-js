@@ -1,8 +1,18 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "module": "CommonJS",
-    "types": ["jest", "node"]
+    "declaration": false,
+    "module": "ES2020",
+    "types": ["jest", "node"],
+    "lib": ["ES2020", "DOM"],
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "useDefineForClassFields": true,
+    "sourceMap": false
   },
   "exclude": ["node_modules", "lib"]
 }

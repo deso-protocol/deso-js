@@ -4,7 +4,7 @@ import {
   AssociationLimitMapItem,
   TransactionSpendingLimitResponse,
   TransactionType,
-} from '../backend-types';
+} from '../backend-types/index.js';
 export type Network = 'mainnet' | 'testnet';
 
 export interface IdentityResponse {
@@ -98,19 +98,46 @@ export interface IdentityConfiguration {
    */
   appName?: string;
 
-  // Since our keys are generated using the secp256k1 curve, the correct
-  // JWT algorithm header *should* be ES256K.
-  // See: https://www.rfc-editor.org/rfc/rfc8812.html#name-jose-algorithms-registratio
-  //
-  // HOWEVER, the backend jwt lib used by deso foundation -
-  // https://github.com/golang-jwt/jwt - (as well as many other jwt libraries)
-  // do not support ES256K. So instead, we default to the more widely supported ES256 algo,
-  // which can still work for verifying our signatures. But if a consumer of this lib is using a
-  // jwt lib that supports ES256K they can specify that here.
-  // See this github issue
-  // for more context: https://github.com/auth0/node-jsonwebtoken/issues/862
-  // If ES256K is ever supported by the backend jwt lib, we should change this.
+  /**
+   * Since our keys are generated using the secp256k1 curve, the correct
+   * JWT algorithm header *should* be ES256K.
+   * See: https://www.rfc-editor.org/rfc/rfc8812.html#name-jose-algorithms-registratio
+   *
+   * HOWEVER, the backend jwt lib used by deso foundation -
+   * https://github.com/golang-jwt/jwt - (as well as many other jwt libraries)
+   * do not support ES256K. So instead, we default to the more widely supported ES256 algo,
+   * which can still work for verifying our signatures. But if a consumer of this lib is using a
+   * jwt lib that supports ES256K they can specify that here.
+   * See this github issue
+   * for more context: https://github.com/auth0/node-jsonwebtoken/issues/862
+   * If ES256K is ever supported by the backend jwt lib, we should change this.
+   */
   jwtAlgorithm?: jwtAlgorithm;
+
+  /**
+   * An optional storage provider. If not provided, we will assume localStorage
+   * is available.
+   */
+  storageProvider?: StorageProvider;
+
+  /**
+   * An optional function that is provided the identity url that needs to be
+   * opened. This can be used to customize how the identity url is opened. For
+   * example, if you are using react native, you might want to use the Linking
+   * API to open the url in a system browser window.
+   * @example
+   * ```ts
+   * identityPresenter: async (url) => {
+   *   const result = await WebBrowser.openAuthSessionAsync(url);
+   *   if (result.type === 'success') {
+   *     identity.handleRedirectURI(result.url);
+   *   }
+   * },
+   * ```
+   */
+  identityPresenter?: (url: string) => void;
+
+  showSkip?: boolean;
 }
 
 export interface APIProvider {
@@ -142,6 +169,7 @@ export interface LoginOptions {
 export type PrimaryDerivedKeyInfo = IdentityDerivePayload & {
   transactionSpendingLimits: TransactionSpendingLimitResponse;
   IsValid?: boolean;
+  derivedKeyRegistered?: boolean;
 };
 
 export type StoredUser = {
@@ -310,3 +338,12 @@ export enum NOTIFICATION_EVENTS {
    */
   CHANGE_ACTIVE_USER = 'CHANGE_ACTIVE_USER',
 }
+
+export interface AsyncStorage {
+  getItem: (key: string) => Promise<string | null>;
+  setItem: (key: string, value: string) => Promise<void>;
+  removeItem: (key: string) => Promise<void>;
+  clear: () => Promise<void>;
+}
+
+export type StorageProvider = Storage | AsyncStorage;

@@ -1,36 +1,35 @@
 import { utils as ecUtils, getPublicKey } from '@noble/secp256k1';
 import { verify } from 'jsonwebtoken';
 import KeyEncoder from 'key-encoder';
-import { ChatType, NewMessageEntryResponse } from '../backend-types';
-import { getAPIFake, getWindowFake } from '../test-utils';
-import { APIError } from './api';
-import { DEFAULT_IDENTITY_URI, LOCAL_STORAGE_KEYS } from './constants';
+import { ChatType, NewMessageEntryResponse } from '../backend-types/index.js';
+import { getAPIFake, getWindowFake } from '../test-utils.js';
+import { APIError } from './api.js';
+import { DEFAULT_IDENTITY_URI, LOCAL_STORAGE_KEYS } from './constants.js';
 import {
+  bs58PublicKeyToBytes,
   bs58PublicKeyToCompressedBytes,
+  isValidBS58PublicKey,
   keygen,
   publicKeyToBase58Check,
-} from './crypto-utils';
-import { ERROR_TYPES } from './error-types';
-import { Identity } from './identity';
+} from './crypto-utils.js';
+import { ERROR_TYPES } from './error-types.js';
+import { Identity } from './identity.js';
 import {
   Transaction,
   TransactionExtraData,
   TransactionMetadataBasicTransfer,
   TransactionNonce,
-} from './transaction-transcoders';
-import { APIProvider } from './types';
+} from './transaction-transcoders.js';
+import { APIProvider } from './types.js';
 
 function getPemEncodePublicKey(privateKey: Uint8Array): string {
   const publicKey = getPublicKey(privateKey, true);
-  return new KeyEncoder('secp256k1').encodePublic(
-    ecUtils.bytesToHex(publicKey),
-    'raw',
-    'pem'
-  );
+  const keyEncoder = new KeyEncoder('secp256k1');
+  return keyEncoder.encodePublic(ecUtils.bytesToHex(publicKey), 'raw', 'pem');
 }
 
 describe('identity', () => {
-  let identity: Identity;
+  let identity: Identity<Storage>;
   let windowFake: typeof globalThis;
   let apiFake: APIProvider;
   let postMessageListener: (args: any) => any;
@@ -102,7 +101,10 @@ describe('identity', () => {
         })
         .mockName('api.post'),
     });
-    identity = new Identity(windowFake, apiFake);
+    identity = new Identity<Storage>(windowFake, apiFake);
+    identity.configure({
+      storageProvider: windowFake.localStorage,
+    });
   });
 
   describe('.login()', () => {
@@ -143,6 +145,7 @@ describe('identity', () => {
       const testAppName = 'My Cool App';
       identity.configure({
         appName: testAppName,
+        storageProvider: windowFake.localStorage,
       });
 
       let loginKeyPair = { publicKey: '', seedHex: '' };
@@ -207,12 +210,13 @@ describe('identity', () => {
         ),
       ]);
 
-      expect(identity.snapshot().currentUser?.publicKey).toEqual(
+      const { currentUser } = identity.snapshot();
+      expect(currentUser?.publicKey).toEqual(
         'BC1YLiot3hqKeKhK82soKAeK3BFdTnMjpd2w4HPfesaFzYHUpUzJ2ay'
       );
       expect(loginKeyPair.seedHex.length > 0).toBe(true);
       expect(loginKeyPair.publicKey.length > 0).toBe(true);
-      expect(identity.snapshot().currentUser).toEqual({
+      expect(currentUser).toEqual({
         publicKey: derivePayload.publicKeyBase58Check,
         primaryDerivedKey: {
           ...derivePayload,
@@ -223,6 +227,7 @@ describe('identity', () => {
           IsValid: true,
           // the key has its fetched permissions cached
           transactionSpendingLimits: mockTxSpendingLimit,
+          derivedKeyRegistered: true,
         },
       });
       // login keys cleaned up from local storage
@@ -602,6 +607,7 @@ describe('identity', () => {
           },
         })
       );
+
       const hasPermissions = identity.hasPermissions({
         TransactionCountLimitMap: {
           BASIC_TRANSFER: 1,
@@ -967,6 +973,37 @@ describe('identity', () => {
       ).toEqual('tBCKXZpzthFjXpopawpaFNbvKaw55ZFvMt1T2Psh56c7CDH7dRU7fm');
     });
   });
+  describe('setActiveUser', () => {
+    it('sets the active user', () => {
+      const pubKey1 = 'fake-pub-key-1';
+      const pubKey2 = 'fake-pub-key-2';
+      windowFake.localStorage.setItem(
+        LOCAL_STORAGE_KEYS.activePublicKey,
+        pubKey1
+      );
+      windowFake.localStorage.setItem(
+        LOCAL_STORAGE_KEYS.identityUsers,
+        JSON.stringify({
+          [pubKey1]: {
+            publicKey: pubKey1,
+            primaryDerivedKey: {
+              publicKeyBase58Check: pubKey1,
+            },
+          },
+          [pubKey2]: {
+            publicKey: pubKey2,
+            primaryDerivedKey: {
+              publicKeyBase58Check: pubKey2,
+            },
+          },
+        })
+      );
+
+      identity.setActiveUser(pubKey2);
+      const snapshot = identity.snapshot();
+      expect(snapshot.currentUser?.publicKey).toEqual(pubKey2);
+    });
+  });
   describe('.subscribe()', () => {
     it.todo('it notifies the caller of the correct events');
   });
@@ -974,5 +1011,19 @@ describe('identity', () => {
     it.todo(
       'it properly handles the case where a users derived key cannot be authorized'
     );
+  });
+  describe('verifyPubkey', () => {
+    it('testnet pubkey verification', () => {
+      const pubKey = 'tBCKXZpzthFjXpopawpaFNbvKaw55ZFvMt1T2Psh56c7CDH7dRU7fm';
+      expect(isValidBS58PublicKey(pubKey, true)).toBeTruthy();
+      expect(isValidBS58PublicKey(pubKey.slice(0, -1), true)).toBeFalsy();
+      expect(isValidBS58PublicKey(pubKey.slice(0, -1) + 'x', true)).toBeFalsy();
+    });
+    it('mainnet pubkey verification', () => {
+      const pubKey = 'BC1YLhtBTFXAsKZgoaoYNW8mWAJWdfQjycheAeYjaX46azVrnZfJ94s';
+      expect(isValidBS58PublicKey(pubKey)).toBeTruthy();
+      expect(isValidBS58PublicKey(pubKey.slice(0, -1))).toBeFalsy();
+      expect(isValidBS58PublicKey(pubKey.slice(0, -1) + 'x')).toBeFalsy();
+    });
   });
 });

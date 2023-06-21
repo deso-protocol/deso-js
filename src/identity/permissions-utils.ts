@@ -1,6 +1,5 @@
-import { TransactionSpendingLimitResponse } from '../backend-types';
-import { identity } from '../identity';
-import { TransactionSpendingLimitResponseOptions } from './types';
+import { TransactionSpendingLimitResponse } from '../backend-types/index.js';
+import { TransactionSpendingLimitResponseOptions } from './types.js';
 
 export function compareTransactionSpendingLimits(
   expectedPermissions: TransactionSpendingLimitResponseOptions,
@@ -183,21 +182,6 @@ export function buildTransactionSpendingLimitResponse(
   }
 
   return result;
-}
-
-export function guardTxPermission(
-  spendingLimitOptions: TransactionSpendingLimitResponseOptions
-) {
-  if (!identity.hasPermissions(spendingLimitOptions)) {
-    return identity.requestPermissions({
-      ...spendingLimitOptions,
-      GlobalDESOLimit:
-        (identity.transactionSpendingLimitOptions.GlobalDESOLimit ?? 0) +
-        (spendingLimitOptions.GlobalDESOLimit ?? 0),
-    });
-  }
-
-  return Promise.resolve();
 }
 
 function walkObj(

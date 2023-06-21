@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/ban-types */
-import { type TransactionType } from '../backend-types/deso-types-custom';
+import { type TransactionType } from '../backend-types/deso-types-custom.js';
 
 // this file was automatically generated, DO NOT EDIT
 export type DB = any;
@@ -3087,11 +3087,16 @@ export interface DeSoNonce {
 export interface TransactionResponse {
   TransactionIDBase58Check: string;
   RawTransactionHex: string;
+  RawTxnMetadata: any;
   Inputs: InputResponse[] | null;
   Outputs: OutputResponse[] | null;
   SignatureHex: string;
   TransactionType: string;
   BlockHashHex: string;
+  BlockInfo?: {
+    Height: number;
+    TimestampSecs: number;
+  };
   TransactionMetadata: TransactionMetadata;
   ExtraData: Record<string, string>;
   TxnNonce?: DeSoNonce;

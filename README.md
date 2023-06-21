@@ -10,7 +10,7 @@ npm i deso-protocol
 
 ## Configuration
 
-```ts
+````ts
 import { configure } from 'deso-protocol';
 
 configure({
@@ -52,10 +52,40 @@ configure({
 
   // this is optional, if not passed the default of 1500 will be used.
   MinFeeRateNanosPerKB: 1000,
+
+
+  // THE FOLLOWING CONFIGURATIONS ARE ONLY NEEDED IN A REACT NATIVE CONTEXT
+
+  /**
+   * An optional storage provider. If not provided, we will assume we're running
+   * in a browser context and localStorage is available. In react native you must
+   * set a storage provider which is likely an async storage instance.
+   */
+  storageProvider?: Storage | AsyncStorage;
+
+  /**
+   * An optional function that can be used to customize how the identity url is opened. For
+   * example, if you are using react native, you might want to use the WebBrowser
+   * API to open the url in a system browser window.
+   * @example
+   * ```ts
+   * identityPresenter: async (url) => {
+   *   const result = await WebBrowser.openAuthSessionAsync(url);
+   *   if (result.type === 'success') {
+   *     identity.handleRedirectURI(result.url);
+   *   }
+   * },
+   * ```
+   */
+  identityPresenter?: (url: string) => void;
 })
-```
+````
 
 ## Usage
+
+See our [react examples repo](https://github.com/deso-protocol/deso-examples-react)
+
+## API
 
 ### Identity: (logging in and out, creating new accounts, etc)
 
@@ -94,7 +124,7 @@ await identity.logout();
 
 // Switch users (for apps that manage multiple accounts for a single user).
 // NOTE: The publicKey here must be a user that has previously logged in.
-identity.setActiveUser(publicKey);
+await identity.setActiveUser(publicKey);
 
 // Generate a jwt for making authenticated requests via `Authorization` http
 // header.
@@ -119,8 +149,17 @@ const submittedTx = await identity.submitTx(signedTx);
 // post on behalf of a user Read more about the transaction count limit map here
 // https://docs.deso.org/for-developers/backend/blockchain-data/basics/data-types#transactionspendinglimitresponse and you can find an exhaustive list
 // of available transaction types here: https://github.com/deso-protocol/core/blob/a836e4d2e92f59f7570c7a00f82a3107ec80dd02/lib/network.go#L244
-// This returns a boolean value synchronously.
+// This returns a boolean value synchronously and should be used in a browser context to prevent issues with
+// popup blockers.
 const hasPermission = identity.hasPermissions({
+  TransactionCountLimitMap: {
+    SUBMIT_POST: 1,
+  },
+});
+
+// The same as `hasPermissions` but async because the storage provider might be AsyncStorage
+// This would typically be used in a native mobile (react native) context.
+const hasPermission = await identity.hasPermissionsAsync({
   TransactionCountLimitMap: {
     SUBMIT_POST: 1,
   },
@@ -184,7 +223,7 @@ data.
 ```ts
 import { submitPost } from 'deso-protocol';
 
-const txInfo = submitPost({
+const txInfo = await submitPost({
   UpdaterPublicKeyBase58Check: currentUser.publicKey,
   BodyObj: {
     Body: 'My first post on DeSo!',
@@ -196,6 +235,10 @@ const txInfo = submitPost({
 
 See the [transaction construction api documentation](https://docs.deso.org/deso-backend/construct-transactions) for reference.
 See an exhaustive list of the available transaction construction functions [here](https://github.com/deso-protocol/deso-js/tree/main/src/transactions)
+
+## React Native
+
+See [REACT-NATIVE.md](./REACT-NATIVE.md)
 
 ## Contributing
 

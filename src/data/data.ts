@@ -102,8 +102,8 @@ import {
   TransactionSpendingLimitResponse,
   UserAssociationQuery,
   UserAssociationsResponse,
-} from '../backend-types';
-import { api, cleanURL } from './api';
+} from '../backend-types/index.js';
+import { api, cleanURL } from './api.js';
 /**
  * Returns a type that requires the given keys to be present in the partial.
  *

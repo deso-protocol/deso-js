@@ -19,7 +19,6 @@ echo "Pre-release tag: $NPM_PRERELEASE_TAG"
 
 npm ci --ignore-scripts
 npm version --no-git-tag-version $NEW_VERSION
-ls -l
 npm run package
 cd ./lib
 
@@ -36,10 +35,11 @@ else
   exit 1
 fi
 
+cd -
+
 RELEASE_VERSION=$(grep version package.json | awk -F \" '{print $4}')
 echo "::notice::New version successfully released: $RELEASE_VERSION"
-cd -
-git add package.json package-lock.json
+git add package*.json
 git commit -nm "ci: automated release version $RELEASE_VERSION"
 git pull --rebase origin main
 git push origin HEAD:main

@@ -2,8 +2,8 @@ import {
   GetVideoStatusRequest,
   GetVideoStatusResponse,
   LinkPreviewResponse,
-} from '../backend-types';
-import { cleanURL, media } from './api';
+} from '../backend-types/index.js';
+import { cleanURL, media } from './api.js';
 ////////////////////////////////////////////////////////////////////////////////
 // Media: All of these endpoints are hitting a separate server dedicated to
 // handling media requests (images, videos, etc.). The media server is

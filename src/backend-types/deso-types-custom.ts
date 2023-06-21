@@ -1,11 +1,13 @@
 import { ec } from 'elliptic';
+import { PartialWithRequiredFields } from '../data/index.js';
 import {
   DAOCoinLimitOrderSimulatedExecutionResult,
+  DeSoNonce,
   MsgDeSoTxn,
   SubmitTransactionResponse,
   TransactionFee,
   TransactionSpendingLimitResponse,
-} from './deso-types';
+} from './deso-types.js';
 
 export interface GetApproveResponse {
   id?: string;
@@ -327,11 +329,16 @@ export interface OptionalFeesAndExtraData {
   MinFeeRateNanosPerKB?: number;
   TransactionFees?: TransactionFee[] | null;
   ExtraData?: { [key: string]: string };
+  Nonce?: PartialWithRequiredFields<DeSoNonce, 'ExpirationBlockHeight'>;
 }
 
 export type TxRequestWithOptionalFeesAndExtraData<T> = Omit<
   T,
-  'MinFeeRateNanosPerKB' | 'TransactionFees' | 'ExtraData' | 'InTutorial'
+  | 'MinFeeRateNanosPerKB'
+  | 'TransactionFees'
+  | 'ExtraData'
+  | 'InTutorial'
+  | 'Nonce'
 > &
   OptionalFeesAndExtraData;
 

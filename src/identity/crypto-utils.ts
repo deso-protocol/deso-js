@@ -6,10 +6,10 @@ import {
   getPublicKey,
   getSharedSecret as nobleGetSharedSecret,
 } from '@noble/secp256k1';
-import * as bs58 from 'bs58';
-import { PUBLIC_KEY_PREFIXES } from './constants';
-import { TransactionV0 } from './transaction-transcoders';
-import { KeyPair, Network, jwtAlgorithm } from './types';
+import bs58 from 'bs58';
+import { PUBLIC_KEY_PREFIXES } from './constants.js';
+import { TransactionV0 } from './transaction-transcoders.js';
+import { KeyPair, Network, jwtAlgorithm } from './types.js';
 
 // Browser friendly version of node's Buffer.concat.
 export function concatUint8Arrays(arrays: Uint8Array[], length?: number) {
@@ -300,6 +300,22 @@ export const bs58PublicKeyToBytes = (str: string) => {
   }
 
   return Point.fromHex(ecUtils.bytesToHex(payload.slice(3))).toRawBytes(false);
+};
+
+const regexMainnet = /^BC[1-9A-HJ-NP-Za-km-z]{53}$/;
+const regexTestnet = /^tBC[1-9A-HJ-NP-Za-km-z]{51}$/;
+
+export const isValidBS58PublicKey = (publicKey: string, isTestnet = false) => {
+  const regexPattern = isTestnet ? regexTestnet : regexMainnet;
+  if (!regexPattern.test(publicKey)) {
+    return false;
+  }
+  try {
+    bs58PublicKeyToBytes(publicKey);
+    return true;
+  } catch (e) {
+    return false;
+  }
 };
 
 const isValidHmac = (candidate: Uint8Array, knownGood: Uint8Array) => {

@@ -1,4 +1,4 @@
-import { IdentityResponse } from './types';
+import { IdentityResponse } from './types.js';
 
 export const parseQueryParams = (
   queryParams: URLSearchParams

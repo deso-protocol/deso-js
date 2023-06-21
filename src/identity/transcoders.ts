@@ -1,10 +1,10 @@
+import 'reflect-metadata';
 import {
   bufToUvarint64,
   concatUint8Arrays,
   uvarint64ToBuf,
-} from './crypto-utils';
-import { TransactionNonce } from './transaction-transcoders';
-import 'reflect-metadata';
+} from './crypto-utils.js';
+import { TransactionNonce } from './transaction-transcoders.js';
 export class BinaryRecord {
   static fromBytes(bytes: Uint8Array): [BinaryRecord, Uint8Array] {
     const result = new this();

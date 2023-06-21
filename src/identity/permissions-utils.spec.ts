@@ -1,5 +1,5 @@
-import { buildTransactionSpendingLimitResponse } from './permissions-utils';
-import { TransactionSpendingLimitResponseOptions } from './types';
+import { buildTransactionSpendingLimitResponse } from './permissions-utils.js';
+import { TransactionSpendingLimitResponseOptions } from './types.js';
 
 describe('permissions-utils', () => {
   describe('buildTransactionSpendingLimits', () => {
