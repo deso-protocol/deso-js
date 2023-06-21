@@ -548,7 +548,7 @@ export class Identity<T extends StorageProvider> {
 
     // When the derived payload is handled, we look at local storage to see if
     // this is a login derived key, so we need to set this before we handle the response.
-    this.#window.localStorage?.setItem(
+    await this.#storageProvider?.setItem(
       LOCAL_STORAGE_KEYS.loginKeyPair,
       JSON.stringify({
         publicKey: derivedPublicKeyBase58,
