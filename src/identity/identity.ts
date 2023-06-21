@@ -546,6 +546,8 @@ export class Identity<T extends StorageProvider> {
       network: this.#network,
     });
 
+    // When the derived payload is handled, we look at local storage to see if
+    // this is a login derived key, so we need to set this before we handle the response.
     this.#window.localStorage?.setItem(
       LOCAL_STORAGE_KEYS.loginKeyPair,
       JSON.stringify({
