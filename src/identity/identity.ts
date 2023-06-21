@@ -531,7 +531,7 @@ export class Identity<T extends StorageProvider> {
     });
   }
 
-  async loginV2({
+  async loginWithAutoDerive({
     ownerSeedHex,
   }: {
     ownerSeedHex?: string;
