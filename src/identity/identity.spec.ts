@@ -1014,11 +1014,8 @@ describe('identity', () => {
         btcDepositAddress: 'Not implemented yet',
         ethDepositAddress: 'Not implemented yet',
         expirationBlock: expectedExpirationBlock,
-        network: 'mainnet',
         accessSignature:
           '3045022018e653cc79575ad947dd48234461a42f94813b94f6876505d3d10d9040af6fc4022100bbe5b07d98b819706e6bb12949d5cd1067da8bfa8f7abd0b8e150190b5f303ae',
-        jwt: 'eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE2ODc0NTM2MjYsImV4cCI6MjAwMjgxMzYyNn0.JtpohF7bPCtsRTQvnDqcl3Qc_aE1B9Rzl56opIPkPjTTQGM9BBwbtEXYYY7Gi2qu2966JWAuDFgnvu8frK04HA',
-        derivedJwt: '',
         messagingPublicKeyBase58Check:
           'BC1YLhaLw1va7HQjrHjPjChbhpSVREE3EYpmxSDzTLwFVQZ5NZfSX2B',
         messagingPrivateKey:
