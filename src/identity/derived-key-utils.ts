@@ -3,6 +3,7 @@ import { TransactionSpendingLimitResponse } from '../backend-types/index.js';
 import { api, getAppState } from '../data/index.js';
 import {
   deriveAccessGroupKeyPair,
+  getSignedJWT,
   publicKeyToBase58Check,
   sha256X2,
   sign,
@@ -70,6 +71,13 @@ export async function generateDerivedKeyPayload(
     ownerKeys.private
   );
 
+  const [jwt, derivedJwt] = await Promise.all([
+    getSignedJWT(ownerKeys.seedHex, 'ES256', {}),
+    getSignedJWT(ownerKeys.seedHex, 'ES256', {
+      derivedPublicKeyBase58Check: derivedPublicKeyBase58,
+    }),
+  ]);
+
   return {
     derivedSeedHex: derivedKeys.seedHex,
     derivedPublicKeyBase58Check: derivedPublicKeyBase58,
@@ -79,8 +87,8 @@ export async function generateDerivedKeyPayload(
     expirationBlock: expirationBlockHeight,
     network,
     accessSignature: ecUtils.bytesToHex(accessSignature),
-    jwt: '', // NOTE: We should not need this since we generate JWTs on the fly when we need it.
-    derivedJwt: '', // NOTE: We should not need this since we generate JWTs on the fly when we need it.
+    jwt,
+    derivedJwt,
     messagingPublicKeyBase58Check,
     messagingPrivateKey: messagingKey.seedHex,
     messagingKeyName: defaultMessagingGroupName,
