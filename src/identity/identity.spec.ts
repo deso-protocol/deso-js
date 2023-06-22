@@ -1130,12 +1130,12 @@ describe('identity', () => {
       expect(derivedKeyInfo?.messagingPrivateKey).toEqual(
         expectedDerivePayload.messagingPrivateKey
       );
+      expect(derivedKeyInfo?.derivedSeedHex).toEqual(derivedSeedHex);
 
       // NOTE: signatures are non-deterministic, so unfortunately we can't test
       // them for strict equality But we can minimally test that they exist.
       expect(derivedKeyInfo?.messagingKeySignature).toBeTruthy();
       expect(derivedKeyInfo?.accessSignature).toBeTruthy();
-      expect(derivedKeyInfo?.derivedSeedHex).toEqual(derivedSeedHex);
     });
   });
   describe('.subscribe()', () => {
