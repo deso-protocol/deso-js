@@ -12,7 +12,7 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "useDefineForClassFields": true,
-    "sourceMap": false
+    "sourceMap": true
   },
   "exclude": ["node_modules", "lib"]
 }

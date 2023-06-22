@@ -137,6 +137,13 @@ export interface IdentityConfiguration {
    */
   identityPresenter?: (url: string) => void;
 
+  /**
+   * An optional flag that allows users to skip the "get deso" step during
+   * login. If set to true, the user will be able to login without having to
+   * get deso. Defaults to false.  NOTE: if you choose to set this to true, you
+   * should make sure that the user has a way to get deso after logging in.
+   * Otherwise, they will not be able to do anything with their account.
+   */
   showSkip?: boolean;
 }
 

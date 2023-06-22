@@ -1,13 +1,11 @@
 import { keccak_256 } from '@noble/hashes/sha3';
 import { Point, utils as ecUtils } from '@noble/secp256k1';
 import { ethers } from 'ethers';
-import { TextEncoder } from 'util';
 import {
   AccessGroupEntryResponse,
   AuthorizeDerivedKeyRequest,
   ChatType,
   DecryptedMessageEntryResponse,
-  GetAppStateResponse,
   InfuraResponse,
   NewMessageEntryResponse,
   QueryETHRPCRequest,
@@ -32,11 +30,9 @@ import {
   getSignedJWT,
   keygen,
   publicKeyToBase58Check,
-  sha256X2,
-  sign,
   signTx,
-  uvarint64ToBuf,
 } from './crypto-utils.js';
+import { generateDerivedKeyPayload } from './derived-key-utils.js';
 import { ERROR_TYPES } from './error-types.js';
 import {
   buildTransactionSpendingLimitResponse,
@@ -48,7 +44,6 @@ import {
   EtherscanTransaction,
   IdentityResponse,
   IdentityState,
-  KeyPair,
   LoginOptions,
   NOTIFICATION_EVENTS,
   StorageProvider,
@@ -536,17 +531,20 @@ export class Identity<T extends StorageProvider> {
     });
   }
 
-  async loginWithAutoDerive({
-    ownerSeedHex,
-  }: {
-    ownerSeedHex?: string;
-  }): Promise<IdentityDerivePayload> {
+  /**
+   * @param ownerSeedHex This is the seed hex of the owner key. This must be provided by the app.
+   * @param options.derivedSeedHex This is optional and primarily only used for testing. If not provided, a new random derived key will be generated.
+   */
+  async loginWithAutoDerive(
+    ownerSeedHex: string,
+    { derivedSeedHex }: { derivedSeedHex?: string } = {}
+  ): Promise<IdentityDerivePayload> {
     const event = NOTIFICATION_EVENTS.LOGIN_START;
     const state = await this.#getState();
     this.#subscribers.forEach((s) => s({ event, ...state }));
 
     const ownerKeys = keygen(ownerSeedHex);
-    const derivedKeys = keygen();
+    const derivedKeys = keygen(derivedSeedHex);
     const derivedPublicKeyBase58 = publicKeyToBase58Check(derivedKeys.public, {
       network: this.#network,
     });
@@ -561,9 +559,12 @@ export class Identity<T extends StorageProvider> {
       })
     );
 
-    const payload = await this.#generateDerivedKeyPayload(
+    const payload = await generateDerivedKeyPayload(
       ownerKeys,
-      derivedKeys
+      derivedKeys,
+      this.#defaultTransactionSpendingLimit,
+      this.#defaultNumDaysBeforeExpiration,
+      this.#network
     );
 
     return new Promise((resolve, reject) => {
@@ -580,96 +581,6 @@ export class Identity<T extends StorageProvider> {
       });
     });
   }
-
-  #generateDerivedKeyPayload = async (
-    ownerKeys: KeyPair,
-    derivedKeys: KeyPair
-  ): Promise<IdentityDerivePayload> => {
-    const { BlockHeight } = (await this.#api.post(
-      `${this.#nodeURI}/api/v0/get-app-state`,
-      {}
-    )) as GetAppStateResponse;
-    // days * (24 hours / day) * (60 minutes / hour) * (1 block / 5 minutes) = blocks
-    const expirationBlockHeight =
-      BlockHeight + (this.#defaultNumDaysBeforeExpiration * 24 * 60) / 5;
-    const ownerPublicKeyBase58 = publicKeyToBase58Check(ownerKeys.public, {
-      network: this.#network,
-    });
-    const derivedPublicKeyBase58 = publicKeyToBase58Check(derivedKeys.public, {
-      network: this.#network,
-    });
-
-    const { TransactionSpendingLimitHex } = await this.#api.post(
-      `${this.#nodeURI}/api/v0/get-access-bytes`,
-      {
-        DerivedPublicKeyBase58Check: derivedPublicKeyBase58,
-        ExpirationBlock: expirationBlockHeight,
-        TransactionSpendingLimit: this.#defaultTransactionSpendingLimit,
-      }
-    );
-
-    const transactionSpendingLimitBytes = TransactionSpendingLimitHex
-      ? ecUtils.hexToBytes(TransactionSpendingLimitHex)
-      : [];
-
-    const accessBytes = new Uint8Array([
-      ...derivedKeys.public,
-      ...uvarint64ToBuf(expirationBlockHeight),
-      ...transactionSpendingLimitBytes,
-    ]);
-
-    const accessHash = sha256X2(accessBytes);
-
-    const [accessSignature] = await sign(
-      ecUtils.bytesToHex(accessHash),
-      ecUtils.hexToBytes(ownerKeys.seedHex)
-    );
-
-    const messagingKey = deriveAccessGroupKeyPair(
-      ownerKeys.seedHex,
-      this.#defaultGroupName
-    );
-
-    const {
-      AccessGroupPublicKeyBase58Check,
-      AccessGroupPrivateKeyHex,
-      AccessGroupKeyName,
-    } = await this.accessGroupStandardDerivation(this.#defaultGroupName, {
-      messagingPrivateKey: messagingKey.seedHex,
-    });
-
-    const messagingKeyHash = sha256X2(
-      new Uint8Array([
-        ...messagingKey.public,
-        ...new TextEncoder().encode(this.#defaultGroupName),
-      ])
-    );
-
-    const [messagingKeySignature] = await sign(
-      ecUtils.bytesToHex(messagingKeyHash),
-      ecUtils.hexToBytes(ownerKeys.seedHex)
-    );
-
-    return {
-      derivedSeedHex: derivedKeys.seedHex,
-      derivedPublicKeyBase58Check: derivedPublicKeyBase58,
-      publicKeyBase58Check: ownerPublicKeyBase58,
-      btcDepositAddress: 'Not implemented yet',
-      ethDepositAddress: 'Not implemented yet',
-      expirationBlock: expirationBlockHeight,
-      network: this.#network,
-      accessSignature: ecUtils.bytesToHex(accessSignature),
-      jwt: '', // NOTE: We should not need this since we generate JWTs on the fly when we need it.
-      derivedJwt: '', // NOTE: We should not need this since we generate JWTs on the fly when we need it.
-      messagingPublicKeyBase58Check: AccessGroupPublicKeyBase58Check,
-      messagingPrivateKey: AccessGroupPrivateKeyHex,
-      messagingKeyName: AccessGroupKeyName,
-      messagingKeySignature: ecUtils.bytesToHex(messagingKeySignature),
-      transactionSpendingLimitHex: TransactionSpendingLimitHex,
-      signedUp: false, // QUESTION: Should this be true? I think either false or true is okay, but not totally clear until we do a full ETE test.
-      publicKeyAdded: ownerPublicKeyBase58,
-    };
-  };
 
   /**
    * Starts a logout flow. This will open a new window and prompt the user to
@@ -964,19 +875,19 @@ export class Identity<T extends StorageProvider> {
    * @returns a promise that resolves to the new key info.
    */
   async accessGroupStandardDerivation(
-    groupName: string,
-    { messagingPrivateKey }: { messagingPrivateKey?: string } = {}
+    groupName: string
   ): Promise<AccessGroupPrivateInfo> {
     const { primaryDerivedKey } = (await this.#getCurrentUser()) ?? {};
-    const messagingKey =
-      messagingPrivateKey ?? primaryDerivedKey?.messagingPrivateKey;
 
-    if (!messagingKey) {
+    if (!primaryDerivedKey?.messagingPrivateKey) {
       // This *should* never happen, but just in case we throw here to surface any bugs.
       throw new Error('Cannot derive access group without a messaging key');
     }
 
-    const keys = deriveAccessGroupKeyPair(messagingKey, groupName);
+    const keys = deriveAccessGroupKeyPair(
+      primaryDerivedKey?.messagingPrivateKey,
+      groupName
+    );
     const publicKeyBase58Check = publicKeyToBase58Check(keys.public, {
       network: this.#network,
     });
@@ -1197,8 +1108,6 @@ export class Identity<T extends StorageProvider> {
       }
     }
   }
-
-  async generateDerivedKey(seedHex: string) {}
 
   /**
    * Use this in a browser context where localStorage is used as the storage
