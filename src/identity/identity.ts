@@ -163,6 +163,11 @@ export class Identity<T extends StorageProvider> {
   #showSkip = false;
 
   /**
+   * @private
+   */
+  #isAutoDeriveLogin = false;
+
+  /**
    * Defaults to 10 years. These login keys should essentially never expire
    * unless a user explicity de-authorizes them.
    * @private
@@ -566,7 +571,7 @@ export class Identity<T extends StorageProvider> {
       // NOTE: this is a bit hacky, but we need to ensure showSkip is true so we
       // don't get stuck when the user has no money and we can't authorize the
       // derived key.
-      this.#showSkip = true;
+      this.#isAutoDeriveLogin = true;
       this.#handleIdentityResponse({
         service: 'identity',
         method: 'derive',
@@ -1722,7 +1727,7 @@ export class Identity<T extends StorageProvider> {
             // their data.
             const currentUser = await this.#getCurrentUser();
             const showSkipAndNoMoney =
-              this.#showSkip &&
+              (this.#showSkip || this.#isAutoDeriveLogin) &&
               e.message.indexOf('RuleErrorInsufficientBalance') >= 0;
             if (showSkipAndNoMoney && currentUser != null) {
               await this.#updateUser(currentUser.publicKey, {
