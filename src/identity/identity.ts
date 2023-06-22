@@ -567,7 +567,7 @@ export class Identity<T extends StorageProvider> {
       // don't get stuck when the user has no money and we can't authorize the
       // derived key.
       this.#showSkip = true;
-      return this.#handleIdentityResponse({
+      this.#handleIdentityResponse({
         service: 'identity',
         method: 'derive',
         payload,
