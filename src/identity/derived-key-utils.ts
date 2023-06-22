@@ -94,7 +94,7 @@ export async function generateDerivedKeyPayload(
     messagingKeyName: defaultMessagingGroupName,
     messagingKeySignature: ecUtils.bytesToHex(messagingKeySignature),
     transactionSpendingLimitHex: TransactionSpendingLimitHex,
-    signedUp: false, // QUESTION: Should this be true? I think either false or true is okay, but not totally clear until we do a full ETE test.
+    signedUp: false,
     publicKeyAdded: ownerPublicKeyBase58,
   };
 }
