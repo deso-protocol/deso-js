@@ -568,9 +568,10 @@ export class Identity<T extends StorageProvider> {
 
     return new Promise((resolve, reject) => {
       this.#pendingWindowRequest = { resolve, reject, event };
-      // NOTE: this is a bit hacky, but we need to ensure showSkip is true so we
-      // don't get stuck when the user has no money and we can't authorize the
-      // derived key.
+      // NOTE: We set this flag so that when the identity response is handled,
+      // we know to let the login flow continue even if the user has no money to
+      // authorize the key. It's up to the app to handle how the user gets
+      // money, after which they can re-attempt to authorize the key.
       this.#isAutoDeriveLogin = true;
       this.#handleIdentityResponse({
         service: 'identity',
