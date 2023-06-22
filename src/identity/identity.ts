@@ -660,7 +660,7 @@ export class Identity<T extends StorageProvider> {
       messagingKeyName: AccessGroupKeyName,
       messagingKeySignature: ecUtils.bytesToHex(messagingKeySignature),
       transactionSpendingLimitHex: TransactionSpendingLimitHex,
-      signedUp: true, // NOTE: indicates that a new wallet was created.
+      signedUp: false, // QUESTION: Should this be true? I think either false or true is okay, but not totally clear until we do a full ETE test.
       publicKeyAdded: ownerPublicKeyBase58,
     };
   };
@@ -1801,14 +1801,12 @@ export class Identity<T extends StorageProvider> {
       this.#pendingWindowRequest?.resolve(payload);
 
       // This condition identifies the "get deso" flow where a user did not
-      // login, but was simply prompted to get some free deso. We really should
-      // never get into this state since we now require a login to get free deso.
+      // login, but was simply prompted to get some free deso.
     } else if (
       payload.publicKeyAdded &&
       !payload.signedUp &&
       payload.publicKeyAdded === activePublicKey
     ) {
-      // const expectedEvent = NOTIFICATION_EVENTS.GET_FREE_DESO_START;
       let endEvent: NOTIFICATION_EVENTS;
       const startEvent = this.#pendingWindowRequest?.event;
       if (startEvent === NOTIFICATION_EVENTS.GET_FREE_DESO_START) {
