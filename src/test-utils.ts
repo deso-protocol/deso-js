@@ -1,4 +1,4 @@
-import { APIProvider } from './identity/index.js';
+import { APIProvider, AsyncStorage } from './identity/index.js';
 
 class LocalStorageFake implements Storage {
   db: Record<string, string> = {};
@@ -24,6 +24,39 @@ class LocalStorageFake implements Storage {
   }
 
   removeItem(key: string) {
+    delete this.db[key];
+  }
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+export class AsyncStorageFake implements AsyncStorage {
+  db: Record<string, string> = {};
+
+  get length() {
+    return Object.keys(this.db).length;
+  }
+
+  async clear() {
+    await sleep(1);
+    this.db = {};
+  }
+
+  key(index: number) {
+    return Object.keys(this.db)[index];
+  }
+
+  async getItem(key: string) {
+    await sleep(1);
+    return this.db[key] ?? null;
+  }
+
+  async setItem(key: string, value: string) {
+    await sleep(1);
+    this.db[key] = value;
+  }
+
+  async removeItem(key: string) {
+    await sleep(1);
     delete this.db[key];
   }
 }

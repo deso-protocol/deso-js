@@ -2,7 +2,7 @@ import { utils as ecUtils, getPublicKey } from '@noble/secp256k1';
 import { verify } from 'jsonwebtoken';
 import KeyEncoder from 'key-encoder';
 import { ChatType, NewMessageEntryResponse } from '../backend-types/index.js';
-import { getAPIFake, getWindowFake } from '../test-utils.js';
+import { AsyncStorageFake, getAPIFake, getWindowFake } from '../test-utils.js';
 import { APIError } from './api.js';
 import { DEFAULT_IDENTITY_URI, LOCAL_STORAGE_KEYS } from './constants.js';
 import {
@@ -19,7 +19,7 @@ import {
   TransactionMetadataBasicTransfer,
   TransactionNonce,
 } from './transaction-transcoders.js';
-import { APIProvider } from './types.js';
+import { APIProvider, AsyncStorage } from './types.js';
 
 function getPemEncodePublicKey(privateKey: Uint8Array): string {
   const publicKey = getPublicKey(privateKey, true);
@@ -973,14 +973,15 @@ describe('identity', () => {
     });
   });
   describe('setActiveUser', () => {
-    it('sets the active user', () => {
+    it('sets the active user', async () => {
       const pubKey1 = 'fake-pub-key-1';
       const pubKey2 = 'fake-pub-key-2';
-      windowFake.localStorage.setItem(
+      const storageProvider = new AsyncStorageFake();
+      await storageProvider.setItem(
         LOCAL_STORAGE_KEYS.activePublicKey,
         pubKey1
       );
-      windowFake.localStorage.setItem(
+      await storageProvider.setItem(
         LOCAL_STORAGE_KEYS.identityUsers,
         JSON.stringify({
           [pubKey1]: {
@@ -998,8 +999,11 @@ describe('identity', () => {
         })
       );
 
-      identity.setActiveUser(pubKey2);
-      const snapshot = identity.snapshot();
+      const asyncIdentity = new Identity<AsyncStorage>(windowFake, apiFake);
+      asyncIdentity.configure({ storageProvider });
+
+      asyncIdentity.setActiveUser(pubKey2);
+      const snapshot = await asyncIdentity.snapshot();
       expect(snapshot.currentUser?.publicKey).toEqual(pubKey2);
     });
   });
