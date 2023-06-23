@@ -7,7 +7,7 @@ import {
   publicKeyToBase58Check,
   sha256X2,
   sign,
-  uvarint64ToBuf,
+  uint64ToBufBigEndian,
 } from './crypto-utils.js';
 import { KeyPair, Network } from './types.js';
 
@@ -45,7 +45,7 @@ export async function generateDerivedKeyPayload(
     : [];
   const accessBytes = new Uint8Array([
     ...derivedKeys.public,
-    ...uvarint64ToBuf(expirationBlockHeight),
+    ...uint64ToBufBigEndian(expirationBlockHeight),
     ...transactionSpendingLimitBytes,
   ]);
   const accessHashHex = ecUtils.bytesToHex(sha256X2(accessBytes));
