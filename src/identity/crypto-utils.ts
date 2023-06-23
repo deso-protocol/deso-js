@@ -65,6 +65,19 @@ export const bufToUvarint64 = (buffer: Uint8Array): [number, Uint8Array] => {
   }
 };
 
+export const uint64ToBufBigEndian = (uint: number) => {
+  const result = [];
+  while (BigInt(uint) >= BigInt(0xff)) {
+    result.push(Number(BigInt(uint) & BigInt(0xff)));
+    uint = Number(BigInt(uint) >> BigInt(8));
+  }
+  result.push(Number(BigInt(uint) | BigInt(0)));
+  while (result.length < 8) {
+    result.push(0);
+  }
+  return new Uint8Array(result.reverse());
+};
+
 interface Base58CheckOptions {
   network: Network;
 }
@@ -130,7 +143,7 @@ export interface SignOptions {
   isDerivedKey: boolean;
 }
 
-const sign = (msgHashHex: string, privateKey: Uint8Array) => {
+export const sign = (msgHashHex: string, privateKey: Uint8Array) => {
   return ecSign(msgHashHex, privateKey, {
     // For details about the signing options see: https://github.com/paulmillr/noble-secp256k1#signmsghash-privatekey
     canonical: true,

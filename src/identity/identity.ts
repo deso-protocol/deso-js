@@ -2,15 +2,15 @@ import { keccak_256 } from '@noble/hashes/sha3';
 import { Point, utils as ecUtils } from '@noble/secp256k1';
 import { ethers } from 'ethers';
 import {
+  AccessGroupEntryResponse,
   AuthorizeDerivedKeyRequest,
   ChatType,
+  DecryptedMessageEntryResponse,
   InfuraResponse,
+  NewMessageEntryResponse,
   QueryETHRPCRequest,
-  type AccessGroupEntryResponse,
-  type DecryptedMessageEntryResponse,
+  SubmitTransactionResponse,
   type InfuraTx,
-  type NewMessageEntryResponse,
-  type SubmitTransactionResponse,
   type TransactionSpendingLimitResponse,
 } from '../backend-types/index.js';
 import {
@@ -32,6 +32,7 @@ import {
   publicKeyToBase58Check,
   signTx,
 } from './crypto-utils.js';
+import { generateDerivedKeyPayload } from './derived-key-utils.js';
 import { ERROR_TYPES } from './error-types.js';
 import {
   buildTransactionSpendingLimitResponse,
@@ -39,6 +40,7 @@ import {
 } from './permissions-utils.js';
 import { parseQueryParams } from './query-param-utils.js';
 import {
+  AccessGroupPrivateInfo,
   EtherscanTransaction,
   IdentityResponse,
   IdentityState,
@@ -46,7 +48,6 @@ import {
   NOTIFICATION_EVENTS,
   StorageProvider,
   type APIProvider,
-  type AccessGroupPrivateInfo,
   type Deferred,
   type EtherscanTransactionsByAddressResponse,
   type IdentityConfiguration,
@@ -119,6 +120,11 @@ export class Identity<T extends StorageProvider> {
   /**
    * @private
    */
+  #defaultGroupName = 'default-key';
+
+  /**
+   * @private
+   */
   #boundPostMessageListener?: (event: MessageEvent) => void;
 
   /**
@@ -150,6 +156,18 @@ export class Identity<T extends StorageProvider> {
    * @private
    */
   #showSkip = false;
+
+  /**
+   * @private
+   */
+  #isAutoDeriveLogin = false;
+
+  /**
+   * Defaults to 10 years. These login keys should essentially never expire
+   * unless a user explicity de-authorizes them.
+   * @private
+   */
+  #defaultNumDaysBeforeExpiration = 3650;
 
   /**
    * The current internal state of identity. This is a combination of the
@@ -501,7 +519,7 @@ export class Identity<T extends StorageProvider> {
         derive: true,
         derivedPublicKey,
         transactionSpendingLimitResponse: this.#defaultTransactionSpendingLimit,
-        expirationDays: 3650, // 10 years. these login keys should essentially never expire.
+        expirationDays: this.#defaultNumDaysBeforeExpiration,
         showSkip: this.#showSkip,
       };
 
@@ -510,6 +528,57 @@ export class Identity<T extends StorageProvider> {
       }
 
       this.#launchIdentity('derive', identityParams);
+    });
+  }
+
+  /**
+   * @param ownerSeedHex This is the seed hex of the owner key. This must be provided by the app.
+   * @param options.derivedSeedHex This is optional and primarily only used for testing. If not provided, a new random derived key will be generated.
+   */
+  async loginWithAutoDerive(
+    ownerSeedHex: string,
+    { derivedSeedHex }: { derivedSeedHex?: string } = {}
+  ): Promise<IdentityDerivePayload> {
+    const event = NOTIFICATION_EVENTS.LOGIN_START;
+    const state = await this.#getState();
+    this.#subscribers.forEach((s) => s({ event, ...state }));
+
+    const ownerKeys = keygen(ownerSeedHex);
+    const derivedKeys = keygen(derivedSeedHex);
+    const derivedPublicKeyBase58 = publicKeyToBase58Check(derivedKeys.public, {
+      network: this.#network,
+    });
+
+    // When the derived payload is handled, we look at local storage to see if
+    // this is a login derived key, so we need to set this before we handle the response.
+    await this.#storageProvider?.setItem(
+      LOCAL_STORAGE_KEYS.loginKeyPair,
+      JSON.stringify({
+        publicKey: derivedPublicKeyBase58,
+        seedHex: derivedKeys.seedHex,
+      })
+    );
+
+    const payload = await generateDerivedKeyPayload(
+      ownerKeys,
+      derivedKeys,
+      this.#defaultTransactionSpendingLimit,
+      this.#defaultNumDaysBeforeExpiration,
+      this.#network
+    );
+
+    return new Promise((resolve, reject) => {
+      this.#pendingWindowRequest = { resolve, reject, event };
+      // NOTE: We set this flag so that when the identity response is handled,
+      // we know to let the login flow continue even if the user has no money to
+      // authorize the key. It's up to the app to handle how the user gets
+      // money, after which they can re-attempt to authorize the key.
+      this.#isAutoDeriveLogin = true;
+      this.#handleIdentityResponse({
+        service: 'identity',
+        method: 'derive',
+        payload,
+      });
     });
   }
 
@@ -733,7 +802,7 @@ export class Identity<T extends StorageProvider> {
     const isSender =
       message.SenderInfo.OwnerPublicKeyBase58Check ===
         userPublicKeyBase58Check &&
-      (message.SenderInfo.AccessGroupKeyName === 'default-key' ||
+      (message.SenderInfo.AccessGroupKeyName === this.#defaultGroupName ||
         !message.SenderInfo.AccessGroupKeyName);
     let DecryptedMessage = '';
     let errorMsg = '';
@@ -802,6 +871,7 @@ export class Identity<T extends StorageProvider> {
    * decrypt group messages.
    *
    * @param groupName the plaintext name of the group chat
+   * @param options.messagingPrivateKey the optional messaging private key
    * @returns a promise that resolves to the new key info.
    */
   async accessGroupStandardDerivation(
@@ -815,7 +885,7 @@ export class Identity<T extends StorageProvider> {
     }
 
     const keys = deriveAccessGroupKeyPair(
-      primaryDerivedKey.messagingPrivateKey,
+      primaryDerivedKey?.messagingPrivateKey,
       groupName
     );
     const publicKeyBase58Check = publicKeyToBase58Check(keys.public, {
@@ -1567,7 +1637,7 @@ export class Identity<T extends StorageProvider> {
             // their data.
             const currentUser = await this.#getCurrentUser();
             const showSkipAndNoMoney =
-              this.#showSkip &&
+              (this.#showSkip || this.#isAutoDeriveLogin) &&
               e.message.indexOf('RuleErrorInsufficientBalance') >= 0;
             if (showSkipAndNoMoney && currentUser != null) {
               await this.#updateUser(currentUser.publicKey, {
@@ -1646,14 +1716,12 @@ export class Identity<T extends StorageProvider> {
       this.#pendingWindowRequest?.resolve(payload);
 
       // This condition identifies the "get deso" flow where a user did not
-      // login, but was simply prompted to get some free deso. We really should
-      // never get into this state since we now require a login to get free deso.
+      // login, but was simply prompted to get some free deso.
     } else if (
       payload.publicKeyAdded &&
       !payload.signedUp &&
       payload.publicKeyAdded === activePublicKey
     ) {
-      // const expectedEvent = NOTIFICATION_EVENTS.GET_FREE_DESO_START;
       let endEvent: NOTIFICATION_EVENTS;
       const startEvent = this.#pendingWindowRequest?.event;
       if (startEvent === NOTIFICATION_EVENTS.GET_FREE_DESO_START) {

@@ -6,7 +6,6 @@ import { getAPIFake, getWindowFake } from '../test-utils.js';
 import { APIError } from './api.js';
 import { DEFAULT_IDENTITY_URI, LOCAL_STORAGE_KEYS } from './constants.js';
 import {
-  bs58PublicKeyToBytes,
   bs58PublicKeyToCompressedBytes,
   isValidBS58PublicKey,
   keygen,
@@ -1002,6 +1001,138 @@ describe('identity', () => {
       identity.setActiveUser(pubKey2);
       const snapshot = identity.snapshot();
       expect(snapshot.currentUser?.publicKey).toEqual(pubKey2);
+    });
+  });
+  describe('loginWithAutoDerive()', () => {
+    it('it stores the expected derive data when generating a local derived key payload', async () => {
+      const expectedExpirationBlock = 1294652;
+      const expectedDerivePayload = {
+        derivedPublicKeyBase58Check:
+          'BC1YLhKdgXgrZ1XkCzbmP6T9bumth2DgPwNjMksCAXe5kGU9LnxQtsX',
+        publicKeyBase58Check:
+          'BC1YLgamBUfZxYwKp7VmseJEXBxFdWNZJ1KW8q1YphDJcYiCMKZ9fFC',
+        btcDepositAddress: 'Not implemented yet',
+        ethDepositAddress: 'Not implemented yet',
+        expirationBlock: expectedExpirationBlock,
+        accessSignature:
+          '3045022018e653cc79575ad947dd48234461a42f94813b94f6876505d3d10d9040af6fc4022100bbe5b07d98b819706e6bb12949d5cd1067da8bfa8f7abd0b8e150190b5f303ae',
+        messagingPublicKeyBase58Check:
+          'BC1YLhaLw1va7HQjrHjPjChbhpSVREE3EYpmxSDzTLwFVQZ5NZfSX2B',
+        messagingPrivateKey:
+          '7117ca2541c6e2417b05e6e5762a512e1932cb1d59dedcf7e37795114877161b',
+        messagingKeyName: 'default-key',
+        messagingKeySignature:
+          '3045022019bf391d1f5fd9c0c83000b6da579a954c8e1516e9985d62a96351442e952c37022100c1d59dbf1a2d8a547b44f2b11507aaedfa9602855a4a2d19849f22ad97c8d9f7',
+        // TODO: get a deterministic value for this from a real derive call to the identity window using a known tx limit map.
+        transactionSpendingLimitHex: '',
+        signedUp: true,
+      };
+      const ownerSeedHex =
+        '9bd433466f03e7f72708975b8759e357f59089e621ea353a7a986d18e5904f1f';
+      const derivedSeedHex =
+        'eb3e8348f1f3225f83abd5d2d68b7a12b4b07b843bfec3776e5fd7f25e069469';
+      const identityConfig = {
+        storageProvider: windowFake.localStorage,
+        spendingLimitOptions: {
+          GlobalDESOLimit: 12345,
+          TransactionCountLimitMap: {
+            AUTHORIZE_DERIVED_KEY: 1,
+          },
+        },
+      };
+
+      // get a clean identity instance
+      identity = new Identity<Storage>(windowFake, apiFake);
+      identity.configure(identityConfig);
+
+      globalThis.fetch = jest
+        .fn()
+        .mockImplementation((url, options) => {
+          if (
+            options?.method === 'POST' &&
+            url.endsWith('/api/v0/get-app-state')
+          ) {
+            return Promise.resolve({
+              ok: true,
+              text: () =>
+                Promise.resolve(
+                  JSON.stringify({
+                    // BlockHeight captured on 6/22/2023 10:27AM PST
+                    BlockHeight: 243452,
+                  })
+                ),
+            });
+          }
+
+          if (
+            options?.method === 'POST' &&
+            url.endsWith('/api/v0/get-access-bytes')
+          ) {
+            // Assert we're sending the expected POST body
+            expect(JSON.parse(options.body)).toEqual({
+              ExpirationBlock: expectedExpirationBlock,
+              TransactionSpendingLimit: identityConfig.spendingLimitOptions,
+              DerivedPublicKeyBase58Check: JSON.parse(
+                windowFake.localStorage.getItem(
+                  LOCAL_STORAGE_KEYS.loginKeyPair
+                ) ?? '{}'
+              ).publicKey,
+            });
+
+            return Promise.resolve({
+              ok: true,
+              text: () =>
+                Promise.resolve(
+                  JSON.stringify({
+                    TransactionSpendingLimitHex:
+                      expectedDerivePayload.transactionSpendingLimitHex,
+                  })
+                ),
+            });
+          }
+
+          return Promise.reject(
+            new Error(
+              `fetch called with unmocked url: ${JSON.stringify(
+                options
+              )} ${url}`
+            )
+          );
+        })
+        .mockName('fetch');
+
+      await identity.loginWithAutoDerive(ownerSeedHex, {
+        derivedSeedHex: derivedSeedHex,
+      });
+
+      const { currentUser } = await identity.snapshot();
+      const derivedKeyInfo = currentUser?.primaryDerivedKey;
+
+      expect(currentUser?.publicKey).toEqual(
+        expectedDerivePayload.publicKeyBase58Check
+      );
+      expect(derivedKeyInfo?.derivedPublicKeyBase58Check).toEqual(
+        expectedDerivePayload.derivedPublicKeyBase58Check
+      );
+      expect(derivedKeyInfo?.expirationBlock).toEqual(expectedExpirationBlock);
+      expect(derivedKeyInfo?.transactionSpendingLimitHex).toEqual(
+        expectedDerivePayload.transactionSpendingLimitHex
+      );
+      expect(derivedKeyInfo?.messagingKeyName).toEqual(
+        expectedDerivePayload.messagingKeyName
+      );
+      expect(derivedKeyInfo?.messagingPublicKeyBase58Check).toEqual(
+        expectedDerivePayload.messagingPublicKeyBase58Check
+      );
+      expect(derivedKeyInfo?.messagingPrivateKey).toEqual(
+        expectedDerivePayload.messagingPrivateKey
+      );
+      expect(derivedKeyInfo?.derivedSeedHex).toEqual(derivedSeedHex);
+
+      // NOTE: signatures are non-deterministic, so unfortunately we can't test
+      // them for strict equality But we can minimally test that they exist.
+      expect(derivedKeyInfo?.messagingKeySignature).toBeTruthy();
+      expect(derivedKeyInfo?.accessSignature).toBeTruthy();
     });
   });
   describe('.subscribe()', () => {

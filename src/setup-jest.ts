@@ -1,20 +1,28 @@
-import { webcrypto } from "crypto";
-import { TextDecoder, TextEncoder } from "util";
+import { webcrypto } from 'crypto';
+import { TextDecoder, TextEncoder } from 'util';
 
 beforeAll(() => {
   setupTestPolyfills();
 });
 
+beforeEach(() => {
+  // Make sure there aren't any leaking fetch mocks across tests
+  globalThis.fetch = jest
+    .fn()
+    .mockImplementation((url) =>
+      Promise.reject(new Error(`fetch called with unmocked url: ${url}`))
+    )
+    .mockName('fetch');
+});
+
 function setupTestPolyfills() {
-  // https://davidwalsh.name/window-crypto-node
-  // globalThis.crypto = webcrypto as unknown as Crypto;
-  Object.defineProperty(globalThis.crypto, "subtle", {
+  Object.defineProperty(globalThis.crypto, 'subtle', {
     value: webcrypto.subtle,
   });
-  // NOTE: for some reason the Uint8Array returned by node's implementation of
-  // TextEncoder.encode does not compare properly when using instanceof in the
-  // browser to check if it is a Uint8Array.  Here we just wrap the original
-  // implementation so that instanceof (used by @noble crypto packages) works.
+
+  // NOTE: Node's implementation of TextEncoder.encode returns a Buffer, and
+  // @noble crypto expects a Uint8Array. Here we just make sure whether we're
+  // running in node or a browser that we are always dealing with a Uint8Array
   const originalEncode = TextEncoder.prototype.encode;
   TextEncoder.prototype.encode = function (str: string) {
     return new Uint8Array(originalEncode.call(this, str));
