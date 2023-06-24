@@ -28,7 +28,6 @@ class LocalStorageFake implements Storage {
   }
 }
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 export class AsyncStorageFake implements AsyncStorage {
   db: Record<string, string> = {};
 
@@ -37,7 +36,6 @@ export class AsyncStorageFake implements AsyncStorage {
   }
 
   async clear() {
-    await sleep(1);
     this.db = {};
   }
 
@@ -46,17 +44,14 @@ export class AsyncStorageFake implements AsyncStorage {
   }
 
   async getItem(key: string) {
-    await sleep(1);
     return this.db[key] ?? null;
   }
 
   async setItem(key: string, value: string) {
-    await sleep(1);
     this.db[key] = value;
   }
 
   async removeItem(key: string) {
-    await sleep(1);
     delete this.db[key];
   }
 }

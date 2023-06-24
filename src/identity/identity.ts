@@ -1039,11 +1039,11 @@ export class Identity<T extends StorageProvider> {
    */
   setActiveUser(publicKey: string): T extends Storage ? void : Promise<void> {
     const maybePromise = this.#setActiveUser(publicKey);
-
     if (typeof maybePromise?.then === 'function') {
       // we're in async storage mode
       return maybePromise.then(() => {
-        return (this.#getState() as Promise<IdentityState>).then((state) => {
+        const snapshotPromise = this.snapshot() as Promise<IdentityState>;
+        return snapshotPromise.then((state) => {
           this.refreshDerivedKeyPermissions();
           this.#subscribers.forEach((s) =>
             s({
@@ -1489,7 +1489,7 @@ export class Identity<T extends StorageProvider> {
 
       return this.#storageProvider.setItem(
         LOCAL_STORAGE_KEYS.activePublicKey,
-        publicKey
+        newActivePublicKey
       ) as any;
     };
 
@@ -1647,6 +1647,10 @@ export class Identity<T extends StorageProvider> {
                   derivedKeyRegistered: false,
                 },
               });
+              await this.#storageProvider.setItem(
+                LOCAL_STORAGE_KEYS.activePublicKey,
+                currentUser.publicKey
+              );
             } else if (
               this.#pendingWindowRequest?.event ===
                 NOTIFICATION_EVENTS.LOGIN_START &&
@@ -1862,6 +1866,10 @@ export class Identity<T extends StorageProvider> {
           derivedSeedHex: seedHex,
         },
       });
+      await this.#storageProvider.setItem(
+        LOCAL_STORAGE_KEYS.activePublicKey,
+        payload.publicKeyBase58Check
+      );
 
       return await this.#authorizePrimaryDerivedKey(
         payload.publicKeyBase58Check
@@ -1922,10 +1930,6 @@ export class Identity<T extends StorageProvider> {
         })
       );
     }
-    await this.#storageProvider.setItem(
-      LOCAL_STORAGE_KEYS.activePublicKey,
-      masterPublicKey
-    );
   }
 
   /**

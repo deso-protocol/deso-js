@@ -976,12 +976,12 @@ describe('identity', () => {
     it('sets the active user', async () => {
       const pubKey1 = 'fake-pub-key-1';
       const pubKey2 = 'fake-pub-key-2';
-      const storageProvider = new AsyncStorageFake();
-      await storageProvider.setItem(
+      const asyncStorageProvider = new AsyncStorageFake();
+      await asyncStorageProvider.setItem(
         LOCAL_STORAGE_KEYS.activePublicKey,
         pubKey1
       );
-      await storageProvider.setItem(
+      await asyncStorageProvider.setItem(
         LOCAL_STORAGE_KEYS.identityUsers,
         JSON.stringify({
           [pubKey1]: {
@@ -1000,9 +1000,8 @@ describe('identity', () => {
       );
 
       const asyncIdentity = new Identity<AsyncStorage>(windowFake, apiFake);
-      asyncIdentity.configure({ storageProvider });
-
-      asyncIdentity.setActiveUser(pubKey2);
+      asyncIdentity.configure({ storageProvider: asyncStorageProvider });
+      await asyncIdentity.setActiveUser(pubKey2);
       const snapshot = await asyncIdentity.snapshot();
       expect(snapshot.currentUser?.publicKey).toEqual(pubKey2);
     });
