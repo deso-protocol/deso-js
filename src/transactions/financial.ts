@@ -2,7 +2,6 @@ import {
   BuyOrSellCreatorCoinRequest,
   BuyOrSellCreatorCoinResponse,
   ConstructedTransactionResponse,
-  RequestOptions,
   SendDeSoRequest,
   SendDeSoResponse,
   TransferCreatorCoinRequest,
@@ -12,6 +11,7 @@ import {
 import { PartialWithRequiredFields } from '../data/index.js';
 import {
   TransactionMetadataBasicTransfer,
+  TransactionMetadataCreatorCoin,
   TransactionMetadataCreatorCoinTransfer,
   TransactionOutput,
   bs58PublicKeyToCompressedBytes,
@@ -131,15 +131,38 @@ export type BuyCreatorCoinRequestParams = TxRequestWithOptionalFeesAndExtraData<
     | 'DeSoToSellNanos'
   >
 >;
-export const buyCreatorCoin = (
+export const buyCreatorCoin = async (
   params: BuyCreatorCoinRequestParams,
-  options?: RequestOptions
+  options?: TxRequestOptions
 ): Promise<
   ConstructedAndSubmittedTx<
     BuyOrSellCreatorCoinResponse | ConstructedTransactionResponse
   >
 > => {
-  // TODO: Add tx permission check once local tx construction is implemented.
+  const txWithFee = getTxWithFeeNanos(
+    params.UpdaterPublicKeyBase58Check,
+    buildBuyCreatorCoinMetadata(params),
+    {
+      ExtraData: params.ExtraData,
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+    }
+  );
+
+  if (options?.checkPermissions !== false) {
+    await guardTxPermission({
+      GlobalDESOLimit:
+        params.DeSoToSellNanos +
+        txWithFee.feeNanos +
+        sumTransactionFees(params.TransactionFees),
+      CreatorCoinOperationLimitMap: {
+        [params.CreatorPublicKeyBase58Check]: {
+          buy: options?.txLimitCount ?? 1,
+        },
+      },
+    });
+  }
+
   return handleSignAndSubmit(
     'api/v0/buy-or-sell-creator-coin',
     {
@@ -166,14 +189,37 @@ export type SellCreatorCoinRequestParams =
     >
   >;
 
-export const sellCreatorCoin = (
+export const sellCreatorCoin = async (
   params: SellCreatorCoinRequestParams,
-  options?: RequestOptions
+  options?: TxRequestOptions
 ): Promise<
   ConstructedAndSubmittedTx<
     BuyOrSellCreatorCoinResponse | ConstructedTransactionResponse
   >
 > => {
+  const txWithFee = getTxWithFeeNanos(
+    params.UpdaterPublicKeyBase58Check,
+    buildSellCreatorCoinMetadata(params),
+    {
+      ExtraData: params.ExtraData,
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+    }
+  );
+
+  if (options?.checkPermissions !== false) {
+    await guardTxPermission({
+      GlobalDESOLimit:
+        // QUESTION: we don't need to add anything extra for the sell check, right?
+        txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
+      CreatorCoinOperationLimitMap: {
+        [params.CreatorPublicKeyBase58Check]: {
+          buy: options?.txLimitCount ?? 1,
+        },
+      },
+    });
+  }
+
   // TODO: Add tx permission check once local tx construction is implemented.
   return handleSignAndSubmit(
     'api/v0/buy-or-sell-creator-coin',
@@ -245,7 +291,7 @@ const buildTransferCreatorCoinMetadata = (
   return metadata;
 };
 
-export const constructTransferCreatorCoinTransaction = (
+const constructTransferCreatorCoinTransaction = (
   params: TransferCreatorCoinRequestParams
 ): Promise<ConstructedTransactionResponse> => {
   if (!isMaybeDeSoPublicKey(params.ReceiverUsernameOrPublicKeyBase58Check)) {
@@ -258,6 +304,64 @@ export const constructTransferCreatorCoinTransaction = (
     buildTransferCreatorCoinMetadata(params),
     {
       ExtraData: params.ExtraData,
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+    }
+  );
+};
+
+const buildBuyCreatorCoinMetadata = (params: BuyCreatorCoinRequestParams) => {
+  const metadata = new TransactionMetadataCreatorCoin();
+  metadata.profilePublicKey = bs58PublicKeyToCompressedBytes(
+    params.CreatorPublicKeyBase58Check
+  );
+  metadata.operationType = 0;
+  metadata.desoToSellNanos = params.DeSoToSellNanos;
+  metadata.desoToAddNanos = params.DeSoToAddNanos ?? 0;
+  metadata.minCreatorCoinExpectedNanos = params.MinDeSoExpectedNanos ?? 0;
+  metadata.minDeSoExpectedNanos = params.MinDeSoExpectedNanos ?? 0;
+
+  return metadata;
+};
+
+const buildSellCreatorCoinMetadata = (params: SellCreatorCoinRequestParams) => {
+  // NOTE: I'm not sure if this is completely correct... I'm not sure if it matters
+  // for just checking permissions. If we are using this for local tx construction
+  // it might need to be updated.
+  const metadata = new TransactionMetadataCreatorCoin();
+  metadata.profilePublicKey = bs58PublicKeyToCompressedBytes(
+    params.CreatorPublicKeyBase58Check
+  );
+  metadata.operationType = 1;
+  metadata.creatorCoinToSellNanos = params.CreatorCoinToSellNanos;
+  metadata.desoToAddNanos = params.DeSoToAddNanos ?? 0;
+  metadata.minCreatorCoinExpectedNanos = params.MinDeSoExpectedNanos ?? 0;
+  metadata.minDeSoExpectedNanos = params.MinDeSoExpectedNanos ?? 0;
+
+  return metadata;
+};
+
+// TODO: Make sure these are good to use for full local tx construction.
+const constructBuyCreatorCoinTransaction = (
+  params: BuyCreatorCoinRequestParams
+) => {
+  return constructBalanceModelTx(
+    params.UpdaterPublicKeyBase58Check,
+    buildBuyCreatorCoinMetadata(params),
+    {
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+    }
+  );
+};
+
+const constructSellCreatorCoinTransaction = (
+  params: SellCreatorCoinRequestParams
+) => {
+  return constructBalanceModelTx(
+    params.UpdaterPublicKeyBase58Check,
+    buildSellCreatorCoinMetadata(params),
+    {
       MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
       TransactionFees: params.TransactionFees,
     }
