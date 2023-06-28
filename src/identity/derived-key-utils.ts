@@ -17,11 +17,11 @@ export async function generateDerivedKeyPayload(
   transactionSpendingLimitObj: TransactionSpendingLimitResponse,
   numDaysBeforeExpiration: number,
   network: Network,
-  { defaultMessagingGroupName } = {
+  {defaultMessagingGroupName} = {
     defaultMessagingGroupName: 'default-key',
   }
 ) {
-  const { BlockHeight } = await getAppState();
+  const {BlockHeight} = await getAppState();
 
   // days * (24 hours / day) * (60 minutes / hour) * (1 block / 5 minutes) = blocks
   const expirationBlockHeight =
@@ -32,7 +32,21 @@ export async function generateDerivedKeyPayload(
   const derivedPublicKeyBase58 = publicKeyToBase58Check(derivedKeys.public, {
     network,
   });
-  const { TransactionSpendingLimitHex } = await api.post(
+  if (transactionSpendingLimitObj?.AccessGroupLimitMap) {
+    transactionSpendingLimitObj.AccessGroupLimitMap.forEach((agl) => {
+      if (!agl.AccessGroupOwnerPublicKeyBase58Check) {
+        agl.AccessGroupOwnerPublicKeyBase58Check = ownerPublicKeyBase58;
+      }
+    });
+  }
+  if (transactionSpendingLimitObj?.AccessGroupMemberLimitMap) {
+    transactionSpendingLimitObj.AccessGroupMemberLimitMap.forEach((agml) => {
+      if (!agml.AccessGroupOwnerPublicKeyBase58Check) {
+        agml.AccessGroupOwnerPublicKeyBase58Check = ownerPublicKeyBase58;
+      }
+    });
+  }
+  const {TransactionSpendingLimitHex} = await api.post(
     '/api/v0/get-access-bytes',
     {
       DerivedPublicKeyBase58Check: derivedPublicKeyBase58,
@@ -56,7 +70,7 @@ export async function generateDerivedKeyPayload(
   );
   const messagingPublicKeyBase58Check = publicKeyToBase58Check(
     messagingKey.public,
-    { network }
+    {network}
   );
   const messagingKeyHashHex = ecUtils.bytesToHex(
     sha256X2(
