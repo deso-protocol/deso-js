@@ -214,7 +214,7 @@ export const sellCreatorCoin = async (
         txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
       CreatorCoinOperationLimitMap: {
         [params.CreatorPublicKeyBase58Check]: {
-          buy: options?.txLimitCount ?? 1,
+          sell: options?.txLimitCount ?? 1,
         },
       },
     });
