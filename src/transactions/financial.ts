@@ -311,59 +311,33 @@ const constructTransferCreatorCoinTransaction = (
 };
 
 const buildBuyCreatorCoinMetadata = (params: BuyCreatorCoinRequestParams) => {
+  // NOTE: This is not exactly accurate and gives an upper bound estimate for
+  // minCreatorCoinExpectedNanos. It should not but used for actual tx
+  // construction, but it is useful for estimating tx fees.
   const metadata = new TransactionMetadataCreatorCoin();
   metadata.profilePublicKey = bs58PublicKeyToCompressedBytes(
     params.CreatorPublicKeyBase58Check
   );
   metadata.operationType = 0;
   metadata.desoToSellNanos = params.DeSoToSellNanos;
-  metadata.desoToAddNanos = params.DeSoToAddNanos ?? 0;
-  metadata.minCreatorCoinExpectedNanos = params.MinDeSoExpectedNanos ?? 0;
-  metadata.minDeSoExpectedNanos = params.MinDeSoExpectedNanos ?? 0;
+  metadata.minCreatorCoinExpectedNanos =
+    params.MinCreatorCoinExpectedNanos ?? Number.MAX_SAFE_INTEGER;
 
   return metadata;
 };
 
 const buildSellCreatorCoinMetadata = (params: SellCreatorCoinRequestParams) => {
-  // NOTE: I'm not sure if this is completely correct... I'm not sure if it matters
-  // for just checking permissions. If we are using this for local tx construction
-  // it might need to be updated.
+  // NOTE: This is not exactly accurate and gives an upper bound estimate for
+  // minDeSoExpectedNanos. It should not but used for actual tx construction,
+  // but it is useful for estimating tx fees.
   const metadata = new TransactionMetadataCreatorCoin();
   metadata.profilePublicKey = bs58PublicKeyToCompressedBytes(
     params.CreatorPublicKeyBase58Check
   );
   metadata.operationType = 1;
   metadata.creatorCoinToSellNanos = params.CreatorCoinToSellNanos;
-  metadata.desoToAddNanos = params.DeSoToAddNanos ?? 0;
-  metadata.minCreatorCoinExpectedNanos = params.MinDeSoExpectedNanos ?? 0;
-  metadata.minDeSoExpectedNanos = params.MinDeSoExpectedNanos ?? 0;
+  metadata.minDeSoExpectedNanos =
+    params.MinDeSoExpectedNanos ?? Number.MAX_SAFE_INTEGER;
 
   return metadata;
-};
-
-// TODO: Make sure these are good to use for full local tx construction.
-const constructBuyCreatorCoinTransaction = (
-  params: BuyCreatorCoinRequestParams
-) => {
-  return constructBalanceModelTx(
-    params.UpdaterPublicKeyBase58Check,
-    buildBuyCreatorCoinMetadata(params),
-    {
-      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
-      TransactionFees: params.TransactionFees,
-    }
-  );
-};
-
-const constructSellCreatorCoinTransaction = (
-  params: SellCreatorCoinRequestParams
-) => {
-  return constructBalanceModelTx(
-    params.UpdaterPublicKeyBase58Check,
-    buildSellCreatorCoinMetadata(params),
-    {
-      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
-      TransactionFees: params.TransactionFees,
-    }
-  );
 };
