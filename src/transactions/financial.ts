@@ -2,7 +2,6 @@ import {
   BuyOrSellCreatorCoinRequest,
   BuyOrSellCreatorCoinResponse,
   ConstructedTransactionResponse,
-  RequestOptions,
   SendDeSoRequest,
   SendDeSoResponse,
   TransferCreatorCoinRequest,
@@ -12,6 +11,7 @@ import {
 import { PartialWithRequiredFields } from '../data/index.js';
 import {
   TransactionMetadataBasicTransfer,
+  TransactionMetadataCreatorCoin,
   TransactionMetadataCreatorCoinTransfer,
   TransactionOutput,
   bs58PublicKeyToCompressedBytes,
@@ -131,15 +131,38 @@ export type BuyCreatorCoinRequestParams = TxRequestWithOptionalFeesAndExtraData<
     | 'DeSoToSellNanos'
   >
 >;
-export const buyCreatorCoin = (
+export const buyCreatorCoin = async (
   params: BuyCreatorCoinRequestParams,
-  options?: RequestOptions
+  options?: TxRequestOptions
 ): Promise<
   ConstructedAndSubmittedTx<
     BuyOrSellCreatorCoinResponse | ConstructedTransactionResponse
   >
 > => {
-  // TODO: Add tx permission check once local tx construction is implemented.
+  const txWithFee = getTxWithFeeNanos(
+    params.UpdaterPublicKeyBase58Check,
+    buildBuyCreatorCoinMetadata(params),
+    {
+      ExtraData: params.ExtraData,
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+    }
+  );
+
+  if (options?.checkPermissions !== false) {
+    await guardTxPermission({
+      GlobalDESOLimit:
+        params.DeSoToSellNanos +
+        txWithFee.feeNanos +
+        sumTransactionFees(params.TransactionFees),
+      CreatorCoinOperationLimitMap: {
+        [params.CreatorPublicKeyBase58Check]: {
+          buy: options?.txLimitCount ?? 1,
+        },
+      },
+    });
+  }
+
   return handleSignAndSubmit(
     'api/v0/buy-or-sell-creator-coin',
     {
@@ -166,15 +189,36 @@ export type SellCreatorCoinRequestParams =
     >
   >;
 
-export const sellCreatorCoin = (
+export const sellCreatorCoin = async (
   params: SellCreatorCoinRequestParams,
-  options?: RequestOptions
+  options?: TxRequestOptions
 ): Promise<
   ConstructedAndSubmittedTx<
     BuyOrSellCreatorCoinResponse | ConstructedTransactionResponse
   >
 > => {
-  // TODO: Add tx permission check once local tx construction is implemented.
+  const txWithFee = getTxWithFeeNanos(
+    params.UpdaterPublicKeyBase58Check,
+    buildSellCreatorCoinMetadata(params),
+    {
+      ExtraData: params.ExtraData,
+      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+      TransactionFees: params.TransactionFees,
+    }
+  );
+
+  if (options?.checkPermissions !== false) {
+    await guardTxPermission({
+      GlobalDESOLimit:
+        txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
+      CreatorCoinOperationLimitMap: {
+        [params.CreatorPublicKeyBase58Check]: {
+          sell: options?.txLimitCount ?? 1,
+        },
+      },
+    });
+  }
+
   return handleSignAndSubmit(
     'api/v0/buy-or-sell-creator-coin',
     {
@@ -245,7 +289,7 @@ const buildTransferCreatorCoinMetadata = (
   return metadata;
 };
 
-export const constructTransferCreatorCoinTransaction = (
+const constructTransferCreatorCoinTransaction = (
   params: TransferCreatorCoinRequestParams
 ): Promise<ConstructedTransactionResponse> => {
   if (!isMaybeDeSoPublicKey(params.ReceiverUsernameOrPublicKeyBase58Check)) {
@@ -262,4 +306,36 @@ export const constructTransferCreatorCoinTransaction = (
       TransactionFees: params.TransactionFees,
     }
   );
+};
+
+const buildBuyCreatorCoinMetadata = (params: BuyCreatorCoinRequestParams) => {
+  // NOTE: This is not exactly accurate and gives an upper bound estimate for
+  // minCreatorCoinExpectedNanos. It should not but used for actual tx
+  // construction, but it is useful for estimating tx fees.
+  const metadata = new TransactionMetadataCreatorCoin();
+  metadata.profilePublicKey = bs58PublicKeyToCompressedBytes(
+    params.CreatorPublicKeyBase58Check
+  );
+  metadata.operationType = 0;
+  metadata.desoToSellNanos = params.DeSoToSellNanos;
+  metadata.minCreatorCoinExpectedNanos =
+    params.MinCreatorCoinExpectedNanos ?? Number.MAX_SAFE_INTEGER;
+
+  return metadata;
+};
+
+const buildSellCreatorCoinMetadata = (params: SellCreatorCoinRequestParams) => {
+  // NOTE: This is not exactly accurate and gives an upper bound estimate for
+  // minDeSoExpectedNanos. It should not but used for actual tx construction,
+  // but it is useful for estimating tx fees.
+  const metadata = new TransactionMetadataCreatorCoin();
+  metadata.profilePublicKey = bs58PublicKeyToCompressedBytes(
+    params.CreatorPublicKeyBase58Check
+  );
+  metadata.operationType = 1;
+  metadata.creatorCoinToSellNanos = params.CreatorCoinToSellNanos;
+  metadata.minDeSoExpectedNanos =
+    params.MinDeSoExpectedNanos ?? Number.MAX_SAFE_INTEGER;
+
+  return metadata;
 };
