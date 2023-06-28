@@ -32,6 +32,20 @@ export async function generateDerivedKeyPayload(
   const derivedPublicKeyBase58 = publicKeyToBase58Check(derivedKeys.public, {
     network,
   });
+  if (transactionSpendingLimitObj?.AccessGroupLimitMap) {
+    transactionSpendingLimitObj.AccessGroupLimitMap.forEach((agl) => {
+      if (!agl.AccessGroupOwnerPublicKeyBase58Check) {
+        agl.AccessGroupOwnerPublicKeyBase58Check = ownerPublicKeyBase58;
+      }
+    });
+  }
+  if (transactionSpendingLimitObj?.AccessGroupMemberLimitMap) {
+    transactionSpendingLimitObj.AccessGroupMemberLimitMap.forEach((agml) => {
+      if (!agml.AccessGroupOwnerPublicKeyBase58Check) {
+        agml.AccessGroupOwnerPublicKeyBase58Check = ownerPublicKeyBase58;
+      }
+    });
+  }
   const { TransactionSpendingLimitHex } = await api.post(
     '/api/v0/get-access-bytes',
     {
