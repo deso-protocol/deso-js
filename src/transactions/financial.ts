@@ -210,7 +210,6 @@ export const sellCreatorCoin = async (
   if (options?.checkPermissions !== false) {
     await guardTxPermission({
       GlobalDESOLimit:
-        // QUESTION: we don't need to add anything extra for the sell check, right?
         txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),
       CreatorCoinOperationLimitMap: {
         [params.CreatorPublicKeyBase58Check]: {
