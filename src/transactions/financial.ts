@@ -219,7 +219,6 @@ export const sellCreatorCoin = async (
     });
   }
 
-  // TODO: Add tx permission check once local tx construction is implemented.
   return handleSignAndSubmit(
     'api/v0/buy-or-sell-creator-coin',
     {
