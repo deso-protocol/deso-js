@@ -1592,7 +1592,9 @@ export class Identity<T extends StorageProvider> {
         {
           id: ev.data.id,
           service: IDENTITY_SERVICE_VALUE,
-          payload: {},
+          payload: {
+            appName: this.#appName,
+          },
         },
         this.#identityURI as WindowPostMessageOptions
       );
