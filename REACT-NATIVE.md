@@ -1,7 +1,10 @@
 # React Native
 
-You will need to run [React Native](https://reactnative.dev) version `0.71.7` or later to ensure `BigInt`
-support is available.
+You will need to run React Native version `0.71.7` or
+later to ensure `BigInt` support is available. Please see the react native
+setup page to see how to set up a new react native app: [React Native](https://reactnative.dev/docs/environment-setup).
+
+Once you have a basic react native environment running, you can proceed to installing and configuring the [deso SDK](https://www.npmjs.com/package/deso-protocol).
 
 ### Installation
 
