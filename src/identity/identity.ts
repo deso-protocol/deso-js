@@ -197,10 +197,7 @@ export class Identity<T extends StorageProvider> {
         );
 
       return {
-        currentUser: currentUser && {
-          ...currentUser,
-          publicKey: currentUser.primaryDerivedKey.publicKeyBase58Check,
-        },
+        currentUser,
         alternateUsers: Object.keys(alternateUsers ?? {})?.length
           ? alternateUsers
           : null,
@@ -471,9 +468,14 @@ export class Identity<T extends StorageProvider> {
    * @returns returns a promise that resolves to the identity login
    * payload, or rejects if there was an error.
    */
-  async login(
-    { getFreeDeso }: LoginOptions = { getFreeDeso: true }
-  ): Promise<IdentityDerivePayload> {
+  async login({
+    getFreeDeso = true,
+    // NOTE: derivedKeyLogin is the default and recommended login flow. We only
+    // allow disabling it for simple "gated logins" where the app wants to gate
+    // access to the app behind a login, but doesn't need to issue a derived key
+    // for executing transactions on behalf of the user.
+    derivedKeyLogin = true,
+  }: LoginOptions = {}): Promise<IdentityDerivePayload> {
     if (!this.#storageProvider) {
       throw new Error(
         'No storage provider available. Did you forget to configure a custom storageProvider?'
@@ -483,6 +485,19 @@ export class Identity<T extends StorageProvider> {
     const event = NOTIFICATION_EVENTS.LOGIN_START;
     const state = await this.#getState();
     this.#subscribers.forEach((s) => s({ event, ...state }));
+
+    // This is to support "gated logins"
+    // https://github.com/deso-protocol/deso-js/issues/1
+    if (!derivedKeyLogin) {
+      return new Promise((resolve, reject) => {
+        this.#pendingWindowRequest = { resolve, reject, event };
+        this.#launchIdentity('log-in', {
+          accessLevelRequest: 2,
+          getFreeDeso,
+          showSkip: this.#showSkip,
+        });
+      });
+    }
 
     let derivedPublicKey: string;
     const loginKeyPair = await this.#storageProvider.getItem(
@@ -1680,7 +1695,10 @@ export class Identity<T extends StorageProvider> {
           });
         break;
       case 'login':
-        this.#handleLoginMethod(payload as IdentityLoginPayload);
+        this.#handleLoginMethod(payload as IdentityLoginPayload).catch((e) => {
+          // propagate any error to the external caller
+          this.#pendingWindowRequest?.reject(this.#getErrorInstance(e));
+        });
         break;
       default:
         throw new Error(`Unknown method: ${method}`);
@@ -1694,9 +1712,7 @@ export class Identity<T extends StorageProvider> {
     const activePublicKey = await this.#getActivePublicKey();
 
     // NOTE: this is a bit counterintuitive, but a missing publicKeyAdded
-    // identifies this as a logout (even though the method is 'login'), and we
-    // don't actually support login via the identity "login" method so don't
-    // look for it here. We only support it via the "derive" method.
+    // identifies this as a logout (even though the method is 'login').
     if (!payload.publicKeyAdded) {
       if (!activePublicKey) {
         throw new Error('No active public key found');
@@ -1754,6 +1770,23 @@ export class Identity<T extends StorageProvider> {
           );
           this.#pendingWindowRequest?.reject(this.#getErrorInstance(e));
         });
+      // This condition identifies the legacy non derived key login flow.
+      // We default to derived key login, but the legacy flow can be enabled
+      // to support simple gated content: https://github.com/deso-protocol/deso-js/issues/1
+    } else if (payload.publicKeyAdded) {
+      await this.#updateUser(
+        payload.publicKeyAdded,
+        payload.users[payload.publicKeyAdded]
+      );
+      this.#pendingWindowRequest?.resolve(payload);
+      await this.#storageProvider.setItem(
+        LOCAL_STORAGE_KEYS.activePublicKey,
+        payload.publicKeyAdded
+      );
+      const state = await this.#getState();
+      this.#subscribers.forEach((s) =>
+        s({ event: NOTIFICATION_EVENTS.LOGIN_END, ...state })
+      );
     } else {
       // not sure how we would get here, but lets log it just in case we haven't actually
       // handled all the cases.
@@ -1898,7 +1931,10 @@ export class Identity<T extends StorageProvider> {
   /**
    * @private
    */
-  async #updateUser(masterPublicKey: string, attributes: Record<string, any>) {
+  async #updateUser(
+    masterPublicKey: string,
+    attributes: Record<string, any> = {}
+  ) {
     if (!this.#storageProvider) {
       throw new Error('No storage provider is available.');
     }

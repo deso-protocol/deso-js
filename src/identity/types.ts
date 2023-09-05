@@ -170,7 +170,8 @@ export interface WindowProvider {
 }
 
 export interface LoginOptions {
-  getFreeDeso: boolean;
+  getFreeDeso?: boolean;
+  derivedKeyLogin?: boolean;
 }
 
 export type PrimaryDerivedKeyInfo = IdentityDerivePayload & {
