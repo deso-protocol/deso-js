@@ -1750,9 +1750,6 @@ export class Identity<T extends StorageProvider> {
         })
       );
       this.#pendingWindowRequest?.resolve(payload);
-
-      // This condition identifies the "get deso" flow where a user did not
-      // login, but was simply prompted to get some free deso.
     } else if (
       payload.publicKeyAdded &&
       !payload.signedUp &&
@@ -1764,6 +1761,8 @@ export class Identity<T extends StorageProvider> {
         endEvent = NOTIFICATION_EVENTS.GET_FREE_DESO_END;
       } else if (startEvent === NOTIFICATION_EVENTS.VERIFY_PHONE_NUMBER_START) {
         endEvent = NOTIFICATION_EVENTS.VERIFY_PHONE_NUMBER_END;
+      } else if (startEvent === NOTIFICATION_EVENTS.LOGIN_START) {
+        endEvent = NOTIFICATION_EVENTS.LOGIN_END;
       } else {
         throw new Error(`unexpected identity event: ${startEvent}`);
       }
