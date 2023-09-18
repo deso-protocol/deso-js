@@ -523,6 +523,17 @@ export class Identity<T extends StorageProvider> {
     return await new Promise((resolve, reject) => {
       this.#pendingWindowRequest = { resolve, reject, event };
 
+      const authenticatedUserKeys = [];
+      if (state.currentUser?.primaryDerivedKey) {
+        authenticatedUserKeys.push(state.currentUser?.publicKey);
+      }
+      const alternateUsers = state.alternateUsers ?? {};
+      Object.keys(alternateUsers).forEach((key) => {
+        if (alternateUsers[key]?.primaryDerivedKey) {
+          authenticatedUserKeys.push(key);
+        }
+      });
+
       const identityParams: {
         derivedPublicKey: string;
         transactionSpendingLimitResponse: TransactionSpendingLimitResponse;
@@ -536,6 +547,9 @@ export class Identity<T extends StorageProvider> {
         transactionSpendingLimitResponse: this.#defaultTransactionSpendingLimit,
         expirationDays: this.#defaultNumDaysBeforeExpiration,
         showSkip: this.#showSkip,
+        ...(authenticatedUserKeys.length && {
+          authenticatedUsers: authenticatedUserKeys.join(','),
+        }),
       };
 
       if (getFreeDeso) {
