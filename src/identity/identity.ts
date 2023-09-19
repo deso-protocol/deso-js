@@ -2005,6 +2005,10 @@ export class Identity<T extends StorageProvider> {
       qps.append('redirect_uri', this.#redirectURI);
     }
 
+    // TODO: We can remove this feature flag once this becomes the default
+    // behavior in the identity service.
+    qps.append('subAccounts', 'true');
+
     return qps;
   }
 
