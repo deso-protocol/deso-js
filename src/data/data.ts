@@ -329,13 +329,13 @@ export const getUsersStateless = (
  */
 export const buildProfilePictureUrl = (
   PublicKeyBase58Check: string,
-  options: { fallbackImageUrl?: string } & RequestOptions
+  options?: { fallbackImageUrl?: string } & RequestOptions
 ) => {
-  const nodeURI = options.nodeURI ?? api.nodeURI;
+  const nodeURI = options?.nodeURI ?? api.nodeURI;
   return cleanURL(
     nodeURI,
     `/api/v0/get-single-profile-picture/${PublicKeyBase58Check}${
-      options.fallbackImageUrl ? `?fallback=${options.fallbackImageUrl}` : ''
+      options?.fallbackImageUrl ? `?fallback=${options.fallbackImageUrl}` : ''
     }`
   );
 };
