@@ -307,16 +307,47 @@ export interface DAOCoinMarketOrderWithQuantityRequest {
   TransactionFees: TransactionFee[];
 }
 
+/**
+ * @deprecated
+ */
 export interface DAOCoinLimitOrderWithExchangeRateAndQuantityRequest {
   TransactorPublicKeyBase58Check: string;
   BuyingDAOCoinCreatorPublicKeyBase58Check: string;
   SellingDAOCoinCreatorPublicKeyBase58Check: string;
-  ExchangeRateCoinsToSellPerCoinToBuy: number;
+  Price: number;
+  Quantity: number;
+  /**
+   * @deprecated
+   */
   QuantityToFill: number;
+  /**
+   * @deprecated
+   */
+  ExchangeRateCoinsToSellPerCoinToBuy: number;
   OperationType: string;
   MinFeeRateNanosPerKB?: number;
   TransactionFees: TransactionFee[] | null;
 }
+
+export interface DAOCoinLimitOrderRequest {
+  TransactorPublicKeyBase58Check: string;
+  BuyingDAOCoinCreatorPublicKeyBase58Check: string;
+  SellingDAOCoinCreatorPublicKeyBase58Check: string;
+  /**
+   * A decimal string (ex: '1.23') representing the exchange rate of the two coins in the order.
+   */
+  Price: string;
+  /**
+   * A decimal string (ex: '1.23') representing the quantity of the coins being bought or sold.
+   */
+  Quantity: string;
+  FillType: string;
+  OperationType: string;
+  MinFeeRateNanosPerKB?: number;
+  TransactionFees: TransactionFee[] | null;
+}
+
+export type DAOCoinMarketOrderRequest = Omit<DAOCoinLimitOrderRequest, 'Price'>;
 
 export interface MetaMaskInitResponse {
   derivedKeyPair: ec.KeyPair;
