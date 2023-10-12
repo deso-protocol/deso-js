@@ -316,13 +316,7 @@ export interface DAOCoinLimitOrderWithExchangeRateAndQuantityRequest {
   SellingDAOCoinCreatorPublicKeyBase58Check: string;
   Price: number;
   Quantity: number;
-  /**
-   * @deprecated
-   */
   QuantityToFill: number;
-  /**
-   * @deprecated
-   */
   ExchangeRateCoinsToSellPerCoinToBuy: number;
   OperationType: string;
   MinFeeRateNanosPerKB?: number;
