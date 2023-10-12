@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-types */
 import { type TransactionType } from '../backend-types/deso-types-custom.js';
 
-// this file was automatically generated, DO NOT EDIT
 export type DB = any;
 
 // struct2ts:sync.Mutex
@@ -4511,7 +4510,11 @@ export interface DAOCoinRequest {
   OperationType: string;
   CoinsToMintNanos: string;
   CoinsToBurnNanos: string;
-  TransferRestrictionStatus: string;
+  TransferRestrictionStatus:
+    | 'unrestricted'
+    | 'profile_owner_only'
+    | 'dao_members_only'
+    | 'permanently_unrestricted';
   MinFeeRateNanosPerKB: number;
   TransactionFees: TransactionFee[] | null;
 }

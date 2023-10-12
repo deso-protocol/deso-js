@@ -1277,7 +1277,7 @@ export class Identity<T extends StorageProvider> {
       deleteKey?: boolean;
       ownerPublicKey?: string;
     }
-  ) {
+  ): Promise<IdentityDerivePayload> {
     const event = NOTIFICATION_EVENTS.REQUEST_PERMISSIONS_START;
     const state = await this.#getState();
     this.#subscribers.forEach((s) => s({ event, ...state }));
