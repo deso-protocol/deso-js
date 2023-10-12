@@ -4554,7 +4554,7 @@ export interface TransferDAOCoinResponse {
  * @deprecated use DAOCoinOrderResponse
  * will be removed in 3.0.0
  */
-export interface DAOCoinOrderResponse {
+export interface DAOCoinLimitOrderResponse {
   SpendAmountNanos: number;
   TotalInputNanos: number;
   ChangeAmountNanos: number;
