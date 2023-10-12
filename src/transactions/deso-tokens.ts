@@ -130,15 +130,9 @@ export const constructMintDeSoTokenTransaction = (
 export type UpdateDeSoTokenTransferRestrictionStatusRequestParams =
   TxRequestWithOptionalFeesAndExtraData<
     PartialWithRequiredFields<
-      Omit<DAOCoinRequest, 'OperationType' | 'TransferRestrictionStatus'>,
+      Omit<DAOCoinRequest, 'OperationType'>,
       'UpdaterPublicKeyBase58Check' | 'ProfilePublicKeyBase58CheckOrUsername'
-    > & {
-      TransferRestrictionStatus:
-        | 'unrestricted'
-        | 'profile_owner_only'
-        | 'dao_members_only'
-        | 'permanently_unrestricted';
-    }
+    >
   >;
 export const updateDeSoTokenTransferRestrictionStatus = (
   params: UpdateDeSoTokenTransferRestrictionStatusRequestParams,
