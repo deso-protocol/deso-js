@@ -4550,6 +4550,20 @@ export interface TransferDAOCoinResponse {
   TxnHashHex: string;
 }
 
+/**
+ * @deprecated use DAOCoinOrderResponse
+ * will be removed in 3.0.0
+ */
+export interface DAOCoinOrderResponse {
+  SpendAmountNanos: number;
+  TotalInputNanos: number;
+  ChangeAmountNanos: number;
+  FeeNanos: number;
+  Transaction: MsgDeSoTxn;
+  TransactionHex: string;
+  TxnHashHex: string;
+}
+
 // struct2ts:types/generated/types.DAOCoinLimitOrderResponse
 export interface DAOCoinOrderResponse {
   SpendAmountNanos: number;
