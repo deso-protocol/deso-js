@@ -4550,7 +4550,10 @@ export interface TransferDAOCoinResponse {
   TxnHashHex: string;
 }
 
-// struct2ts:types/generated/types.DAOCoinLimitOrderResponse
+/**
+ * @deprecated use DAOCoinOrderResponse
+ * will be removed in 3.0.0
+ */
 export interface DAOCoinLimitOrderResponse {
   SpendAmountNanos: number;
   TotalInputNanos: number;
@@ -4561,16 +4564,16 @@ export interface DAOCoinLimitOrderResponse {
   TxnHashHex: string;
 }
 
-// export interface DAOCoinLimitOrderWithExchangeRateAndQuantityRequest {
-//   TransactorPublicKeyBase58Check: string;
-//   BuyingDAOCoinCreatorPublicKeyBase58Check: string;
-//   SellingDAOCoinCreatorPublicKeyBase58Check: string;
-//   ExchangeRateCoinsToSellPerCoinToBuy: number;
-//   QuantityToFill: number;
-//   OperationType: string;
-//   MinFeeRateNanosPerKB?: number;
-//   TransactionFees: TransactionFee[] | null;
-// }
+// struct2ts:types/generated/types.DAOCoinLimitOrderResponse
+export interface DAOCoinOrderResponse {
+  SpendAmountNanos: number;
+  TotalInputNanos: number;
+  ChangeAmountNanos: number;
+  FeeNanos: number;
+  Transaction: MsgDeSoTxn;
+  TransactionHex: string;
+  TxnHashHex: string;
+}
 
 // struct2ts:types/generated/types.DAOCoinLimitOrderWithCancelOrderIDRequest
 export interface DAOCoinLimitOrderWithCancelOrderIDRequest {
