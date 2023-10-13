@@ -4573,6 +4573,7 @@ export interface DAOCoinOrderResponse {
   Transaction: MsgDeSoTxn;
   TransactionHex: string;
   TxnHashHex: string;
+  SimulatedExecutionResult?: DAOCoinLimitOrderSimulatedExecutionResult;
 }
 
 // struct2ts:types/generated/types.DAOCoinLimitOrderWithCancelOrderIDRequest
