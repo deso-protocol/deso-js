@@ -2214,6 +2214,8 @@ export interface DAOCoinLimitOrderEntryResponse {
   QuantityToFill: number;
   OperationType: string;
   OrderID: string;
+  Price: string;
+  Quantity: string;
 }
 
 // struct2ts:types/generated/types.GetDAOCoinLimitOrdersResponse
