@@ -279,124 +279,27 @@ export const constructTransferDeSoToken = (
 /**
  * https://docs.deso.org/deso-backend/construct-transactions/dao-transactions-api#create-deso-token-dao-coin-limit-order
  */
-export const buyDeSoTokenLimitOrder = (
-  params:
-    | PartialWithRequiredFields<
-        Omit<
-          DAOCoinLimitOrderWithExchangeRateAndQuantityRequest,
-          'SellingDAOCoinCreatorPublicKeyBase58Check' | 'OperationType'
-        >,
-        | 'TransactorPublicKeyBase58Check'
-        | 'BuyingDAOCoinCreatorPublicKeyBase58Check'
-        | 'ExchangeRateCoinsToSellPerCoinToBuy'
-        | 'QuantityToFill'
-      >
-    | PartialWithRequiredFields<
-        Omit<
-          DAOCoinLimitOrderRequest,
-          'SellingDAOCoinCreatorPublicKeyBase58Check' | 'OperationType'
-        >,
-        | 'TransactorPublicKeyBase58Check'
-        | 'BuyingDAOCoinCreatorPublicKeyBase58Check'
-        | 'Price'
-        | 'Quantity'
-      >,
+export const createDeSoTokenLimitOrder = (
+  params: DAOCoinLimitOrderRequest,
   options?: RequestOptions
 ): Promise<ConstructedAndSubmittedTx<DAOCoinOrderResponse>> => {
   return handleSignAndSubmit(
     'api/v0/create-dao-coin-limit-order',
     {
       ...params,
-      SellingDAOCoinCreatorPublicKeyBase58Check: '',
-      OperationType: 'BID',
     },
     options
   );
 };
 
-/**
- * https://docs.deso.org/deso-backend/construct-transactions/dao-transactions-api#create-deso-token-dao-coin-limit-order
- */
-export const sellDeSoTokenLimitOrder = (
-  params:
-    | TxRequestWithOptionalFeesAndExtraData<
-        PartialWithRequiredFields<
-          Omit<
-            DAOCoinLimitOrderWithExchangeRateAndQuantityRequest,
-            'BuyingDAOCoinCreatorPublicKeyBase58Check' | 'OperationType'
-          >,
-          | 'TransactorPublicKeyBase58Check'
-          | 'SellingDAOCoinCreatorPublicKeyBase58Check'
-          | 'ExchangeRateCoinsToSellPerCoinToBuy'
-          | 'QuantityToFill'
-        >
-      >
-    | TxRequestWithOptionalFeesAndExtraData<
-        PartialWithRequiredFields<
-          Omit<
-            DAOCoinLimitOrderRequest,
-            'BuyingDAOCoinCreatorPublicKeyBase58Check' | 'OperationType'
-          >,
-          | 'TransactorPublicKeyBase58Check'
-          | 'SellingDAOCoinCreatorPublicKeyBase58Check'
-          | 'Price'
-          | 'Quantity'
-        >
-      >,
-  options?: RequestOptions
-): Promise<ConstructedAndSubmittedTx<DAOCoinOrderResponse>> => {
-  return handleSignAndSubmit(
-    'api/v0/create-dao-coin-limit-order',
-    {
-      ...params,
-      SellingDAOCoinCreatorPublicKeyBase58Check: '',
-      OperationType: 'ASK',
-    },
-    options
-  );
-};
-
-export const buyDeSoTokenMarketOrder = (
-  params: PartialWithRequiredFields<
-    Omit<
-      DAOCoinMarketOrderRequest,
-      'SellingDAOCoinCreatorPublicKeyBase58Check' | 'OperationType'
-    >,
-    | 'TransactorPublicKeyBase58Check'
-    | 'BuyingDAOCoinCreatorPublicKeyBase58Check'
-    | 'Quantity'
-  >,
+export const createDeSoTokenMarketOrder = (
+  params: DAOCoinMarketOrderRequest,
   options?: RequestOptions
 ): Promise<ConstructedAndSubmittedTx<DAOCoinOrderResponse>> => {
   return handleSignAndSubmit(
     'api/v0/create-dao-coin-market-order',
     {
       ...params,
-      SellingDAOCoinCreatorPublicKeyBase58Check: '',
-      OperationType: 'BID',
-    },
-    options
-  );
-};
-
-export const sellDeSoTokenMarketOrder = (
-  params: PartialWithRequiredFields<
-    Omit<
-      DAOCoinMarketOrderRequest,
-      'BuyingDAOCoinCreatorPublicKeyBase58Check' | 'OperationType'
-    >,
-    | 'TransactorPublicKeyBase58Check'
-    | 'SellingDAOCoinCreatorPublicKeyBase58Check'
-    | 'Quantity'
-  >,
-  options?: RequestOptions
-): Promise<ConstructedAndSubmittedTx<DAOCoinOrderResponse>> => {
-  return handleSignAndSubmit(
-    'api/v0/create-dao-coin-market-order',
-    {
-      ...params,
-      SellingDAOCoinCreatorPublicKeyBase58Check: '',
-      OperationType: 'ASK',
     },
     options
   );

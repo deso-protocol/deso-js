@@ -336,7 +336,7 @@ export interface DAOCoinLimitOrderRequest {
    */
   Quantity: string;
   FillType: string;
-  OperationType: string;
+  OperationType: 'ASK' | 'BID';
   MinFeeRateNanosPerKB?: number;
   TransactionFees?: TransactionFee[] | null;
 }
