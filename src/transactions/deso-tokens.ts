@@ -279,6 +279,7 @@ export const constructTransferDeSoToken = (
 /**
  * https://docs.deso.org/deso-backend/construct-transactions/dao-transactions-api#create-deso-token-dao-coin-limit-order
  */
+<<<<<<< HEAD
 export const buyDeSoTokenLimitOrder = (
   params:
     | PartialWithRequiredFields<
@@ -301,19 +302,22 @@ export const buyDeSoTokenLimitOrder = (
         | 'Price'
         | 'Quantity'
       >,
+=======
+export const createDeSoTokenLimitOrder = (
+  params: DAOCoinLimitOrderRequest,
+>>>>>>> 1c289e0 (fix token trade order calls)
   options?: RequestOptions
 ): Promise<ConstructedAndSubmittedTx<DAOCoinOrderResponse>> => {
   return handleSignAndSubmit(
     'api/v0/create-dao-coin-limit-order',
     {
       ...params,
-      SellingDAOCoinCreatorPublicKeyBase58Check: '',
-      OperationType: 'BID',
     },
     options
   );
 };
 
+<<<<<<< HEAD
 /**
  * https://docs.deso.org/deso-backend/construct-transactions/dao-transactions-api#create-deso-token-dao-coin-limit-order
  */
@@ -343,14 +347,16 @@ export const sellDeSoTokenLimitOrder = (
           | 'Quantity'
         >
       >,
+=======
+export const createDeSoTokenMarketOrder = (
+  params: DAOCoinMarketOrderRequest,
+>>>>>>> 1c289e0 (fix token trade order calls)
   options?: RequestOptions
 ): Promise<ConstructedAndSubmittedTx<DAOCoinOrderResponse>> => {
   return handleSignAndSubmit(
-    'api/v0/create-dao-coin-limit-order',
+    'api/v0/create-dao-coin-market-order',
     {
       ...params,
-      SellingDAOCoinCreatorPublicKeyBase58Check: '',
-      OperationType: 'ASK',
     },
     options
   );

@@ -336,7 +336,11 @@ export interface DAOCoinLimitOrderRequest {
    */
   Quantity: string;
   FillType: string;
+<<<<<<< HEAD
   OperationType: string;
+=======
+  OperationType: 'ASK' | 'BID';
+>>>>>>> 1c289e0 (fix token trade order calls)
   MinFeeRateNanosPerKB?: number;
   TransactionFees?: TransactionFee[] | null;
 }
