@@ -279,33 +279,8 @@ export const constructTransferDeSoToken = (
 /**
  * https://docs.deso.org/deso-backend/construct-transactions/dao-transactions-api#create-deso-token-dao-coin-limit-order
  */
-<<<<<<< HEAD
-export const buyDeSoTokenLimitOrder = (
-  params:
-    | PartialWithRequiredFields<
-        Omit<
-          DAOCoinLimitOrderWithExchangeRateAndQuantityRequest,
-          'SellingDAOCoinCreatorPublicKeyBase58Check' | 'OperationType'
-        >,
-        | 'TransactorPublicKeyBase58Check'
-        | 'BuyingDAOCoinCreatorPublicKeyBase58Check'
-        | 'ExchangeRateCoinsToSellPerCoinToBuy'
-        | 'QuantityToFill'
-      >
-    | PartialWithRequiredFields<
-        Omit<
-          DAOCoinLimitOrderRequest,
-          'SellingDAOCoinCreatorPublicKeyBase58Check' | 'OperationType'
-        >,
-        | 'TransactorPublicKeyBase58Check'
-        | 'BuyingDAOCoinCreatorPublicKeyBase58Check'
-        | 'Price'
-        | 'Quantity'
-      >,
-=======
 export const createDeSoTokenLimitOrder = (
   params: DAOCoinLimitOrderRequest,
->>>>>>> 1c289e0 (fix token trade order calls)
   options?: RequestOptions
 ): Promise<ConstructedAndSubmittedTx<DAOCoinOrderResponse>> => {
   return handleSignAndSubmit(
@@ -317,40 +292,8 @@ export const createDeSoTokenLimitOrder = (
   );
 };
 
-<<<<<<< HEAD
-/**
- * https://docs.deso.org/deso-backend/construct-transactions/dao-transactions-api#create-deso-token-dao-coin-limit-order
- */
-export const sellDeSoTokenLimitOrder = (
-  params:
-    | TxRequestWithOptionalFeesAndExtraData<
-        PartialWithRequiredFields<
-          Omit<
-            DAOCoinLimitOrderWithExchangeRateAndQuantityRequest,
-            'BuyingDAOCoinCreatorPublicKeyBase58Check' | 'OperationType'
-          >,
-          | 'TransactorPublicKeyBase58Check'
-          | 'SellingDAOCoinCreatorPublicKeyBase58Check'
-          | 'ExchangeRateCoinsToSellPerCoinToBuy'
-          | 'QuantityToFill'
-        >
-      >
-    | TxRequestWithOptionalFeesAndExtraData<
-        PartialWithRequiredFields<
-          Omit<
-            DAOCoinLimitOrderRequest,
-            'BuyingDAOCoinCreatorPublicKeyBase58Check' | 'OperationType'
-          >,
-          | 'TransactorPublicKeyBase58Check'
-          | 'SellingDAOCoinCreatorPublicKeyBase58Check'
-          | 'Price'
-          | 'Quantity'
-        >
-      >,
-=======
 export const createDeSoTokenMarketOrder = (
   params: DAOCoinMarketOrderRequest,
->>>>>>> 1c289e0 (fix token trade order calls)
   options?: RequestOptions
 ): Promise<ConstructedAndSubmittedTx<DAOCoinOrderResponse>> => {
   return handleSignAndSubmit(
