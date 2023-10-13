@@ -805,6 +805,104 @@ describe('identity', () => {
       });
       expect(hasPermissions).toBe(false);
     });
+    it('it works for scoped association limits', () => {
+      const activeUserKey =
+        'BC1YLhtBTFXAsKZgoaoYNW8mWAJWdfQjycheAeYjaX46azVrnZfJ94s';
+      windowFake.localStorage.setItem(
+        LOCAL_STORAGE_KEYS.activePublicKey,
+        activeUserKey
+      );
+      windowFake.localStorage.setItem(
+        LOCAL_STORAGE_KEYS.identityUsers,
+        JSON.stringify({
+          [activeUserKey]: {
+            primaryDerivedKey: {
+              IsValid: true,
+              transactionSpendingLimits: {
+                TransactionCountLimitMap: {
+                  CREATE_USER_ASSOCIATION: 'UNLIMITED',
+                },
+                AssociationLimitMap: [
+                  {
+                    AssociationClass: 'User',
+                    AssociationType: 'REACTION',
+                    AppScopeType: 'Scoped',
+                    AppPublicKeyBase58Check:
+                      'BC1YLhtBTFXAsKZgoaoYNW8mWAJWdfQjycheAeYjaX46azVrnZfJ94s',
+                    AssociationOperation: 'Create',
+                    OpCount: 'UNLIMITED',
+                  },
+                ],
+              },
+            },
+          },
+        })
+      );
+      let hasPermissions = identity.hasPermissions({
+        TransactionCountLimitMap: {
+          CREATE_USER_ASSOCIATION: 'UNLIMITED',
+        },
+        AssociationLimitMap: [
+          {
+            AssociationClass: 'User',
+            AssociationType: 'REACTION',
+            AppScopeType: 'Scoped',
+            AppPublicKeyBase58Check:
+              'BC1YLhtBTFXAsKZgoaoYNW8mWAJWdfQjycheAeYjaX46azVrnZfJ94s',
+            AssociationOperation: 'Create',
+            OpCount: 'UNLIMITED',
+          },
+        ],
+      });
+      expect(hasPermissions).toBe(true);
+
+      // Now try where it should fail
+      windowFake.localStorage.setItem(
+        LOCAL_STORAGE_KEYS.identityUsers,
+        JSON.stringify({
+          [activeUserKey]: {
+            primaryDerivedKey: {
+              IsValid: true,
+              transactionSpendingLimits: {
+                TransactionCountLimitMap: {
+                  CREATE_USER_ASSOCIATION: 'UNLIMITED',
+                },
+                AssociationLimitMap: [
+                  {
+                    AssociationClass: 'User',
+                    AssociationType: 'REACTION',
+                    AppScopeType: 'Scoped',
+                    AppPublicKeyBase58Check:
+                      'BC1YLhtBTFXAsKZgoaoYNW8mWAJWdfQjycheAeYjaX46azVrnZfJ94s',
+                    // NOTE: this is the only difference from the above
+                    AssociationOperation: 'Delete',
+                    OpCount: 'UNLIMITED',
+                  },
+                ],
+              },
+            },
+          },
+        })
+      );
+      hasPermissions = identity.hasPermissions({
+        TransactionCountLimitMap: {
+          CREATE_USER_ASSOCIATION: 'UNLIMITED',
+        },
+        AssociationLimitMap: [
+          {
+            AssociationClass: 'User',
+            AssociationType: 'REACTION',
+            AppScopeType: 'Scoped',
+            AppPublicKeyBase58Check:
+              'BC1YLhtBTFXAsKZgoaoYNW8mWAJWdfQjycheAeYjaX46azVrnZfJ94s',
+            // This should fail because the AssociationOperation is Delete
+            AssociationOperation: 'Create',
+            OpCount: 'UNLIMITED',
+          },
+        ],
+      });
+      expect(hasPermissions).toBe(false);
+    });
   });
   describe('.desoAddressToEthereumAddress()', () => {
     it('works', () => {
