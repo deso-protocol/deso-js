@@ -338,7 +338,7 @@ export interface DAOCoinLimitOrderRequest {
   FillType: string;
   OperationType: string;
   MinFeeRateNanosPerKB?: number;
-  TransactionFees: TransactionFee[] | null;
+  TransactionFees?: TransactionFee[] | null;
 }
 
 export type DAOCoinMarketOrderRequest = Omit<DAOCoinLimitOrderRequest, 'Price'>;
