@@ -164,7 +164,7 @@ export class Identity<T extends StorageProvider> {
 
   /**
    * Defaults to 10 years. These login keys should essentially never expire
-   * unless a user explicity de-authorizes them.
+   * unless a user explicitly de-authorizes them.
    * @private
    */
   #defaultNumDaysBeforeExpiration = 3650;
@@ -1245,6 +1245,7 @@ export class Identity<T extends StorageProvider> {
     return await this.derive(transactionSpendingLimitResponse, {
       ownerPublicKey: publicKeyBase58Check,
       derivedPublicKey: derivedPublicKeyBase58Check,
+      expirationDays: this.#defaultNumDaysBeforeExpiration,
     });
   }
 
