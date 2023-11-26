@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-types */
 import { type TransactionType } from '../backend-types/deso-types-custom.js';
 
-// this file was automatically generated, DO NOT EDIT
 export type DB = any;
 
 // struct2ts:sync.Mutex
@@ -2215,6 +2214,8 @@ export interface DAOCoinLimitOrderEntryResponse {
   QuantityToFill: number;
   OperationType: string;
   OrderID: string;
+  Price: string;
+  Quantity: string;
 }
 
 // struct2ts:types/generated/types.GetDAOCoinLimitOrdersResponse
@@ -4511,7 +4512,11 @@ export interface DAOCoinRequest {
   OperationType: string;
   CoinsToMintNanos: string;
   CoinsToBurnNanos: string;
-  TransferRestrictionStatus: string;
+  TransferRestrictionStatus:
+    | 'unrestricted'
+    | 'profile_owner_only'
+    | 'dao_members_only'
+    | 'permanently_unrestricted';
   MinFeeRateNanosPerKB: number;
   TransactionFees: TransactionFee[] | null;
 }
@@ -4547,7 +4552,10 @@ export interface TransferDAOCoinResponse {
   TxnHashHex: string;
 }
 
-// struct2ts:types/generated/types.DAOCoinLimitOrderResponse
+/**
+ * @deprecated use DAOCoinOrderResponse
+ * will be removed in 3.0.0
+ */
 export interface DAOCoinLimitOrderResponse {
   SpendAmountNanos: number;
   TotalInputNanos: number;
@@ -4558,16 +4566,17 @@ export interface DAOCoinLimitOrderResponse {
   TxnHashHex: string;
 }
 
-// export interface DAOCoinLimitOrderWithExchangeRateAndQuantityRequest {
-//   TransactorPublicKeyBase58Check: string;
-//   BuyingDAOCoinCreatorPublicKeyBase58Check: string;
-//   SellingDAOCoinCreatorPublicKeyBase58Check: string;
-//   ExchangeRateCoinsToSellPerCoinToBuy: number;
-//   QuantityToFill: number;
-//   OperationType: string;
-//   MinFeeRateNanosPerKB?: number;
-//   TransactionFees: TransactionFee[] | null;
-// }
+// struct2ts:types/generated/types.DAOCoinLimitOrderResponse
+export interface DAOCoinOrderResponse {
+  SpendAmountNanos: number;
+  TotalInputNanos: number;
+  ChangeAmountNanos: number;
+  FeeNanos: number;
+  Transaction: MsgDeSoTxn;
+  TransactionHex: string;
+  TxnHashHex: string;
+  SimulatedExecutionResult?: DAOCoinLimitOrderSimulatedExecutionResult;
+}
 
 // struct2ts:types/generated/types.DAOCoinLimitOrderWithCancelOrderIDRequest
 export interface DAOCoinLimitOrderWithCancelOrderIDRequest {

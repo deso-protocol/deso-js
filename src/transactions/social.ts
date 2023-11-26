@@ -49,22 +49,20 @@ import {
 } from '../types.js';
 import { guardTxPermission } from './utils.js';
 
-const buildUpdateProfileMetadata = (
-  params: TypeWithOptionalFeesAndExtraData<UpdateProfileRequest>
-) => {
+const buildUpdateProfileMetadata = (params: UpdateProfileRequestParams) => {
   const metadata = new TransactionMetadataUpdateProfile();
   // TODO: this is broken.
   metadata.profilePublicKey =
     params.UpdaterPublicKeyBase58Check !== params.ProfilePublicKeyBase58Check
       ? bs58PublicKeyToCompressedBytes(params.ProfilePublicKeyBase58Check)
       : new Uint8Array(0);
-  metadata.newUsername = encodeUTF8ToBytes(params.NewUsername);
-  metadata.newDescription = encodeUTF8ToBytes(params.NewDescription);
+  metadata.newUsername = encodeUTF8ToBytes(params.NewUsername ?? '');
+  metadata.newDescription = encodeUTF8ToBytes(params.NewDescription ?? '');
   // TODO: we probably need something to handle the profile pic compression here.
-  metadata.newProfilePic = encodeUTF8ToBytes(params.NewProfilePic);
+  metadata.newProfilePic = encodeUTF8ToBytes(params.NewProfilePic ?? '');
   metadata.newCreatorBasisPoints = params.NewCreatorBasisPoints;
   metadata.newStakeMultipleBasisPoints = params.NewStakeMultipleBasisPoints;
-  metadata.isHidden = params.IsHidden;
+  metadata.isHidden = params.IsHidden ?? false;
 
   return metadata;
 };
@@ -83,11 +81,20 @@ export const constructUpdateProfileTransaction = (
   );
 };
 
+type UpdateProfileRequestParams = TypeWithOptionalFeesAndExtraData<
+  PartialWithRequiredFields<
+    UpdateProfileRequest,
+    | 'UpdaterPublicKeyBase58Check'
+    | 'ProfilePublicKeyBase58Check'
+    | 'NewCreatorBasisPoints'
+    | 'NewStakeMultipleBasisPoints'
+  >
+>;
 /**
  * https://docs.deso.org/deso-backend/construct-transactions/social-transactions-api#update-profile
  */
 export const updateProfile = async (
-  params: TypeWithOptionalFeesAndExtraData<UpdateProfileRequest>,
+  params: UpdateProfileRequestParams,
   options?: TxRequestOptions
 ): Promise<
   ConstructedAndSubmittedTx<
