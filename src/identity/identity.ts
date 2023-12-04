@@ -1279,6 +1279,12 @@ export class Identity<T extends StorageProvider> {
       ownerPublicKey?: string;
     }
   ): Promise<IdentityDerivePayload> {
+    if (!this.#storageProvider) {
+      throw new Error('No storage provider available.');
+    }
+
+    this.#storageProvider.removeItem(LOCAL_STORAGE_KEYS.loginKeyPair);
+
     const event = NOTIFICATION_EVENTS.REQUEST_PERMISSIONS_START;
     const state = await this.#getState();
     this.#subscribers.forEach((s) => s({ event, ...state }));
@@ -1724,17 +1730,19 @@ export class Identity<T extends StorageProvider> {
    * @private
    */
   async #handleLoginMethod(payload: IdentityLoginPayload) {
+    if (!this.#storageProvider) {
+      throw new Error('No storage provider available.');
+    }
+
     const activePublicKey = await this.#getActivePublicKey();
+
+    await this.#storageProvider.removeItem(LOCAL_STORAGE_KEYS.loginKeyPair);
 
     // NOTE: this is a bit counterintuitive, but a missing publicKeyAdded
     // identifies this as a logout (even though the method is 'login').
     if (!payload.publicKeyAdded) {
       if (!activePublicKey) {
         throw new Error('No active public key found');
-      }
-
-      if (!this.#storageProvider) {
-        throw new Error('No storage provider available.');
       }
 
       await this.#storageProvider.removeItem(
