@@ -143,6 +143,26 @@ export function Optional<T>(transcoder: Transcoder<T>): Transcoder<T | null> {
   };
 }
 
+export function BoolOptional<T>(
+  transcoder: Transcoder<T>
+): Transcoder<T | null> {
+  return {
+    read: (bytes: Uint8Array) => {
+      const existence = bytes.at(0) != 0;
+      if (!existence) {
+        return [null, bytes.slice(1)];
+      }
+      return transcoder.read(bytes.slice(1));
+    },
+    write: (value: T | null) => {
+      if (value === null) {
+        return Uint8Array.from([0]);
+      }
+      return concatUint8Arrays([Uint8Array.from([1]), transcoder.write(value)]);
+    },
+  };
+}
+
 export const ChunkBuffer = (width: number): Transcoder<Uint8Array[]> => ({
   read: (bytes) => {
     const countAndBuffer = bufToUvarint64(bytes);

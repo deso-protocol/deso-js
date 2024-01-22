@@ -22,6 +22,7 @@ import {
   VarBuffer,
   instanceToType,
   VarBufferArray,
+  BoolOptional,
 } from './transcoders.js';
 export class TransactionInput extends BinaryRecord {
   @Transcode(FixedBuffer(32))
@@ -602,7 +603,7 @@ export class TransactionMetadataNewMessage extends BinaryRecord {
 
 export class TransactionMetadataRegisterAsValidator extends BinaryRecord {
   @Transcode(VarBufferArray)
-  domains: Buffer[] = [];
+  domains: Uint8Array[] = [];
 
   @Transcode(Boolean)
   disableDelegatedStake = false;
@@ -615,42 +616,42 @@ export class TransactionMetadataRegisterAsValidator extends BinaryRecord {
   // The challenge is converting this into something human
   // readable in the UI.
   @Transcode(VarBuffer)
-  votingPublicKey: Buffer = Buffer.alloc(0);
+  votingPublicKey: Uint8Array = new Uint8Array(0);
 
   // TODO: Technically this is a bls signature,
   // but under the hood it's really just a byte array.
   // The challenge is converting this into something human
   // readable in the UI.
   @Transcode(VarBuffer)
-  votingAuthorization: Buffer = Buffer.alloc(0);
+  votingAuthorization: Uint8Array = new Uint8Array(0);
 }
 
 export class TransactionMetadataUnregisterAsValidator extends BinaryRecord {}
 
 export class TransactionMetadataStake extends BinaryRecord {
   @Transcode(VarBuffer)
-  validatorPublicKey: Buffer = Buffer.alloc(0);
+  validatorPublicKey: Uint8Array = new Uint8Array(0);
 
   @Transcode(Uint8)
   rewardMethod = 0;
 
   // TODO: We may want a better way to handle uint256s.
-  @Transcode(Optional(VarBuffer))
-  stakeAmountNanos: Buffer = Buffer.alloc(0);
+  @Transcode(BoolOptional(VarBuffer))
+  stakeAmountNanos: Uint8Array = new Uint8Array(0);
 }
 
 export class TransactionMetadataUnstake extends BinaryRecord {
   @Transcode(VarBuffer)
-  validatorPublicKey: Buffer = Buffer.alloc(0);
+  validatorPublicKey: Uint8Array = new Uint8Array(0);
 
   // TODO: We may want a better way to handle uint256s.
-  @Transcode(Optional(VarBuffer))
-  unstakeAmountNanos: Buffer = Buffer.alloc(0);
+  @Transcode(BoolOptional(VarBuffer))
+  unstakeAmountNanos: Uint8Array = new Uint8Array(0);
 }
 
 export class TransactionMetadataUnlockStake extends BinaryRecord {
   @Transcode(VarBuffer)
-  validatorPublicKey: Buffer = Buffer.alloc(0);
+  validatorPublicKey: Uint8Array = new Uint8Array(0);
 
   @Transcode(Uvarint64)
   startEpochNumber = 0;
