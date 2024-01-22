@@ -1,4 +1,6 @@
+export * from './constants.js';
 export * from './crypto-utils.js';
+export * from './derived-key-utils.js';
 export * from './error-types.js';
 export * from './identity-instance.js';
 export * from './transaction-transcoders.js';
