@@ -1,6 +1,6 @@
 import { keccak_256 } from '@noble/hashes/sha3';
 import { bytesToHex, hexToBytes } from '@noble/hashes/utils';
-import { ProjectivePoint as Point } from '@noble/secp256k1';
+import { secp256k1 } from '@noble/curves/secp256k1';
 import { ethers } from 'ethers';
 import {
   AccessGroupEntryResponse,
@@ -1420,7 +1420,8 @@ export class Identity<T extends StorageProvider> {
       );
     }
 
-    const compressedEthKey = Point.fromHex(ethereumPublicKey).toRawBytes(true);
+    const compressedEthKey =
+      secp256k1.ProjectivePoint.fromHex(ethereumPublicKey).toRawBytes(true);
     return publicKeyToBase58Check(compressedEthKey, { network: this.#network });
   }
 

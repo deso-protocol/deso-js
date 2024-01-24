@@ -1,4 +1,4 @@
-import { utils as ecUtils, getPublicKey } from '@noble/secp256k1';
+import { secp256k1 } from '@noble/curves/secp256k1';
 import { verify } from 'jsonwebtoken';
 import KeyEncoder from 'key-encoder';
 import { ChatType, NewMessageEntryResponse } from '../backend-types/index.js';
@@ -20,10 +20,10 @@ import {
   TransactionNonce,
 } from './transaction-transcoders.js';
 import { APIProvider, AsyncStorage } from './types.js';
-import { bytesToHex, hexToBytes } from '@noble/hashes/utils.js';
+import { bytesToHex, hexToBytes } from '@noble/hashes/utils';
 
 function getPemEncodePublicKey(privateKey: Uint8Array): string {
-  const publicKey = getPublicKey(privateKey, true);
+  const publicKey = secp256k1.getPublicKey(privateKey, true);
   const keyEncoder = new KeyEncoder('secp256k1');
   return keyEncoder.encodePublic(bytesToHex(publicKey), 'raw', 'pem');
 }

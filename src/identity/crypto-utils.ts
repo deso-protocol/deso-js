@@ -1,9 +1,3 @@
-import {
-  ProjectivePoint as Point,
-  getPublicKey,
-  getSharedSecret as nobleGetSharedSecret,
-  etc,
-} from '@noble/secp256k1';
 import { secp256k1 } from '@noble/curves/secp256k1';
 import bs58 from 'bs58';
 import { PUBLIC_KEY_PREFIXES } from './constants.js';
@@ -16,6 +10,22 @@ import {
   randomBytes,
 } from '@noble/hashes/utils';
 import { sha256 } from '@noble/hashes/sha256';
+
+async function hmacSha256Async(
+  key: Uint8Array,
+  message: Uint8Array
+): Promise<Uint8Array> {
+  const encoder = new TextEncoder();
+  const k = await crypto.subtle.importKey(
+    'raw',
+    key,
+    { name: 'HMAC', hash: 'SHA-256' },
+    true,
+    ['sign']
+  );
+  const signature = await crypto.subtle.sign('HMAC', k, message);
+  return new Uint8Array(signature);
+}
 
 // Browser friendly version of node's Buffer.concat.
 export function concatUint8Arrays(arrays: Uint8Array[], length?: number) {
@@ -110,7 +120,7 @@ export const keygen = (seed?: string | Uint8Array): KeyPair => {
   return {
     seedHex,
     private: privateKey,
-    public: getPublicKey(privateKey, true /* isCompressed */),
+    public: secp256k1.getPublicKey(privateKey, true /* isCompressed */),
   };
 };
 
@@ -240,7 +250,7 @@ export const encryptChatMessage = (
     recipientPublicKeyBase58Check
   );
   const sharedPrivateKey = getSharedPrivateKey(privateKey, recipientPublicKey);
-  const sharedPublicKey = getPublicKey(sharedPrivateKey);
+  const sharedPublicKey = secp256k1.getPublicKey(sharedPrivateKey);
 
   return encrypt(sharedPublicKey, message);
 };
@@ -255,7 +265,7 @@ export const encrypt = async (
   plaintext: string
 ): Promise<string> => {
   const ephemPrivateKey = randomBytes(32);
-  const ephemPublicKey = getPublicKey(ephemPrivateKey);
+  const ephemPublicKey = secp256k1.getPublicKey(ephemPrivateKey);
   const publicKeyBytes =
     typeof publicKey === 'string' ? bs58PublicKeyToBytes(publicKey) : publicKey;
   const privKey = getSharedPrivateKey(ephemPrivateKey, publicKeyBytes);
@@ -280,7 +290,7 @@ export const encrypt = async (
     bytes
   );
 
-  const hmacSha256 = await etc.hmacSha256Async(
+  const hmacSha256 = await hmacSha256Async(
     macKey,
     new Uint8Array([...iv, ...new Uint8Array(cipherBytes)])
   );
@@ -300,7 +310,9 @@ export const bs58PublicKeyToCompressedBytes = (str: string) => {
     return new Uint8Array(33);
   }
   const pubKeyUncompressed = bs58PublicKeyToBytes(str);
-  return Point.fromHex(bytesToHex(pubKeyUncompressed)).toRawBytes(true);
+  return secp256k1.ProjectivePoint.fromHex(
+    bytesToHex(pubKeyUncompressed)
+  ).toRawBytes(true);
 };
 
 export const bs58PublicKeyToBytes = (str: string) => {
@@ -318,7 +330,9 @@ export const bs58PublicKeyToBytes = (str: string) => {
     throw new Error('Invalid checksum');
   }
 
-  return Point.fromHex(bytesToHex(payload.slice(3))).toRawBytes(false);
+  return secp256k1.ProjectivePoint.fromHex(
+    bytesToHex(payload.slice(3))
+  ).toRawBytes(false);
 };
 
 const regexMainnet = /^BC[1-9A-HJ-NP-Za-km-z]{53}$/;
@@ -387,7 +401,7 @@ export const decrypt = async (
   const sharedSecretKey = await getSharedPrivateKey(privateKey, ephemPublicKey);
   const encryptionKey = sharedSecretKey.slice(0, 16);
   const macKey = sha256(sharedSecretKey.slice(16));
-  const hmacKnownGood = await etc.hmacSha256Async(macKey, cipherAndIv);
+  const hmacKnownGood = await hmacSha256Async(macKey, cipherAndIv);
 
   if (!isValidHmac(msgMac, hmacKnownGood)) {
     throw new Error('incorrect MAC');
@@ -424,14 +438,14 @@ export const decodePublicKey = async (publicKeyBase58Check: string) => {
   const withPrefixRemoved = decoded.slice(3);
   const senderPubKeyHex = bytesToHex(withPrefixRemoved);
 
-  return Point.fromHex(senderPubKeyHex).toRawBytes(false);
+  return secp256k1.ProjectivePoint.fromHex(senderPubKeyHex).toRawBytes(false);
 };
 
 export const getSharedSecret = (privKey: Uint8Array, pubKey: Uint8Array) => {
   // passing true to compress the public key, and then slicing off the first byte
   // matches the implementation of derive in the elliptic package.
   // https://github.com/paulmillr/noble-secp256k1/issues/28#issuecomment-946538037
-  return nobleGetSharedSecret(privKey, pubKey, true).slice(1);
+  return secp256k1.getSharedSecret(privKey, pubKey, true).slice(1);
 };
 
 // taken from reference implementation in the deso chat app:
