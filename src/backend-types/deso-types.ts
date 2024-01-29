@@ -5728,3 +5728,73 @@ export interface StakeEntryResponse {
   StakeAmountNanos: string; // HEX string
   ExtraData: Record<string, string>;
 }
+
+export interface LockedBalanceEntryResponse {
+  HODLerPublicKeyBase58Check: string;
+  ProfilePublicKeyBase58Check: string;
+  UnlockTimestampNanoSecs: number;
+  VestingEndTimestampNanoSecs: number;
+  BalanceBaseUnits: string; // HEX string
+  ProfileEntryResponse?: ProfileEntryResponse;
+  HODLerProfileEntryResponse?: ProfileEntryResponse;
+}
+
+export interface LockupYieldCurvePointResponse {
+  ProfilePublicKeyBase58Check: string;
+  LockupDurationNanoSecs: number;
+  LockupYieldAPYBasisPoints: number;
+  ProfileEntryResponse?: ProfileEntryResponse;
+}
+
+export interface CoinLockupRequest {
+  TransactorPublicKeyBase58Check: string;
+  ProfilePublicKeyBase58Check: string;
+  RecipientPublicKeyBase58Check: string;
+  UnlockTimestampNanoSecs: number;
+  VestingEndTimestampNanoSecs: number;
+  LockupAmountBaseUnits: string; // HEX string
+  ExtraData: Record<string, string>;
+  MinFeeRateNanosPerKB: number;
+  TransactionFees: TransactionFee[];
+}
+
+export interface UpdateCoinLockupParamsRequest {
+  TransactorPublicKeyBase58Check: string;
+  LockupYieldDurationNanoSecs: number;
+  LockupYieldAPYBasisPoints: number;
+  RemoveYieldCurvePoint: boolean;
+  NewLockupTransferRestrictions: boolean;
+  LockupTransferRestrictionStatus: string; // TODO: introduce TransferRestrictionStatusString enum and use everywhere.
+  ExtraData: Record<string, string>;
+  MinFeeRateNanosPerKB: number;
+  TransactionFees: TransactionFee[];
+}
+
+export interface CoinLockupTransferRequest {
+  TransactorPublicKeyBase58Check: string;
+  ProfilePublicKeyBase58Check: string;
+  RecipientPublicKeyBase58Check: string;
+  UnlockTimestampNanoSecs: number;
+  LockedCoinsToTransferBaseUnits: string; // HEX string
+  ExtraData: Record<string, string>;
+  MinFeeRateNanosPerKB: number;
+  TransactionFees: TransactionFee[];
+}
+
+export interface CoinUnlockRequest {
+  TransactorPublicKeyBase58Check: string;
+  ProfilePublicKeyBase58Check: string;
+  ExtraData: Record<string, string>;
+  MinFeeRateNanosPerKB: number;
+  TransactionFees: TransactionFee[];
+}
+
+export interface CoinLockResponse {
+  SpendAmountNanos: number;
+  TotalInputNanos: number;
+  ChangeAmountNanos: number;
+  FeeNanos: number;
+  Transaction: MsgDeSoTxn;
+  TransactionHex: string;
+  TxnHashHex: string;
+}
