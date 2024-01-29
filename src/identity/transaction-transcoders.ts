@@ -23,6 +23,7 @@ import {
   instanceToType,
   VarBufferArray,
   BoolOptional,
+  Varint64,
 } from './transcoders.js';
 export class TransactionInput extends BinaryRecord {
   @Transcode(FixedBuffer(32))
@@ -662,6 +663,61 @@ export class TransactionMetadataUnlockStake extends BinaryRecord {
 
 export class TransactionMetadataUnjailValidator extends BinaryRecord {}
 
+export class TransactionMetadataCoinLockup extends BinaryRecord {
+  @Transcode(VarBuffer)
+  profilePublicKey: Uint8Array = new Uint8Array(0);
+
+  @Transcode(VarBuffer)
+  recipientPublicKey: Uint8Array = new Uint8Array(0);
+
+  @Transcode(Varint64)
+  unlockTimestampNanoSecs = 0;
+
+  @Transcode(Varint64)
+  vestingEndTimestampNanoSecs = 0;
+
+  // TODO: We may want a better way to handle uint256s.
+  @Transcode(BoolOptional(VarBuffer))
+  lockupAmountBaseUnits: Uint8Array = new Uint8Array(0);
+}
+
+export class TransactionMetadataUpdateCoinLockupParams extends BinaryRecord {
+  @Transcode(Varint64)
+  lockupYieldDurationNanoSecs = 0;
+
+  @Transcode(Uvarint64)
+  lockupYieldAPYBasisPoints = 0;
+
+  @Transcode(Boolean)
+  removeYieldCurvePoint = false;
+
+  @Transcode(Boolean)
+  newLockupTransferRestrictions = false;
+
+  @Transcode(Uint8)
+  lockupTransferRestrictionStatus = 0;
+}
+
+export class TransactionMetadataCoinLockupTransfer extends BinaryRecord {
+  @Transcode(VarBuffer)
+  recipientPublicKey: Uint8Array = new Uint8Array(0);
+
+  @Transcode(VarBuffer)
+  profilePublicKey: Uint8Array = new Uint8Array(0);
+
+  @Transcode(Varint64)
+  unlockTimestampNanoSecs = 0;
+
+  // TODO: We may want a better way to handle uint256s.
+  @Transcode(BoolOptional(VarBuffer))
+  lockedCoinsToTransferBaseUnits: Uint8Array = new Uint8Array(0);
+}
+
+export class TransactionMetadataCoinUnlock extends BinaryRecord {
+  @Transcode(VarBuffer)
+  profilePublicKey: Uint8Array = new Uint8Array(0);
+}
+
 export const TransactionTypeMetadataMap = {
   1: TransactionMetadataBlockReward,
   2: TransactionMetadataBasicTransfer,
@@ -743,6 +799,10 @@ export const TransactionTypeToStringMap: { [k: number]: string } = {
   37: TransactionType.Unstake,
   38: TransactionType.UnlockStake,
   39: TransactionType.UnjailValidator,
+  40: TransactionType.CoinLockup,
+  41: TransactionType.UpdateCoinLockupParams,
+  42: TransactionType.CoinLockupTransfer,
+  43: TransactionType.CoinUnlock,
 };
 
 export class Transaction extends BinaryRecord {
