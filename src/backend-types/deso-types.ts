@@ -4616,6 +4616,42 @@ export interface AccessGroupMemberLimitMapItem {
   OpCount: number;
 }
 
+export type StakeLimitMapItem = {
+  ValidatorPublicKeyBase58Check: string;
+  StakeLimit: string; // Hex string
+};
+
+export type UnstakeLimitMapItem = {
+  ValidatorPublicKeyBase58Check: string;
+  UnstakeLimit: string; // Hex string
+};
+
+export type UnlockStakeLimitMapItem = {
+  ValidatorPublicKeyBase58Check: string;
+  OpCount: number;
+};
+
+export enum LockupLimitScopeType {
+  ANY = 'AnyCoins',
+  SCOPED = 'ScopedCoins',
+}
+
+export enum LockupLimitOperationString {
+  ANY = 'Any',
+  COIN_LOCKUP = 'CoinLockup',
+  UPDATE_COIN_LOCKUP_YIELD_CURVE = 'UpdateCoinLockupYieldCurve',
+  UPDATE_COIN_LOCKUP_TRANSFER_RESTRICTIONS = 'UpdateCoinLockupTransferRestrictions',
+  COIN_LOCKUP_TRANSFER = 'CoinLockupTransferOperationString',
+  COIN_UNLOCK = 'CoinLockupUnlock',
+}
+
+export type LockupLimitMapItem = {
+  ProfilePublicKeyBase58Check: string;
+  ScopeType: LockupLimitScopeType;
+  Operation: LockupLimitOperationString;
+  OpCount: number;
+};
+
 // struct2ts:types/generated/types.TransactionSpendingLimitResponse
 export interface TransactionSpendingLimitResponse {
   GlobalDESOLimit?: number;
@@ -4627,6 +4663,10 @@ export interface TransactionSpendingLimitResponse {
   AssociationLimitMap?: AssociationLimitMapItem[];
   AccessGroupLimitMap?: AccessGroupLimitMapItem[];
   AccessGroupMemberLimitMap?: AccessGroupMemberLimitMapItem[];
+  StakeLimitMap?: StakeLimitMapItem[];
+  UnstakeLimitMap?: UnstakeLimitMapItem[];
+  UnlockStakeLimitMap?: UnlockStakeLimitMapItem[];
+  LockupLimitMap?: LockupLimitMapItem[];
   IsUnlimited?: boolean;
 }
 
@@ -5587,3 +5627,104 @@ export interface GetVideoStatusResponse {
 }
 
 export type DiamondLevelString = '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8';
+
+export interface RegisterAsValidatorRequest {
+  TransactorPublicKeyBase58Check: string;
+  Domains: string[];
+  DelegatedStakeCommissionBasisPoints: number;
+  DisableDelegatedStake: boolean;
+  VotingPublicKey: string;
+  VotingAuthorization: string;
+  ExtraData: Record<string, string>;
+  MinFeeRateNanosPerKB: number;
+  TransactionFees: TransactionFee[];
+}
+
+export interface UnregisterAsValidatorRequest {
+  TransactorPublicKeyBase58Check: string;
+  ExtraData: Record<string, string>;
+  MinFeeRateNanosPerKB: number;
+  TransactionFees: TransactionFee[];
+}
+
+export interface UnjailValidatorRequest {
+  TransactorPublicKeyBase58Check: string;
+  ExtraData: Record<string, string>;
+  MinFeeRateNanosPerKB: number;
+  TransactionFees: TransactionFee[];
+}
+
+export interface ValidatorTxnResponse {
+  SpendAmountNanos: number;
+  TotalInputNanos: number;
+  ChangeAmountNanos: number;
+  FeeNanos: number;
+  Transaction: MsgDeSoTxn;
+  TransactionHex: string;
+  TxnHashHex: string;
+}
+
+export interface ValidatorResponse {
+  ValidatorPublicKeyBase58Check: string;
+  Domains: string[];
+  DisableDelegatedStake: boolean;
+  VotingPublicKey: string;
+  VotingAuthorization: string;
+  TotalStakeAmountNanos: string; // HEX STRING
+  Status: string;
+  LastActiveAtEpochNumber: number;
+  JailedAtEpochNumber: number;
+  ExtraData: Record<string, string>;
+}
+
+export enum StakeRewardMethod {
+  PayToBalance = 'PAY_TO_BALANCE',
+  Restake = 'RESTAKE',
+}
+
+export interface StakeRequest {
+  TransactorPublicKeyBase58Check: string;
+  ValidatorPublicKeyBase58Check: string;
+  RewardMethod: StakeRewardMethod;
+  StakeAmountNanos: string; // HEX STRING
+  ExtraData: Record<string, string>;
+  MinFeeRateNanosPerKB: number;
+  TransactionFees: TransactionFee[];
+}
+
+export interface UnstakeRequest {
+  TransactorPublicKeyBase58Check: string;
+  ValidatorPublicKeyBase58Check: string;
+  UnstakeAmountNanos: string; // HEX STRING
+  ExtraData: Record<string, string>;
+  MinFeeRateNanosPerKB: number;
+  TransactionFees: TransactionFee[];
+}
+
+export interface UnlockStakeRequest {
+  TransactorPublicKeyBase58Check: string;
+  ValidatorPublicKeyBase58Check: string;
+  StartEpochNumber: number;
+  EndEpochNumber: number;
+  ExtraData: Record<string, string>;
+  MinFeeRateNanosPerKB: number;
+  TransactionFees: TransactionFee[];
+}
+
+export interface StakeTxnResponse {
+  SpendAmountNanos: number;
+  TotalInputNanos: number;
+  ChangeAmountNanos: number;
+  FeeNanos: number;
+  Transaction: MsgDeSoTxn;
+  TransactionHex: string;
+  TxnHashHex: string;
+}
+
+export interface StakeEntryResponse {
+  StakerPublicKeyBase58Check: string;
+  ValidatorPublicKeyBase58Check: string;
+  RewardMethod: StakeRewardMethod;
+  StakeAmountNanos: string; // HEX string
+  ExtraData: Record<string, string>;
+}
