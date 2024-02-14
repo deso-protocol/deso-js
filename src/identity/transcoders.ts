@@ -95,6 +95,33 @@ export const VarBuffer: Transcoder<Uint8Array> = {
   },
   write: (bytes) => concatUint8Arrays([uvarint64ToBuf(bytes.length), bytes]),
 };
+
+export const VarBufferArray: Transcoder<Uint8Array[]> = {
+  read: (bytes) => {
+    const countAndBuffer = bufToUvarint64(bytes);
+    const count = countAndBuffer[0];
+    let buffer = countAndBuffer[1];
+    const result = [];
+    for (let i = 0; i < count; i++) {
+      let size;
+      [size, buffer] = bufToUvarint64(buffer);
+      result.push(buffer.slice(0, size));
+      buffer = buffer.slice(size);
+    }
+
+    return [result, buffer];
+  },
+  write: (buffers) => {
+    const count = uvarint64ToBuf(buffers.length);
+    return concatUint8Arrays([
+      count,
+      ...buffers.map((buffer) =>
+        concatUint8Arrays([uvarint64ToBuf(buffer.length), buffer])
+      ),
+    ]);
+  },
+};
+
 export const TransactionNonceTranscoder: Transcoder<TransactionNonce | null> = {
   read: (bytes) => {
     return TransactionNonce.fromBytes(bytes) as [TransactionNonce, Uint8Array];
