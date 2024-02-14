@@ -1,8 +1,10 @@
 import 'reflect-metadata';
 import {
   bufToUvarint64,
+  bufToVarint64,
   concatUint8Arrays,
   uvarint64ToBuf,
+  varint64ToBuf,
 } from './crypto-utils.js';
 import { TransactionNonce } from './transaction-transcoders.js';
 export class BinaryRecord {
@@ -67,6 +69,11 @@ export interface Deserializable<T> {
 export const Uvarint64: Transcoder<number> = {
   read: (bytes) => bufToUvarint64(bytes),
   write: (uint) => uvarint64ToBuf(uint),
+};
+
+export const Varint64: Transcoder<number> = {
+  read: (bytes) => bufToVarint64(bytes),
+  write: (int) => varint64ToBuf(int),
 };
 
 export const Boolean: Transcoder<boolean> = {
