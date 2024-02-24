@@ -10,3 +10,6 @@ export * from './transactions/deso-tokens.js';
 export * from './transactions/financial.js';
 export * from './transactions/nfts.js';
 export * from './transactions/social.js';
+export * from './transactions/validator.js';
+export * from './transactions/stake.js';
+export * from './transactions/lockup.js';
