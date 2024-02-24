@@ -37,8 +37,10 @@ const buildRegisterAsValidatorMetadata = (
   metadata.delegatedStakeCommissionBasisPoints =
     params.DelegatedStakeCommissionBasisPoints;
   metadata.disableDelegatedStake = params.DisableDelegatedStake;
-  metadata.votingPublicKey = hexToBytes(params.VotingPublicKey);
-  metadata.votingAuthorization = hexToBytes(params.VotingAuthorization);
+  metadata.votingPublicKey = hexToBytes(stripHexPrefix(params.VotingPublicKey));
+  metadata.votingAuthorization = hexToBytes(
+    stripHexPrefix(params.VotingAuthorization)
+  );
 
   return metadata;
 };
@@ -118,7 +120,7 @@ export const constructUnregisterAsValidatorTransaction = (
   );
 };
 
-export const UnregisterAsValidator = async (
+export const unRegisterAsValidator = async (
   params: UnregisterAsValidatorRequestParams,
   options?: TxRequestOptions
 ): Promise<
@@ -177,7 +179,7 @@ export const constructUnjailValidatorTransaction = (
   );
 };
 
-export const UnjailValidator = async (
+export const unJailValidator = async (
   params: UnjailValidatorRequestParams,
   options?: TxRequestOptions
 ): Promise<
@@ -214,3 +216,7 @@ export const UnjailValidator = async (
     constructionFunction: constructUnjailValidatorTransaction,
   });
 };
+
+function stripHexPrefix(hex: string) {
+  return hex.startsWith('0x') ? hex.slice(2) : hex;
+}
