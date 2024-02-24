@@ -2960,6 +2960,20 @@ export interface GetAppStateResponse {
   JumioBitCloutNanos: number;
 }
 
+export interface GetTxnConstructionParamsRequest {
+  MinFeeRateNanosPerKB: number;
+  MempoolCongestionFactorBasisPoints: number;
+  MempoolPriorityPercentileBasisPoints: number;
+  PastBlocksCongestionFactorBasisPoints: number;
+  PastBlocksPriorityPercentileBasisPoints: number;
+  MaxBlockSize: number;
+}
+
+export interface GetTxnConstructionParamsResponse {
+  FeeRateNanosPerKB: number;
+  BlockHeight: number;
+}
+
 // struct2ts:types/generated/types.BlockchainDotcomResponse
 export interface BlockchainDotcomResponse {
   USD: any;
