@@ -209,9 +209,22 @@ export function buildTransactionSpendingLimitResponse(
     []
   );
 
+  if (result.StakeLimitMap) {
+    result.StakeLimitMap = Object.values(result.StakeLimitMap);
+  }
+
+  if (result.UnstakeLimitMap) {
+    result.UnstakeLimitMap = Object.values(result.UnstakeLimitMap);
+  }
+
+  if (result.UnlockStakeLimitMap) {
+    result.UnlockStakeLimitMap = Object.values(result.UnlockStakeLimitMap);
+  }
+
   if (result.AccessGroupLimitMap) {
     result.AccessGroupLimitMap = Object.values(result.AccessGroupLimitMap);
   }
+
   if (result.AccessGroupMemberLimitMap) {
     result.AccessGroupMemberLimitMap = Object.values(
       result.AccessGroupMemberLimitMap
