@@ -1,3 +1,4 @@
+import { hexToBytes } from '@noble/hashes/utils';
 import {
   ConstructedTransactionResponse,
   RegisterAsValidatorRequest,
@@ -6,25 +7,24 @@ import {
   ValidatorTxnResponse,
 } from '../backend-types/index.js';
 import {
-  encodeUTF8ToBytes,
-  identity,
   TransactionMetadataRegisterAsValidator,
   TransactionMetadataUnjailValidator,
   TransactionMetadataUnregisterAsValidator,
+  encodeUTF8ToBytes,
+  identity,
 } from '../identity/index.js';
-import { hexToBytes } from '@noble/hashes/utils';
-import {
-  ConstructedAndSubmittedTx,
-  TxRequestOptions,
-  TypeWithOptionalFeesAndExtraData,
-} from '../types.js';
 import {
   constructBalanceModelTx,
   getTxWithFeeNanos,
   handleSignAndSubmit,
   sumTransactionFees,
 } from '../internal.js';
-import { guardTxPermission } from './utils.js';
+import {
+  ConstructedAndSubmittedTx,
+  TxRequestOptions,
+  TypeWithOptionalFeesAndExtraData,
+} from '../types.js';
+import { guardTxPermission, stripHexPrefix } from './utils.js';
 
 type RegisterAsValidatorRequestParams =
   TypeWithOptionalFeesAndExtraData<RegisterAsValidatorRequest>;
@@ -216,7 +216,3 @@ export const unJailValidator = async (
     constructionFunction: constructUnjailValidatorTransaction,
   });
 };
-
-function stripHexPrefix(hex: string) {
-  return hex.startsWith('0x') ? hex.slice(2) : hex;
-}

@@ -24,3 +24,7 @@ export async function guardTxPermission(
     return (hasPermissions as Promise<boolean>).then(guard);
   }
 }
+
+export function stripHexPrefix(hex: string) {
+  return hex.startsWith('0x') ? hex.slice(2) : hex;
+}

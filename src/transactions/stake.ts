@@ -1,8 +1,4 @@
-import {
-  ConstructedAndSubmittedTx,
-  TxRequestOptions,
-  TypeWithOptionalFeesAndExtraData,
-} from '../types.js';
+import { hexToBytes } from '@noble/hashes/utils';
 import {
   ConstructedTransactionResponse,
   StakeRequest,
@@ -12,19 +8,23 @@ import {
   UnstakeRequest,
 } from '../backend-types/index.js';
 import {
-  bs58PublicKeyToCompressedBytes,
   TransactionMetadataStake,
   TransactionMetadataUnlockStake,
   TransactionMetadataUnstake,
+  bs58PublicKeyToCompressedBytes,
 } from '../identity/index.js';
-import { hexToBytes } from '@noble/hashes/utils';
 import {
   constructBalanceModelTx,
   getTxWithFeeNanos,
   handleSignAndSubmit,
   sumTransactionFees,
 } from '../internal.js';
-import { guardTxPermission } from './utils.js';
+import {
+  ConstructedAndSubmittedTx,
+  TxRequestOptions,
+  TypeWithOptionalFeesAndExtraData,
+} from '../types.js';
+import { guardTxPermission, stripHexPrefix } from './utils.js';
 
 type StakeRequestParams = TypeWithOptionalFeesAndExtraData<StakeRequest>;
 
@@ -35,9 +35,8 @@ const buildStakeMetadata = (params: StakeRequestParams) => {
   );
   metadata.rewardMethod =
     params.RewardMethod === StakeRewardMethod.PayToBalance ? 0 : 1;
-  // TODO: make sure this replace is correct.
   metadata.stakeAmountNanos = hexToBytes(
-    params.StakeAmountNanos.replace('0x', 'x')
+    stripHexPrefix(params.StakeAmountNanos)
   );
 
   return metadata;
