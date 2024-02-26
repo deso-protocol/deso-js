@@ -38,9 +38,8 @@ fi
 cd -
 
 RELEASE_VERSION=$(grep version package.json | awk -F \" '{print $4}')
-CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 echo "::notice::New version successfully released: $RELEASE_VERSION"
 git add package*.json
 git commit -nm "ci: automated release version $RELEASE_VERSION"
-git pull --rebase origin $CURRENT_BRANCH
-git push origin HEAD:$CURRENT_BRANCH
+git pull --rebase origin main
+git push origin HEAD:main
