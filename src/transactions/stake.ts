@@ -35,9 +35,9 @@ const buildStakeMetadata = (params: StakeRequestParams) => {
   );
   metadata.rewardMethod =
     params.RewardMethod === StakeRewardMethod.PayToBalance ? 0 : 1;
-  metadata.stakeAmountNanos = hexToBytes(
-    stripHexPrefix(params.StakeAmountNanos)
-  );
+  const hex = stripHexPrefix(params.StakeAmountNanos);
+  metadata.stakeAmountNanos =
+    hex === '0' ? new Uint8Array([0]) : hexToBytes(hex);
 
   return metadata;
 };
@@ -100,10 +100,9 @@ const buildUnstakeMetadata = (params: UnstakeRequestParams) => {
   metadata.validatorPublicKey = bs58PublicKeyToCompressedBytes(
     params.ValidatorPublicKeyBase58Check
   );
-  // TODO: make sure this replace is correct.
-  metadata.unstakeAmountNanos = hexToBytes(
-    params.UnstakeAmountNanos.replace('0x', 'x')
-  );
+  const hex = stripHexPrefix(params.UnstakeAmountNanos);
+  metadata.unstakeAmountNanos =
+    hex === '0' ? new Uint8Array([0]) : hexToBytes(hex);
 
   return metadata;
 };
