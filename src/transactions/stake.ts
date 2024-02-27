@@ -12,6 +12,7 @@ import {
   TransactionMetadataUnlockStake,
   TransactionMetadataUnstake,
   bs58PublicKeyToCompressedBytes,
+  concatUint8Arrays,
 } from '../identity/index.js';
 import {
   constructBalanceModelTx,
@@ -84,8 +85,7 @@ export const stake = async (
   const GlobalDESOLimit =
     parseInt(stakeLimit, 16) +
     txWithFee.feeNanos +
-    sumTransactionFees(params.TransactionFees) +
-    1 * 1e9;
+    sumTransactionFees(params.TransactionFees);
 
   if (options?.checkPermissions !== false) {
     await guardTxPermission({
