@@ -35,9 +35,9 @@ const buildStakeMetadata = (params: StakeRequestParams) => {
   );
   metadata.rewardMethod =
     params.RewardMethod === StakeRewardMethod.PayToBalance ? 0 : 1;
-  const hex = stripHexPrefix(params.StakeAmountNanos);
-  metadata.stakeAmountNanos =
-    hex === '0' ? new Uint8Array([0]) : hexToBytes(hex);
+  metadata.stakeAmountNanos = hexToBytes(
+    stripHexPrefix(params.StakeAmountNanos)
+  );
 
   return metadata;
 };
@@ -72,16 +72,28 @@ export const stake = async (
     }
   );
 
+  // NOTE: there must be a non-zero stake limit in order for the transaction to
+  // get accepted. If a user is only trying to update their reward method then
+  // it is possible for the stake limit to actually be 0. In this case, we set
+  // the stake limit to a very tiny amount of 1 nano.
+  const stakeLimit =
+    parseInt(params.StakeAmountNanos, 16) === 0
+      ? '0x1'
+      : params.StakeAmountNanos;
+
+  const GlobalDESOLimit =
+    parseInt(stakeLimit, 16) +
+    txWithFee.feeNanos +
+    sumTransactionFees(params.TransactionFees) +
+    1 * 1e9;
+
   if (options?.checkPermissions !== false) {
     await guardTxPermission({
-      GlobalDESOLimit:
-        parseInt(params.StakeAmountNanos, 16) +
-        txWithFee.feeNanos +
-        sumTransactionFees(params.TransactionFees),
+      GlobalDESOLimit,
       StakeLimitMap: [
         {
           ValidatorPublicKeyBase58Check: params.ValidatorPublicKeyBase58Check,
-          StakeLimit: params.StakeAmountNanos,
+          StakeLimit: stakeLimit,
         },
       ],
     });

@@ -26,5 +26,11 @@ export async function guardTxPermission(
 }
 
 export function stripHexPrefix(hex: string) {
-  return hex.startsWith('0x') ? hex.slice(2) : hex;
+  const unPadded = hex.startsWith('0x') ? hex.slice(2) : hex;
+
+  if (unPadded.length % 2 === 1) {
+    return `0${unPadded}`;
+  }
+
+  return unPadded;
 }
