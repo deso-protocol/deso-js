@@ -2,29 +2,33 @@ import { hexToBytes } from '@noble/hashes/utils';
 import {
   ConstructedTransactionResponse,
   DAOCoinLimitOrderRequest,
-  DAOCoinOrderResponse,
   DAOCoinLimitOrderWithCancelOrderIDRequest,
-  DAOCoinLimitOrderWithExchangeRateAndQuantityRequest,
+  DAOCoinMarketOrderRequest,
+  DAOCoinOrderResponse,
   DAOCoinRequest,
   DAOCoinResponse,
   RequestOptions,
   TransferDAOCoinRequest,
   TransferDAOCoinResponse,
   TxRequestWithOptionalFeesAndExtraData,
-  DAOCoinMarketOrderRequest,
 } from '../backend-types/index.js';
 import { PartialWithRequiredFields } from '../data/index.js';
 import {
   TransactionMetadataDAOCoin,
   TransactionMetadataTransferDAOCoin,
   bs58PublicKeyToCompressedBytes,
+  identity,
 } from '../identity/index.js';
 import {
   constructBalanceModelTx,
+  getTxWithFeeNanos,
   handleSignAndSubmit,
   isMaybeDeSoPublicKey,
+  sumTransactionFees,
 } from '../internal.js';
-import { ConstructedAndSubmittedTx } from '../types.js';
+import { ConstructedAndSubmittedTx, TxRequestOptions } from '../types.js';
+import { guardTxPermission } from './utils.js';
+
 /**
  * https://docs.deso.org/deso-backend/construct-transactions/dao-transactions-api#create-deso-token-dao-coin
  */
@@ -219,8 +223,6 @@ export const constructDisableMintingDeSoToken = (
   params: DisableMintingDeSoTokenRequestParams
 ): Promise<ConstructedTransactionResponse> => {
   const metadata = new TransactionMetadataDAOCoin();
-  // TODO: I know we're passing hex strings representing uint256, but need
-  // to figure out how they go to bytes.
   if (!isMaybeDeSoPublicKey(params.ProfilePublicKeyBase58CheckOrUsername)) {
     return Promise.reject(
       'must provide profile public key, not username for local transaction construction'
@@ -240,10 +242,50 @@ export const constructDisableMintingDeSoToken = (
 /**
  * https://docs.deso.org/deso-backend/construct-transactions/dao-transactions-api#transfer-deso-token-dao-coin
  */
-export const transferDeSoToken = (
+export const transferDeSoToken = async (
   params: TxRequestWithOptionalFeesAndExtraData<TransferDAOCoinRequest>,
-  options?: RequestOptions
+  options?: TxRequestOptions
 ): Promise<ConstructedAndSubmittedTx<TransferDAOCoinResponse>> => {
+  if (options?.checkPermissions !== false) {
+    const txWithFee = getTxWithFeeNanos(
+      params.SenderPublicKeyBase58Check,
+      new TransactionMetadataTransferDAOCoin(),
+      {
+        // TODO: I'm not sure exactly what outputs are needed here... for the time
+        // being I'm just adding a static 1500 nanos to make sure the derived key
+        // transaction can be submitted.
+        // Outputs: ...,
+        ExtraData: params.ExtraData,
+        MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+        TransactionFees: params.TransactionFees,
+      }
+    );
+
+    if (!isMaybeDeSoPublicKey(params.ProfilePublicKeyBase58CheckOrUsername)) {
+      return Promise.reject(
+        'must provide profile public key, not username for ProfilePublicKeyBase58CheckOrUsername when checking dao coin transfer permissions'
+      );
+    }
+    await guardTxPermission({
+      GlobalDESOLimit:
+        // TODO: when I figure out how to properly calculate the fee for this transaction
+        // we can remove this static 1500 buffer.
+        txWithFee.feeNanos + sumTransactionFees(params.TransactionFees) + 1500,
+      TransactionCountLimitMap: {
+        DAO_COIN_TRANSFER:
+          options?.txLimitCount ??
+          identity.transactionSpendingLimitOptions.TransactionCountLimitMap
+            ?.DAO_COIN_TRANSFER ??
+          1,
+      },
+      DAOCoinOperationLimitMap: {
+        [params.ProfilePublicKeyBase58CheckOrUsername]: {
+          transfer: 1,
+        },
+      },
+    });
+  }
+
   return handleSignAndSubmit('api/v0/transfer-dao-coin', params, {
     ...options,
     constructionFunction: constructTransferDeSoToken,
