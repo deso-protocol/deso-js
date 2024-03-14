@@ -2,9 +2,6 @@
 
 set -e
 
-echo "::notice::RELEASE_TARGET: $RELEASE_TARGET"
-exit 0
-
 # Script used in github actions workflows to publish based on release tag.
 
 # Tags should be formatted in the following way:
