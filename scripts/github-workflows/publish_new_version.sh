@@ -35,11 +35,12 @@ else
   exit 1
 fi
 
-cd -
-
-RELEASE_VERSION=$(grep version package.json | awk -F \" '{print $4}')
-echo "::notice::New version successfully released: $RELEASE_VERSION"
-git add package*.json
-git commit -nm "ci: automated release version $RELEASE_VERSION"
-git pull --rebase origin main
-git push origin HEAD:main
+if [[ $RELEASE_TARGET == "main" ]]; then
+  cd -
+  RELEASE_VERSION=$(grep version package.json | awk -F \" '{print $4}')
+  echo "::notice::New version successfully released: $RELEASE_VERSION"
+  git add package*.json
+  git commit -nm "ci: automated release version $RELEASE_VERSION"
+  git pull --rebase origin $RELEASE_TARGET
+  git push origin HEAD:$RELEASE_TARGET
+fi

@@ -10,12 +10,14 @@ jobs:
       NODE_AUTH_TOKEN: ${{secrets.NPM_AUTH_TOKEN}}
       HUSKY: 0
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 16
-          registry-url: "https://registry.npmjs.org"
+          node-version: 20
+          registry-url: 'https://registry.npmjs.org'
       - name: NPM Publish
+        env:
+          RELEASE_TARGET: ${{github.event.release.target_commitish}}
         run: |
           ./scripts/github-workflows/setup_git.sh
           ./scripts/github-workflows/publish_new_version.sh
