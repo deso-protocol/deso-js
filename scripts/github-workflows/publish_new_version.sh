@@ -2,6 +2,9 @@
 
 set -e
 
+echo "::notice::RELEASE_TARGET: $RELEASE_TARGET"
+exit 0
+
 # Script used in github actions workflows to publish based on release tag.
 
 # Tags should be formatted in the following way:
@@ -41,5 +44,5 @@ RELEASE_VERSION=$(grep version package.json | awk -F \" '{print $4}')
 echo "::notice::New version successfully released: $RELEASE_VERSION"
 git add package*.json
 git commit -nm "ci: automated release version $RELEASE_VERSION"
-git pull --rebase origin main
-git push origin HEAD:main
+git pull --rebase origin $RELEASE_TARGET
+git push origin HEAD:$RELEASE_TARGET
