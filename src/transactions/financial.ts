@@ -29,10 +29,14 @@ import { guardTxPermission } from './utils.js';
 
 /**
  * https://docs.deso.org/deso-backend/construct-transactions/financial-transactions-api#send-deso
+ *
+ * NOTE: In the case of a max send, the AmountNanos param will be a -1, which
+ * is not useful for calculating the GlobalDESOLimit. In this case, the caller
+ * should provide the optional spendingLimitAmountNanos to be used instead.
  */
 export const sendDeso = async (
   params: TxRequestWithOptionalFeesAndExtraData<SendDeSoRequest>,
-  options?: TxRequestOptions
+  options?: TxRequestOptions & { spendingLimitAmountNanos?: number }
 ): Promise<
   ConstructedAndSubmittedTx<SendDeSoResponse | ConstructedTransactionResponse>
 > => {
@@ -56,10 +60,15 @@ export const sendDeso = async (
     }
   );
 
+  const amountNanos =
+    typeof options?.spendingLimitAmountNanos === 'number'
+      ? options.spendingLimitAmountNanos
+      : params.AmountNanos;
+
   if (options?.checkPermissions !== false) {
     await guardTxPermission({
       GlobalDESOLimit:
-        params.AmountNanos +
+        amountNanos +
         txWithFee.feeNanos +
         sumTransactionFees(params.TransactionFees),
       TransactionCountLimitMap: {
