@@ -273,3 +273,4 @@ cd $your_project_root_dir
 # create symlink in node_modules that points to your local copy of deso-protocol
 npm link deso-protocol
 ```
+

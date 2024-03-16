@@ -1008,7 +1008,7 @@ describe('identity', () => {
   });
   describe('loginWithAutoDerive()', () => {
     it('it stores the expected derive data when generating a local derived key payload', async () => {
-      const expectedExpirationBlock = 1294652;
+      const expectedExpirationBlock = 315603452;
       const expectedDerivePayload = {
         derivedPublicKeyBase58Check:
           'BC1YLhKdgXgrZ1XkCzbmP6T9bumth2DgPwNjMksCAXe5kGU9LnxQtsX',

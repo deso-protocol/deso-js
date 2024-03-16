@@ -23,9 +23,9 @@ export async function generateDerivedKeyPayload(
 ) {
   const { BlockHeight } = await getAppState();
 
-  // days * (24 hours / day) * (60 minutes / hour) * (1 block / 5 minutes) = blocks
+  // days * (24 hours / day) * (60 minutes / hour) * (60 seconds / minute) * (1 block / 1 second) = blocks
   const expirationBlockHeight =
-    BlockHeight + (numDaysBeforeExpiration * 24 * 60) / 5;
+    BlockHeight + numDaysBeforeExpiration * 24 * 60 * 60;
   const ownerPublicKeyBase58 = publicKeyToBase58Check(ownerKeys.public, {
     network,
   });

@@ -78,6 +78,23 @@ export const uint64ToBufBigEndian = (uint: number) => {
   return new Uint8Array(result.reverse());
 };
 
+export const varint64ToBuf = (int: number) => {
+  let ux = BigInt(int) << BigInt(1);
+  if (int < 0) {
+    ux = ~ux;
+  }
+  return uvarint64ToBuf(Number(ux));
+};
+
+export const bufToVarint64 = (buffer: Uint8Array): [number, Uint8Array] => {
+  const [ux, n] = bufToUvarint64(buffer);
+  let x = BigInt(ux) >> BigInt(1);
+  if (ux & 1) {
+    x = ~x;
+  }
+  return [Number(x), n];
+};
+
 interface Base58CheckOptions {
   network: Network;
 }

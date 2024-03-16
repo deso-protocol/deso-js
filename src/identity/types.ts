@@ -2,8 +2,12 @@ import {
   AccessGroupLimitMapItem,
   AccessGroupMemberLimitMapItem,
   AssociationLimitMapItem,
+  LockupLimitMapItem,
+  StakeLimitMapItem,
   TransactionSpendingLimitResponse,
   TransactionType,
+  UnlockStakeLimitMapItem,
+  UnstakeLimitMapItem,
 } from '../backend-types/index.js';
 export type Network = 'mainnet' | 'testnet';
 
@@ -61,6 +65,18 @@ export interface TransactionSpendingLimitResponseOptions {
     AccessGroupMemberLimitMapItem,
     'OpCount'
   > & { OpCount: number | 'UNLIMITED' })[];
+  StakeLimitMap?: (Omit<StakeLimitMapItem, 'StakeLimit'> & {
+    StakeLimit: string | 'UNLIMITED'; // TODO: handle unlimited for DESO limit.
+  })[];
+  UnstakeLimitMap?: (Omit<UnstakeLimitMapItem, 'UnstakeLimit'> & {
+    UnstakeLimit: string | 'UNLIMITED'; // TODO: handle unlimited for DESO limit.
+  })[];
+  UnlockStakeLimitMap?: (Omit<UnlockStakeLimitMapItem, 'OpCount'> & {
+    OpCount: number | 'UNLIMITED';
+  })[];
+  LockupLimitMap?: (Omit<LockupLimitMapItem, 'OpCount'> & {
+    OpCount: number | 'UNLIMITED';
+  })[];
   IsUnlimited?: boolean;
 }
 
