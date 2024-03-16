@@ -1,15 +1,31 @@
-import { sha256 } from '@noble/hashes/sha256';
-import {
-  Point,
-  sign as ecSign,
-  utils as ecUtils,
-  getPublicKey,
-  getSharedSecret as nobleGetSharedSecret,
-} from '@noble/secp256k1';
+import { secp256k1 } from '@noble/curves/secp256k1';
 import bs58 from 'bs58';
 import { PUBLIC_KEY_PREFIXES } from './constants.js';
 import { TransactionV0 } from './transaction-transcoders.js';
 import { KeyPair, Network, jwtAlgorithm } from './types.js';
+import {
+  bytesToHex,
+  concatBytes,
+  hexToBytes,
+  randomBytes,
+} from '@noble/hashes/utils';
+import { sha256 } from '@noble/hashes/sha256';
+
+async function hmacSha256Async(
+  key: Uint8Array,
+  message: Uint8Array
+): Promise<Uint8Array> {
+  const encoder = new TextEncoder();
+  const k = await crypto.subtle.importKey(
+    'raw',
+    key,
+    { name: 'HMAC', hash: 'SHA-256' },
+    true,
+    ['sign']
+  );
+  const signature = await crypto.subtle.sign('HMAC', k, message);
+  return new Uint8Array(signature);
+}
 
 // Browser friendly version of node's Buffer.concat.
 export function concatUint8Arrays(arrays: Uint8Array[], length?: number) {
@@ -98,19 +114,19 @@ interface Base58CheckOptions {
 // randomly generated 32 byte value (Uint8Array of length 32 or hex string of
 // length 64)
 export const keygen = (seed?: string | Uint8Array): KeyPair => {
-  const privateKey = seed ? normalizeSeed(seed) : ecUtils.randomBytes(32);
-  const seedHex = ecUtils.bytesToHex(privateKey);
+  const privateKey = seed ? normalizeSeed(seed) : randomBytes(32);
+  const seedHex = bytesToHex(privateKey);
 
   return {
     seedHex,
     private: privateKey,
-    public: getPublicKey(privateKey, true /* isCompressed */),
+    public: secp256k1.getPublicKey(privateKey, true /* isCompressed */),
   };
 };
 
 const normalizeSeed = (seed: string | Uint8Array): Uint8Array => {
   if (typeof seed === 'string') {
-    return ecUtils.hexToBytes(seed);
+    return hexToBytes(seed);
   } else {
     return seed;
   }
@@ -122,7 +138,7 @@ const normalizeSeed = (seed: string | Uint8Array): Uint8Array => {
  * @returns
  */
 export const sha256X2 = (data: Uint8Array | string): Uint8Array => {
-  const d = typeof data === 'string' ? ecUtils.hexToBytes(data) : data;
+  const d = typeof data === 'string' ? hexToBytes(data) : data;
   return sha256(sha256(d));
 };
 
@@ -143,14 +159,16 @@ export interface SignOptions {
   isDerivedKey: boolean;
 }
 
-export const sign = (msgHashHex: string, privateKey: Uint8Array) => {
-  return ecSign(msgHashHex, privateKey, {
-    // For details about the signing options see: https://github.com/paulmillr/noble-secp256k1#signmsghash-privatekey
-    canonical: true,
-    der: true,
+export const sign = (
+  msgHashHex: string,
+  privateKey: Uint8Array
+): [Uint8Array, number] => {
+  const signature = secp256k1.sign(msgHashHex, privateKey, {
     extraEntropy: true,
-    recovered: true,
+    lowS: true,
   });
+
+  return [signature.toDERRawBytes(), signature.recovery];
 };
 
 export const signTx = async (
@@ -158,17 +176,14 @@ export const signTx = async (
   seedHex: string,
   options?: SignOptions
 ): Promise<string> => {
-  const transactionBytes = ecUtils.hexToBytes(txHex);
+  const transactionBytes = hexToBytes(txHex);
   const [_, v1FieldsBuffer] = TransactionV0.fromBytes(transactionBytes);
   const signatureIndex = transactionBytes.length - v1FieldsBuffer.length - 1;
   const v0FieldsWithoutSignature = transactionBytes.slice(0, signatureIndex);
   const hashedTxBytes = sha256X2(transactionBytes);
-  const transactionHashHex = ecUtils.bytesToHex(hashedTxBytes);
-  const privateKey = ecUtils.hexToBytes(seedHex);
-  const [signatureBytes, recoveryParam] = await sign(
-    transactionHashHex,
-    privateKey
-  );
+  const transactionHashHex = bytesToHex(hashedTxBytes);
+  const privateKey = hexToBytes(seedHex);
+  const [signatureBytes, recoveryParam] = sign(transactionHashHex, privateKey);
 
   const signatureLength = uvarint64ToBuf(signatureBytes.length);
 
@@ -176,14 +191,14 @@ export const signTx = async (
     signatureBytes[0] += 1 + recoveryParam;
   }
 
-  const signedTransactionBytes = ecUtils.concatBytes(
+  const signedTransactionBytes = concatBytes(
     v0FieldsWithoutSignature,
     signatureLength,
     signatureBytes,
     v1FieldsBuffer
   );
 
-  return ecUtils.bytesToHex(signedTransactionBytes);
+  return bytesToHex(signedTransactionBytes);
 };
 
 export const getSignedJWT = async (
@@ -208,9 +223,9 @@ export const getSignedJWT = async (
   });
 
   const jwt = `${urlSafeBase64(header)}.${urlSafeBase64(payload)}`;
-  const [signature] = await sign(
-    ecUtils.bytesToHex(sha256(new Uint8Array(new TextEncoder().encode(jwt)))),
-    ecUtils.hexToBytes(seedHex)
+  const [signature] = sign(
+    bytesToHex(sha256(new Uint8Array(new TextEncoder().encode(jwt)))),
+    hexToBytes(seedHex)
   );
   const encodedSignature = derToJoseEncoding(signature);
 
@@ -230,12 +245,12 @@ export const encryptChatMessage = (
   recipientPublicKeyBase58Check: string,
   message: string
 ) => {
-  const privateKey = ecUtils.hexToBytes(senderSeedHex);
+  const privateKey = hexToBytes(senderSeedHex);
   const recipientPublicKey = bs58PublicKeyToBytes(
     recipientPublicKeyBase58Check
   );
   const sharedPrivateKey = getSharedPrivateKey(privateKey, recipientPublicKey);
-  const sharedPublicKey = getPublicKey(sharedPrivateKey);
+  const sharedPublicKey = secp256k1.getPublicKey(sharedPrivateKey);
 
   return encrypt(sharedPublicKey, message);
 };
@@ -249,13 +264,13 @@ export const encrypt = async (
   publicKey: Uint8Array | string,
   plaintext: string
 ): Promise<string> => {
-  const ephemPrivateKey = ecUtils.randomBytes(32);
-  const ephemPublicKey = getPublicKey(ephemPrivateKey);
+  const ephemPrivateKey = randomBytes(32);
+  const ephemPublicKey = secp256k1.getPublicKey(ephemPrivateKey);
   const publicKeyBytes =
     typeof publicKey === 'string' ? bs58PublicKeyToBytes(publicKey) : publicKey;
   const privKey = getSharedPrivateKey(ephemPrivateKey, publicKeyBytes);
   const encryptionKey = privKey.slice(0, 16);
-  const iv = ecUtils.randomBytes(16);
+  const iv = randomBytes(16);
   const macKey = sha256(privKey.slice(16));
   const bytes = new TextEncoder().encode(plaintext);
   const cryptoKey = await globalThis.crypto.subtle.importKey(
@@ -274,17 +289,18 @@ export const encrypt = async (
     cryptoKey,
     bytes
   );
-  const hmac = await ecUtils.hmacSha256(
+
+  const hmacSha256 = await hmacSha256Async(
     macKey,
     new Uint8Array([...iv, ...new Uint8Array(cipherBytes)])
   );
 
-  return ecUtils.bytesToHex(
+  return bytesToHex(
     new Uint8Array([
       ...ephemPublicKey,
       ...iv,
       ...new Uint8Array(cipherBytes),
-      ...hmac,
+      ...hmacSha256,
     ])
   );
 };
@@ -294,7 +310,9 @@ export const bs58PublicKeyToCompressedBytes = (str: string) => {
     return new Uint8Array(33);
   }
   const pubKeyUncompressed = bs58PublicKeyToBytes(str);
-  return Point.fromHex(ecUtils.bytesToHex(pubKeyUncompressed)).toRawBytes(true);
+  return secp256k1.ProjectivePoint.fromHex(
+    bytesToHex(pubKeyUncompressed)
+  ).toRawBytes(true);
 };
 
 export const bs58PublicKeyToBytes = (str: string) => {
@@ -312,7 +330,9 @@ export const bs58PublicKeyToBytes = (str: string) => {
     throw new Error('Invalid checksum');
   }
 
-  return Point.fromHex(ecUtils.bytesToHex(payload.slice(3))).toRawBytes(false);
+  return secp256k1.ProjectivePoint.fromHex(
+    bytesToHex(payload.slice(3))
+  ).toRawBytes(false);
 };
 
 const regexMainnet = /^BC[1-9A-HJ-NP-Za-km-z]{53}$/;
@@ -350,7 +370,7 @@ export const decryptChatMessage = async (
   publicDecryptionKey: string,
   cipherTextHex: string
 ) => {
-  const privateKey = ecUtils.hexToBytes(recipientSeedHex);
+  const privateKey = hexToBytes(recipientSeedHex);
   const publicKey = await bs58PublicKeyToBytes(publicDecryptionKey);
   const sharedPrivateKey = await getSharedPrivateKey(privateKey, publicKey);
   return decrypt(sharedPrivateKey, cipherTextHex);
@@ -360,7 +380,7 @@ export const decrypt = async (
   privateDecryptionKey: Uint8Array | string,
   cipherTextHex: string
 ) => {
-  const cipherBytes = ecUtils.hexToBytes(cipherTextHex);
+  const cipherBytes = hexToBytes(cipherTextHex);
   const metaLength = 113;
 
   if (cipherBytes.length < metaLength) {
@@ -381,7 +401,7 @@ export const decrypt = async (
   const sharedSecretKey = await getSharedPrivateKey(privateKey, ephemPublicKey);
   const encryptionKey = sharedSecretKey.slice(0, 16);
   const macKey = sha256(sharedSecretKey.slice(16));
-  const hmacKnownGood = await ecUtils.hmacSha256(macKey, cipherAndIv);
+  const hmacKnownGood = await hmacSha256Async(macKey, cipherAndIv);
 
   if (!isValidHmac(msgMac, hmacKnownGood)) {
     throw new Error('incorrect MAC');
@@ -416,16 +436,16 @@ export const getSharedPrivateKey = (
 export const decodePublicKey = async (publicKeyBase58Check: string) => {
   const decoded = await bs58PublicKeyToBytes(publicKeyBase58Check);
   const withPrefixRemoved = decoded.slice(3);
-  const senderPubKeyHex = ecUtils.bytesToHex(withPrefixRemoved);
+  const senderPubKeyHex = bytesToHex(withPrefixRemoved);
 
-  return Point.fromHex(senderPubKeyHex).toRawBytes(false);
+  return secp256k1.ProjectivePoint.fromHex(senderPubKeyHex).toRawBytes(false);
 };
 
 export const getSharedSecret = (privKey: Uint8Array, pubKey: Uint8Array) => {
   // passing true to compress the public key, and then slicing off the first byte
   // matches the implementation of derive in the elliptic package.
   // https://github.com/paulmillr/noble-secp256k1/issues/28#issuecomment-946538037
-  return nobleGetSharedSecret(privKey, pubKey, true).slice(1);
+  return secp256k1.getSharedSecret(privKey, pubKey, true).slice(1);
 };
 
 // taken from reference implementation in the deso chat app:

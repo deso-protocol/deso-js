@@ -1,5 +1,4 @@
-import { hexToBytes } from '@noble/hashes/utils';
-import { utils as ecUtils } from '@noble/secp256k1';
+import { bytesToHex, hexToBytes } from '@noble/hashes/utils';
 import {
   ConstructedTransactionResponse,
   CreateFollowTxnStatelessRequest,
@@ -880,5 +879,5 @@ export const constructUpdateGroupChatMessageTransaction = (
 function hexEncodePlainText(plainText: string) {
   const textEncoder = new TextEncoder();
   const bytes = textEncoder.encode(plainText);
-  return ecUtils.bytesToHex(new Uint8Array(bytes));
+  return bytesToHex(new Uint8Array(bytes));
 }

@@ -1,4 +1,4 @@
-import { utils as ecUtils } from '@noble/secp256k1';
+import { bytesToHex, hexToBytes } from '@noble/hashes/utils';
 import { TransactionSpendingLimitResponse } from '../backend-types/index.js';
 import { api, getAppState } from '../data/index.js';
 import {
@@ -55,14 +55,14 @@ export async function generateDerivedKeyPayload(
     }
   );
   const transactionSpendingLimitBytes = TransactionSpendingLimitHex
-    ? ecUtils.hexToBytes(TransactionSpendingLimitHex)
+    ? hexToBytes(TransactionSpendingLimitHex)
     : [];
   const accessBytes = new Uint8Array([
     ...derivedKeys.public,
     ...uint64ToBufBigEndian(expirationBlockHeight),
     ...transactionSpendingLimitBytes,
   ]);
-  const accessHashHex = ecUtils.bytesToHex(sha256X2(accessBytes));
+  const accessHashHex = bytesToHex(sha256X2(accessBytes));
   const [accessSignature] = await sign(accessHashHex, ownerKeys.private);
   const messagingKey = deriveAccessGroupKeyPair(
     ownerKeys.seedHex,
@@ -72,7 +72,7 @@ export async function generateDerivedKeyPayload(
     messagingKey.public,
     { network }
   );
-  const messagingKeyHashHex = ecUtils.bytesToHex(
+  const messagingKeyHashHex = bytesToHex(
     sha256X2(
       new Uint8Array([
         ...messagingKey.public,
@@ -100,13 +100,13 @@ export async function generateDerivedKeyPayload(
     ethDepositAddress: 'Not implemented yet',
     expirationBlock: expirationBlockHeight,
     network,
-    accessSignature: ecUtils.bytesToHex(accessSignature),
+    accessSignature: bytesToHex(accessSignature),
     jwt,
     derivedJwt,
     messagingPublicKeyBase58Check,
     messagingPrivateKey: messagingKey.seedHex,
     messagingKeyName: defaultMessagingGroupName,
-    messagingKeySignature: ecUtils.bytesToHex(messagingKeySignature),
+    messagingKeySignature: bytesToHex(messagingKeySignature),
     transactionSpendingLimitHex: TransactionSpendingLimitHex,
     signedUp: false,
     publicKeyAdded: ownerPublicKeyBase58,
