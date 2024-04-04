@@ -358,26 +358,35 @@ export const decryptChatMessage = async (
 
 export const decrypt = async (
   privateDecryptionKey: Uint8Array | string,
-  cipherTextHex: string
-) => {
-  const cipherBytes = ecUtils.hexToBytes(cipherTextHex);
+  hexString: string,
+  { retrying = false } = {}
+): Promise<string> => {
+  const bytes = ecUtils.hexToBytes(hexString);
   const metaLength = 113;
 
-  if (cipherBytes.length < metaLength) {
+  if (bytes.length < metaLength) {
     throw new Error('invalid cipher text. data too small.');
   }
 
-  if (!(cipherBytes[0] >= 2 && cipherBytes[0] <= 4)) {
-    throw new Error('invalid cipher text.');
+  if (!(bytes[0] >= 2 && bytes[0] <= 4)) {
+    // this could be a case where the hex string has been double encoded...
+    // so we try decoding and calling again. If it fails again, we just throw.
+    if (!retrying) {
+      return decrypt(privateDecryptionKey, new TextDecoder().decode(bytes), {
+        retrying: true,
+      });
+    } else {
+      throw new Error('invalid cipher text.');
+    }
   }
 
   const privateKey = normalizeSeed(privateDecryptionKey);
-  const ephemPublicKey = cipherBytes.slice(0, 65);
-  const cipherTextLength = cipherBytes.length - metaLength;
-  const iv = cipherBytes.slice(65, 65 + 16);
-  const cipherAndIv = cipherBytes.slice(65, 65 + 16 + cipherTextLength);
+  const ephemPublicKey = bytes.slice(0, 65);
+  const cipherTextLength = bytes.length - metaLength;
+  const counter = bytes.slice(65, 65 + 16);
+  const cipherAndIv = bytes.slice(65, 65 + 16 + cipherTextLength);
   const cipherText = cipherAndIv.slice(16);
-  const msgMac = cipherBytes.slice(65 + 16 + cipherTextLength);
+  const msgMac = bytes.slice(65 + 16 + cipherTextLength);
   const sharedSecretKey = await getSharedPrivateKey(privateKey, ephemPublicKey);
   const encryptionKey = sharedSecretKey.slice(0, 16);
   const macKey = sha256(sharedSecretKey.slice(16));
@@ -396,7 +405,7 @@ export const decrypt = async (
   );
 
   const decryptedBuffer = await globalThis.crypto.subtle.decrypt(
-    { name: 'AES-CTR', counter: iv, length: 128 },
+    { name: 'AES-CTR', counter, length: 128 },
     cryptoKey,
     cipherText
   );
