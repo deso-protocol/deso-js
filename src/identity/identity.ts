@@ -48,7 +48,6 @@ import {
   NOTIFICATION_EVENTS,
   StorageProvider,
   type APIProvider,
-  type Deferred,
   type EtherscanTransactionsByAddressResponse,
   type IdentityConfiguration,
   type IdentityDerivePayload,
@@ -59,6 +58,37 @@ import {
   type TransactionSpendingLimitResponseOptions,
   type jwtAlgorithm,
 } from './types.js';
+
+class Deferred {
+  #resolve: (args: any) => void;
+  #reject: (args: any) => void;
+  event: NOTIFICATION_EVENTS;
+  status: 'pending' | 'settled' = 'pending';
+
+  constructor({
+    resolve,
+    reject,
+    event,
+  }: {
+    resolve: (args: any) => void;
+    reject: (args: any) => void;
+    event: NOTIFICATION_EVENTS;
+  }) {
+    this.#reject = reject;
+    this.#resolve = resolve;
+    this.event = event;
+  }
+
+  resolve(args: any) {
+    this.status = 'settled';
+    return this.#resolve(args);
+  }
+
+  reject(args: any) {
+    this.status = 'settled';
+    return this.#reject(args);
+  }
+}
 
 export class Identity<T extends StorageProvider> {
   /**
@@ -99,7 +129,7 @@ export class Identity<T extends StorageProvider> {
   /**
    * @private
    */
-  #pendingWindowRequest?: Deferred & { event: NOTIFICATION_EVENTS };
+  #pendingWindowRequest?: Deferred;
 
   /**
    * @private
@@ -490,7 +520,11 @@ export class Identity<T extends StorageProvider> {
     // https://github.com/deso-protocol/deso-js/issues/1
     if (!derivedKeyLogin) {
       return new Promise((resolve, reject) => {
-        this.#pendingWindowRequest = { resolve, reject, event };
+        this.#pendingWindowRequest = new Deferred({
+          resolve,
+          reject,
+          event,
+        });
         this.#launchIdentity('log-in', {
           accessLevelRequest: 2,
           getFreeDeso,
@@ -521,7 +555,11 @@ export class Identity<T extends StorageProvider> {
     }
 
     return await new Promise((resolve, reject) => {
-      this.#pendingWindowRequest = { resolve, reject, event };
+      this.#pendingWindowRequest = new Deferred({
+        resolve,
+        reject,
+        event,
+      });
 
       const authenticatedUserKeys = [];
       if (state.currentUser?.primaryDerivedKey) {
@@ -597,7 +635,11 @@ export class Identity<T extends StorageProvider> {
     );
 
     return new Promise((resolve, reject) => {
-      this.#pendingWindowRequest = { resolve, reject, event };
+      this.#pendingWindowRequest = new Deferred({
+        resolve,
+        reject,
+        event,
+      });
       // NOTE: We set this flag so that when the identity response is handled,
       // we know to let the login flow continue even if the user has no money to
       // authorize the key. It's up to the app to handle how the user gets
@@ -637,7 +679,11 @@ export class Identity<T extends StorageProvider> {
     return new Promise((resolve, reject) => {
       const activePublicKey = this.#getActivePublicKey();
       const launchIdentity = (activePublicKey: string | null) => {
-        this.#pendingWindowRequest = { resolve, reject, event };
+        this.#pendingWindowRequest = new Deferred({
+          resolve,
+          reject,
+          event,
+        });
         if (!activePublicKey) {
           this.#pendingWindowRequest.reject(
             new Error('cannot logout without an active public key')
@@ -982,7 +1028,7 @@ export class Identity<T extends StorageProvider> {
     return await new Promise((resolve, reject) => {
       const activePublicKey = this.#getActivePublicKey();
       const launchIdentity = (activePublicKey: string | null) => {
-        this.#pendingWindowRequest = { resolve, reject, event };
+        this.#pendingWindowRequest = new Deferred({ resolve, reject, event });
 
         if (!activePublicKey) {
           this.#pendingWindowRequest.reject(
@@ -1026,7 +1072,7 @@ export class Identity<T extends StorageProvider> {
     return await new Promise((resolve, reject) => {
       const activePublicKey = this.#getActivePublicKey();
       const launchIdentity = (activePublicKey: string | null) => {
-        this.#pendingWindowRequest = { resolve, reject, event };
+        this.#pendingWindowRequest = new Deferred({ resolve, reject, event });
 
         if (!activePublicKey) {
           this.#pendingWindowRequest.reject(
@@ -1284,7 +1330,7 @@ export class Identity<T extends StorageProvider> {
     this.#subscribers.forEach((s) => s({ event, ...state }));
 
     return await new Promise((resolve, reject) => {
-      this.#pendingWindowRequest = { resolve, reject, event };
+      this.#pendingWindowRequest = new Deferred({ resolve, reject, event });
 
       const params = {
         derive: true,
@@ -2031,6 +2077,22 @@ export class Identity<T extends StorageProvider> {
       undefined,
       `toolbar=no, width=${w}, height=${h}, top=${y}, left=${x}`
     );
+
+    const intervalId = setInterval(() => {
+      if (this.#identityPopupWindow?.closed) {
+        clearInterval(intervalId);
+
+        // If the identity popup has been closed without having resolved the pending
+        // request, then we just reject it so the caller can handle it accordingly.
+        if (this.#pendingWindowRequest?.status === 'pending') {
+          this.#pendingWindowRequest.reject(
+            new Error(
+              'Identity window was abandoned without any user interaction.'
+            )
+          );
+        }
+      }
+    }, 300);
   }
 
   /**
