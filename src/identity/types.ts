@@ -209,11 +209,6 @@ export interface IdentityState {
   alternateUsers: Record<string, StoredUser> | null;
 }
 
-export interface Deferred {
-  resolve: (args: any) => void;
-  reject: (args: any) => void;
-}
-
 export interface KeyPair {
   seedHex: string;
   private: Uint8Array;
