@@ -1654,7 +1654,7 @@ export class Identity<T extends StorageProvider> {
   /**
    * @private
    */
-  #handlePostMessage(ev: MessageEvent) {
+  async #handlePostMessage(ev: MessageEvent) {
     if (
       ev.origin !== this.#identityURI ||
       ev.data.service !== IDENTITY_SERVICE_VALUE ||
@@ -1675,7 +1675,7 @@ export class Identity<T extends StorageProvider> {
         this.#identityURI as WindowPostMessageOptions
       );
     } else {
-      this.#handleIdentityResponse(ev.data);
+      await this.#handleIdentityResponse(ev.data);
       this.#identityPopupWindow?.close();
       if (this.#boundPostMessageListener != null) {
         this.#window.removeEventListener(
@@ -1690,10 +1690,10 @@ export class Identity<T extends StorageProvider> {
   /**
    * @private
    */
-  #handleIdentityResponse({ method, payload = {} }: IdentityResponse) {
+  async #handleIdentityResponse({ method, payload = {} }: IdentityResponse) {
     switch (method) {
       case 'derive':
-        this.#handleDeriveMethod(payload as IdentityDerivePayload)
+        await this.#handleDeriveMethod(payload as IdentityDerivePayload)
           .then(async (res) => {
             const state = await this.#getState();
             this.#subscribers.forEach((s) =>
@@ -1756,10 +1756,12 @@ export class Identity<T extends StorageProvider> {
           });
         break;
       case 'login':
-        this.#handleLoginMethod(payload as IdentityLoginPayload).catch((e) => {
-          // propagate any error to the external caller
-          this.#pendingWindowRequest?.reject(this.#getErrorInstance(e));
-        });
+        await this.#handleLoginMethod(payload as IdentityLoginPayload).catch(
+          (e) => {
+            // propagate any error to the external caller
+            this.#pendingWindowRequest?.reject(this.#getErrorInstance(e));
+          }
+        );
         break;
       default:
         throw new Error(`Unknown method: ${method}`);
@@ -2086,8 +2088,9 @@ export class Identity<T extends StorageProvider> {
         // request, then we just reject it so the caller can handle it accordingly.
         if (this.#pendingWindowRequest?.status === 'pending') {
           this.#pendingWindowRequest.reject(
-            new Error(
-              'Identity window was abandoned without any user interaction.'
+            new DeSoCoreError(
+              'Identity window was closed without any user interaction.',
+              ERROR_TYPES.IDENTITY_WINDOW_CLOSED
             )
           );
         }
