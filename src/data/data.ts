@@ -76,6 +76,8 @@ import {
   GetSingleProfileResponse,
   GetTransactionSpendingLimitHexStringRequest,
   GetTransactionSpendingLimitHexStringResponse,
+  GetTxnConstructionParamsRequest,
+  GetTxnConstructionParamsResponse,
   GetTxnRequest,
   GetTxnResponse,
   GetUserDerivedKeysRequest,
@@ -826,6 +828,17 @@ export const getAppState = (
   options?: RequestOptions
 ): Promise<GetAppStateResponse> => {
   const endpoint = 'api/v0/get-app-state';
+  return api.post(
+    options?.nodeURI ? cleanURL(options.nodeURI, endpoint) : endpoint,
+    params
+  );
+};
+
+export const getTxnConstructionParams = (
+  params: Partial<GetTxnConstructionParamsRequest> = {},
+  options?: RequestOptions
+): Promise<GetTxnConstructionParamsResponse> => {
+  const endpoint = 'api/v0/txn-construction-params';
   return api.post(
     options?.nodeURI ? cleanURL(options.nodeURI, endpoint) : endpoint,
     params
