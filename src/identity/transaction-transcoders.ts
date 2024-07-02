@@ -21,6 +21,9 @@ import {
   Uvarint64,
   VarBuffer,
   instanceToType,
+  VarBufferArray,
+  BoolOptional,
+  Varint64,
 } from './transcoders.js';
 export class TransactionInput extends BinaryRecord {
   @Transcode(FixedBuffer(32))
@@ -599,6 +602,122 @@ export class TransactionMetadataNewMessage extends BinaryRecord {
   newMessageOperation = 0;
 }
 
+export class TransactionMetadataRegisterAsValidator extends BinaryRecord {
+  @Transcode(VarBufferArray)
+  domains: Uint8Array[] = [];
+
+  @Transcode(Boolean)
+  disableDelegatedStake = false;
+
+  @Transcode(Uvarint64)
+  delegatedStakeCommissionBasisPoints = 0;
+
+  // TODO: Technically this is a bls public key,
+  // but under the hood it's really just a byte array.
+  // The challenge is converting this into something human
+  // readable in the UI.
+  @Transcode(VarBuffer)
+  votingPublicKey: Uint8Array = new Uint8Array(0);
+
+  // TODO: Technically this is a bls signature,
+  // but under the hood it's really just a byte array.
+  // The challenge is converting this into something human
+  // readable in the UI.
+  @Transcode(VarBuffer)
+  votingAuthorization: Uint8Array = new Uint8Array(0);
+}
+
+export class TransactionMetadataUnregisterAsValidator extends BinaryRecord {}
+
+export class TransactionMetadataStake extends BinaryRecord {
+  @Transcode(VarBuffer)
+  validatorPublicKey: Uint8Array = new Uint8Array(0);
+
+  @Transcode(Uint8)
+  rewardMethod = 0;
+
+  // TODO: We may want a better way to handle uint256s.
+  @Transcode(BoolOptional(VarBuffer))
+  stakeAmountNanos: Uint8Array = new Uint8Array(0);
+}
+
+export class TransactionMetadataUnstake extends BinaryRecord {
+  @Transcode(VarBuffer)
+  validatorPublicKey: Uint8Array = new Uint8Array(0);
+
+  // TODO: We may want a better way to handle uint256s.
+  @Transcode(BoolOptional(VarBuffer))
+  unstakeAmountNanos: Uint8Array = new Uint8Array(0);
+}
+
+export class TransactionMetadataUnlockStake extends BinaryRecord {
+  @Transcode(VarBuffer)
+  validatorPublicKey: Uint8Array = new Uint8Array(0);
+
+  @Transcode(Uvarint64)
+  startEpochNumber = 0;
+
+  @Transcode(Uvarint64)
+  endEpochNumber = 0;
+}
+
+export class TransactionMetadataUnjailValidator extends BinaryRecord {}
+
+export class TransactionMetadataCoinLockup extends BinaryRecord {
+  @Transcode(VarBuffer)
+  profilePublicKey: Uint8Array = new Uint8Array(0);
+
+  @Transcode(VarBuffer)
+  recipientPublicKey: Uint8Array = new Uint8Array(0);
+
+  @Transcode(Varint64)
+  unlockTimestampNanoSecs = 0;
+
+  @Transcode(Varint64)
+  vestingEndTimestampNanoSecs = 0;
+
+  // TODO: We may want a better way to handle uint256s.
+  @Transcode(BoolOptional(VarBuffer))
+  lockupAmountBaseUnits: Uint8Array = new Uint8Array(0);
+}
+
+export class TransactionMetadataUpdateCoinLockupParams extends BinaryRecord {
+  @Transcode(Varint64)
+  lockupYieldDurationNanoSecs = 0;
+
+  @Transcode(Uvarint64)
+  lockupYieldAPYBasisPoints = 0;
+
+  @Transcode(Boolean)
+  removeYieldCurvePoint = false;
+
+  @Transcode(Boolean)
+  newLockupTransferRestrictions = false;
+
+  @Transcode(Uint8)
+  lockupTransferRestrictionStatus = 0;
+}
+
+export class TransactionMetadataCoinLockupTransfer extends BinaryRecord {
+  @Transcode(VarBuffer)
+  recipientPublicKey: Uint8Array = new Uint8Array(0);
+
+  @Transcode(VarBuffer)
+  profilePublicKey: Uint8Array = new Uint8Array(0);
+
+  @Transcode(Varint64)
+  unlockTimestampNanoSecs = 0;
+
+  // TODO: We may want a better way to handle uint256s.
+  @Transcode(BoolOptional(VarBuffer))
+  lockedCoinsToTransferBaseUnits: Uint8Array = new Uint8Array(0);
+}
+
+export class TransactionMetadataCoinUnlock extends BinaryRecord {
+  @Transcode(VarBuffer)
+  profilePublicKey: Uint8Array = new Uint8Array(0);
+}
+
 export const TransactionTypeMetadataMap = {
   1: TransactionMetadataBlockReward,
   2: TransactionMetadataBasicTransfer,
@@ -632,6 +751,12 @@ export const TransactionTypeMetadataMap = {
   31: TransactionMetadataAccessGroup,
   32: TransactionMetadataAccessGroupMembers,
   33: TransactionMetadataNewMessage,
+  34: TransactionMetadataRegisterAsValidator,
+  35: TransactionMetadataUnregisterAsValidator,
+  36: TransactionMetadataStake,
+  37: TransactionMetadataUnstake,
+  38: TransactionMetadataUnlockStake,
+  39: TransactionMetadataUnjailValidator,
 };
 
 export const TransactionTypeToStringMap: { [k: number]: string } = {
@@ -668,6 +793,16 @@ export const TransactionTypeToStringMap: { [k: number]: string } = {
   31: TransactionType.AccessGroup,
   32: TransactionType.AccessGroupMembers,
   33: TransactionType.NewMessage,
+  34: TransactionType.RegisterAsValidator,
+  35: TransactionType.UnregisterAsValidator,
+  36: TransactionType.Stake,
+  37: TransactionType.Unstake,
+  38: TransactionType.UnlockStake,
+  39: TransactionType.UnjailValidator,
+  40: TransactionType.CoinLockup,
+  41: TransactionType.UpdateCoinLockupParams,
+  42: TransactionType.CoinLockupTransfer,
+  43: TransactionType.CoinUnlock,
 };
 
 export class Transaction extends BinaryRecord {

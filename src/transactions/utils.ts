@@ -24,3 +24,13 @@ export async function guardTxPermission(
     return (hasPermissions as Promise<boolean>).then(guard);
   }
 }
+
+export function stripHexPrefix(hex: string) {
+  const unPadded = hex.startsWith('0x') ? hex.slice(2) : hex;
+
+  if (unPadded.length % 2 === 1) {
+    return `0${unPadded}`;
+  }
+
+  return unPadded;
+}

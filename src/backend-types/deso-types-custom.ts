@@ -247,6 +247,16 @@ export enum TransactionType {
   AccessGroup = 'ACCESS_GROUP',
   AccessGroupMembers = 'ACCESS_GROUP_MEMBERS',
   NewMessage = 'NEW_MESSAGE',
+  RegisterAsValidator = 'REGISTER_AS_VALIDATOR',
+  UnregisterAsValidator = 'UNREGISTER_AS_VALIDATOR',
+  Stake = 'STAKE',
+  Unstake = 'UNSTAKE',
+  UnlockStake = 'UNLOCK_STAKE',
+  UnjailValidator = 'UNJAIL_VALIDATOR',
+  CoinLockup = 'COIN_LOCKUP',
+  UpdateCoinLockupParams = 'UPDATE_COIN_LOCKUP_PARAMS',
+  CoinLockupTransfer = 'COIN_LOCKUP_TRANSFER',
+  CoinUnlock = 'COIN_UNLOCK',
 }
 
 export interface IdentityDeriveParams {

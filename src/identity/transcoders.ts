@@ -1,8 +1,10 @@
 import 'reflect-metadata';
 import {
   bufToUvarint64,
+  bufToVarint64,
   concatUint8Arrays,
   uvarint64ToBuf,
+  varint64ToBuf,
 } from './crypto-utils.js';
 import { TransactionNonce } from './transaction-transcoders.js';
 export class BinaryRecord {
@@ -69,6 +71,11 @@ export const Uvarint64: Transcoder<number> = {
   write: (uint) => uvarint64ToBuf(uint),
 };
 
+export const Varint64: Transcoder<number> = {
+  read: (bytes) => bufToVarint64(bytes),
+  write: (int) => varint64ToBuf(int),
+};
+
 export const Boolean: Transcoder<boolean> = {
   read: (bytes) => [bytes.at(0) != 0, bytes.slice(1)],
   write: (bool) => {
@@ -95,6 +102,33 @@ export const VarBuffer: Transcoder<Uint8Array> = {
   },
   write: (bytes) => concatUint8Arrays([uvarint64ToBuf(bytes.length), bytes]),
 };
+
+export const VarBufferArray: Transcoder<Uint8Array[]> = {
+  read: (bytes) => {
+    const countAndBuffer = bufToUvarint64(bytes);
+    const count = countAndBuffer[0];
+    let buffer = countAndBuffer[1];
+    const result = [];
+    for (let i = 0; i < count; i++) {
+      let size;
+      [size, buffer] = bufToUvarint64(buffer);
+      result.push(buffer.slice(0, size));
+      buffer = buffer.slice(size);
+    }
+
+    return [result, buffer];
+  },
+  write: (buffers) => {
+    const count = uvarint64ToBuf(buffers.length);
+    return concatUint8Arrays([
+      count,
+      ...buffers.map((buffer) =>
+        concatUint8Arrays([uvarint64ToBuf(buffer.length), buffer])
+      ),
+    ]);
+  },
+};
+
 export const TransactionNonceTranscoder: Transcoder<TransactionNonce | null> = {
   read: (bytes) => {
     return TransactionNonce.fromBytes(bytes) as [TransactionNonce, Uint8Array];
@@ -113,6 +147,26 @@ export function Optional<T>(transcoder: Transcoder<T>): Transcoder<T | null> {
       !bytes.length ? [null, bytes] : transcoder.read(bytes),
     write: (value: T | null) =>
       value === null ? new Uint8Array(0) : transcoder.write(value),
+  };
+}
+
+export function BoolOptional<T>(
+  transcoder: Transcoder<T>
+): Transcoder<T | null> {
+  return {
+    read: (bytes: Uint8Array) => {
+      const existence = bytes.at(0) != 0;
+      if (!existence) {
+        return [null, bytes.slice(1)];
+      }
+      return transcoder.read(bytes.slice(1));
+    },
+    write: (value: T | null) => {
+      if (value === null) {
+        return Uint8Array.from([0]);
+      }
+      return concatUint8Arrays([Uint8Array.from([1]), transcoder.write(value)]);
+    },
   };
 }
 

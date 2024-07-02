@@ -94,6 +94,79 @@ export function compareTransactionSpendingLimits(
               : ['NFTOperationLimitMap', '', '0', path[path.length - 1]];
         }
         break;
+      // TODO: support for making sure a derived key has these limits...
+      // @jacksondean - this is a little more annoying since
+      // stake and unstake limits don't have an op count, but rather a deso limit.
+      case 'StakeLimitMap':
+        if (
+          actualPermissions?.StakeLimitMap?.find((map) => {
+            return (
+              map.ValidatorPublicKeyBase58Check === '' &&
+              expectedPermissions?.StakeLimitMap?.[Number(path[1])]
+                ?.StakeLimit &&
+              parseInt(map.StakeLimit, 16) >=
+                parseInt(
+                  expectedPermissions?.StakeLimitMap?.[Number(path[1])]
+                    ?.StakeLimit,
+                  16
+                )
+            );
+          })
+        ) {
+          return;
+        }
+        break;
+      case 'UnstakeLimitMap':
+        if (
+          actualPermissions?.UnstakeLimitMap?.find((map) => {
+            return (
+              map.ValidatorPublicKeyBase58Check === '' &&
+              expectedPermissions?.UnstakeLimitMap?.[Number(path[1])]
+                ?.UnstakeLimit &&
+              parseInt(map.UnstakeLimit, 16) >=
+                parseInt(
+                  expectedPermissions?.UnstakeLimitMap?.[Number(path[1])]
+                    ?.UnstakeLimit,
+                  16
+                )
+            );
+          })
+        ) {
+          return;
+        }
+        break;
+      case 'UnlockStakeLimitMap':
+        if (
+          actualPermissions?.UnlockStakeLimitMap?.find((map) => {
+            return (
+              map.ValidatorPublicKeyBase58Check === '' &&
+              map.OpCount >=
+                normalizeCount(
+                  expectedPermissions?.UnlockStakeLimitMap?.[Number(path[1])]
+                    ?.OpCount
+                )
+            );
+          })
+        ) {
+          return;
+        }
+        break;
+      case 'LockupLimitMap':
+        if (
+          actualPermissions?.LockupLimitMap?.find((map) => {
+            return (
+              map.ProfilePublicKeyBase58Check === '' &&
+              map.OpCount >=
+                normalizeCount(
+                  expectedPermissions?.LockupLimitMap?.[Number(path[1])]
+                    ?.OpCount
+                )
+            );
+          })
+        ) {
+          return;
+        }
+        break;
     }
 
     const actualVal = getDeepValue(actualPermissions, path);
@@ -136,9 +209,22 @@ export function buildTransactionSpendingLimitResponse(
     []
   );
 
+  if (result.StakeLimitMap) {
+    result.StakeLimitMap = Object.values(result.StakeLimitMap);
+  }
+
+  if (result.UnstakeLimitMap) {
+    result.UnstakeLimitMap = Object.values(result.UnstakeLimitMap);
+  }
+
+  if (result.UnlockStakeLimitMap) {
+    result.UnlockStakeLimitMap = Object.values(result.UnlockStakeLimitMap);
+  }
+
   if (result.AccessGroupLimitMap) {
     result.AccessGroupLimitMap = Object.values(result.AccessGroupLimitMap);
   }
+
   if (result.AccessGroupMemberLimitMap) {
     result.AccessGroupMemberLimitMap = Object.values(
       result.AccessGroupMemberLimitMap
@@ -166,6 +252,7 @@ export function buildTransactionSpendingLimitResponse(
       }
     });
   }
+  // TODO: support for new PoS Spending limits maps.
 
   result.TransactionCountLimitMap = result.TransactionCountLimitMap ?? {};
 
