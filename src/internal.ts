@@ -12,7 +12,7 @@ import {
   PartialWithRequiredFields,
   api,
   cleanURL,
-  getAppState,
+  getTxnConstructionParams,
 } from './data/index.js';
 import {
   Transaction,
@@ -174,14 +174,25 @@ export const constructBalanceModelTx = async (
   txFields?: BalanceModelTransactionFields
 ): Promise<ConstructedTransactionResponse> => {
   // TODO: cache block height somewhere.
-  if (!txFields?.Nonce) {
-    const { BlockHeight } = await getAppState();
+  // TODO: cache fee rate somewhere and update it every second or so? we want to
+  // make sure the dependent transactions submitted in quick succession are in the
+  // same fee bucket.
+  // If the nonce or min fee rate is not provided, we need to fetch the current
+  // block height and fee rate from the node.
+  if (
+    !txFields?.Nonce ||
+    !txFields?.MinFeeRateNanosPerKB ||
+    txFields?.MinFeeRateNanosPerKB === 0
+  ) {
+    const { BlockHeight, FeeRateNanosPerKB } = await getTxnConstructionParams();
     if (!txFields) {
       txFields = {};
     }
+    // TODO: adjust expiration block height offset
     txFields.Nonce = {
       ExpirationBlockHeight: BlockHeight + 275,
     };
+    txFields.MinFeeRateNanosPerKB = FeeRateNanosPerKB;
   }
 
   const txnWithFee = getTxWithFeeNanos(pubKey, metadata, txFields);
