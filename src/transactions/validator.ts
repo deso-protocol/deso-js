@@ -32,15 +32,30 @@ type RegisterAsValidatorRequestParams =
 const buildRegisterAsValidatorMetadata = (
   params: RegisterAsValidatorRequestParams
 ) => {
+  let parsedVotingPublicKey: Uint8Array;
+  let parsedVotingAuthorization: Uint8Array;
+
+  try {
+    parsedVotingPublicKey = hexToBytes(stripHexPrefix(params.VotingPublicKey));
+  } catch (e) {
+    throw new Error('Error parsing voting public key: ' + String(e));
+  }
+
+  try {
+    parsedVotingAuthorization = hexToBytes(
+      stripHexPrefix(params.VotingAuthorization)
+    );
+  } catch (e) {
+    throw new Error('Error parsing voting authorization: ' + String(e));
+  }
+
   const metadata = new TransactionMetadataRegisterAsValidator();
   metadata.domains = params.Domains.map((d) => encodeUTF8ToBytes(d));
   metadata.delegatedStakeCommissionBasisPoints =
     params.DelegatedStakeCommissionBasisPoints;
   metadata.disableDelegatedStake = params.DisableDelegatedStake;
-  metadata.votingPublicKey = hexToBytes(stripHexPrefix(params.VotingPublicKey));
-  metadata.votingAuthorization = hexToBytes(
-    stripHexPrefix(params.VotingAuthorization)
-  );
+  metadata.votingPublicKey = parsedVotingPublicKey;
+  metadata.votingAuthorization = parsedVotingAuthorization;
 
   return metadata;
 };
