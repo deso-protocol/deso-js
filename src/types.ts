@@ -1,5 +1,6 @@
 import {
   RequestOptions,
+  SubmitTransactionAtomicResponse,
   SubmitTransactionResponse,
   TransactionFee,
 } from './backend-types/index.js';
@@ -19,6 +20,12 @@ export interface ConstructedAndSubmittedTx<T> {
   constructedTransactionResponse: T;
   // This will be null if the broadcast option is set to false.
   submittedTransactionResponse: SubmitTransactionResponse | null;
+}
+
+export interface ConstructedAndSubmittedTxAtomic<T> {
+  constructedTransactionResponse: T;
+  // This will be null if the broadcast option is set to false.
+  submittedTransactionResponse: SubmitTransactionAtomicResponse | null;
 }
 
 export type TxRequestOptions = RequestOptions & {

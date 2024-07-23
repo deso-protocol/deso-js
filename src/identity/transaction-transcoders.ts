@@ -718,6 +718,136 @@ export class TransactionMetadataCoinUnlock extends BinaryRecord {
   profilePublicKey: Uint8Array = new Uint8Array(0);
 }
 
+export const InnerTransactionTypeMetadataMap = {
+  1: TransactionMetadataBlockReward,
+  2: TransactionMetadataBasicTransfer,
+  3: TransactionMetadataBitcoinExchange,
+  4: TransactionMetadataPrivateMessage,
+  5: TransactionMetadataSubmitPost,
+  6: TransactionMetadataUpdateProfile,
+  8: TransactionMetadataUpdateBitcoinUSDExchangeRate,
+  9: TransactionMetadataFollow,
+  10: TransactionMetadataLike,
+  11: TransactionMetadataCreatorCoin,
+  12: TransactionMetadataSwapIdentity,
+  13: TransactionMetadataUpdateGlobalParams,
+  14: TransactionMetadataCreatorCoinTransfer,
+  15: TransactionMetadataCreateNFT,
+  16: TransactionMetadataUpdateNFT,
+  17: TransactionMetadataAcceptNFTBid,
+  18: TransactionMetadataNFTBid,
+  19: TransactionMetadataNFTTransfer,
+  20: TransactionMetadataAcceptNFTTransfer,
+  21: TransactionMetadataBurnNFT,
+  22: TransactionMetadataAuthorizeDerivedKey,
+  23: TransactionMetadataMessagingGroup,
+  24: TransactionMetadataDAOCoin,
+  25: TransactionMetadataTransferDAOCoin,
+  26: TransactionMetadataDAOCoinLimitOrder,
+  27: TransactionMetadataCreateUserAssociation,
+  28: TransactionMetadataDeleteUserAssociation,
+  29: TransactionMetadataCreatePostAssociation,
+  30: TransactionMetadataDeletePostAssociation,
+  31: TransactionMetadataAccessGroup,
+  32: TransactionMetadataAccessGroupMembers,
+  33: TransactionMetadataNewMessage,
+  34: TransactionMetadataRegisterAsValidator,
+  35: TransactionMetadataUnregisterAsValidator,
+  36: TransactionMetadataStake,
+  37: TransactionMetadataUnstake,
+  38: TransactionMetadataUnlockStake,
+  39: TransactionMetadataUnjailValidator,
+  40: TransactionMetadataCoinLockup,
+  41: TransactionMetadataUpdateCoinLockupParams,
+  42: TransactionMetadataCoinLockupTransfer,
+  43: TransactionMetadataCoinUnlock,
+};
+
+export const InnerTransactionTypeToStringMap: { [k: number]: string } = {
+  0: 'UNDEFINED',
+  1: 'BLOCK_REWARD',
+  2: TransactionType.BasicTransfer,
+  3: TransactionType.BitcoinExchange,
+  4: TransactionType.PrivateMessage,
+  5: TransactionType.SubmitPost,
+  6: TransactionType.UpdateProfile,
+  8: TransactionType.UpdateBitcoinUSDExchangeRate,
+  9: TransactionType.Follow,
+  10: TransactionType.Like,
+  11: TransactionType.CreatorCoin,
+  12: TransactionType.SwapIdentity,
+  13: TransactionType.UpdateGlobalParams,
+  14: TransactionType.CreatorCoinTransfer,
+  15: TransactionType.CreateNFT,
+  16: TransactionType.UpdateNFT,
+  17: TransactionType.AcceptNFTBid,
+  18: TransactionType.NFTBid,
+  19: TransactionType.NFTTransfer,
+  20: TransactionType.AcceptNFTTransfer,
+  21: TransactionType.BurnNFT,
+  22: TransactionType.AuthorizeDerivedKey,
+  23: TransactionType.MessagingGroup,
+  24: TransactionType.DAOCoin,
+  25: TransactionType.DAOCoinTransfer,
+  26: TransactionType.DAOCoinLimitOrder,
+  27: TransactionType.CreateUserAssociation,
+  28: TransactionType.DeleteUserAssociation,
+  29: TransactionType.CreatePostAssociation,
+  30: TransactionType.DeletePostAssociation,
+  31: TransactionType.AccessGroup,
+  32: TransactionType.AccessGroupMembers,
+  33: TransactionType.NewMessage,
+  34: TransactionType.RegisterAsValidator,
+  35: TransactionType.UnregisterAsValidator,
+  36: TransactionType.Stake,
+  37: TransactionType.Unstake,
+  38: TransactionType.UnlockStake,
+  39: TransactionType.UnjailValidator,
+  40: TransactionType.CoinLockup,
+  41: TransactionType.UpdateCoinLockupParams,
+  42: TransactionType.CoinLockupTransfer,
+  43: TransactionType.CoinUnlock,
+};
+
+export class InnerTransaction extends BinaryRecord {
+  @Transcode(Uvarint64)
+  length = 0;
+
+  @Transcode(ArrayOf(TransactionInput))
+  inputs: TransactionInput[] = [];
+
+  @Transcode(ArrayOf(TransactionOutput))
+  outputs: TransactionOutput[] = [];
+
+  @Transcode(Enum(InnerTransactionTypeMetadataMap))
+  metadata: TransactionMetadataRecord | null = null;
+
+  @Transcode(VarBuffer)
+  publicKey: Uint8Array = new Uint8Array(0);
+
+  @Transcode(Record(TransactionExtraData))
+  extraData: TransactionExtraData | null = null;
+
+  @Transcode(VarBuffer)
+  signature: Uint8Array | null = null;
+
+  // TODO: figure out how to deal with versioning. I don't LOVE
+  // this optional field, but it's the best I can think of for now.
+  @Transcode(Optional(Uvarint64))
+  version = 0;
+
+  @Transcode(Optional(Uvarint64))
+  feeNanos = 0;
+
+  @Transcode(Optional(TransactionNonceTranscoder))
+  nonce: TransactionNonce | null = null;
+}
+
+export class TransactionMetadataAtomicTxnWrapper extends BinaryRecord {
+  @Transcode(ArrayOf(InnerTransaction))
+  metadata: InnerTransaction[] = [];
+}
+
 export const TransactionTypeMetadataMap = {
   1: TransactionMetadataBlockReward,
   2: TransactionMetadataBasicTransfer,
@@ -757,6 +887,11 @@ export const TransactionTypeMetadataMap = {
   37: TransactionMetadataUnstake,
   38: TransactionMetadataUnlockStake,
   39: TransactionMetadataUnjailValidator,
+  40: TransactionMetadataCoinLockup,
+  41: TransactionMetadataUpdateCoinLockupParams,
+  42: TransactionMetadataCoinLockupTransfer,
+  43: TransactionMetadataCoinUnlock,
+  44: TransactionMetadataAtomicTxnWrapper,
 };
 
 export const TransactionTypeToStringMap: { [k: number]: string } = {
@@ -803,6 +938,7 @@ export const TransactionTypeToStringMap: { [k: number]: string } = {
   41: TransactionType.UpdateCoinLockupParams,
   42: TransactionType.CoinLockupTransfer,
   43: TransactionType.CoinUnlock,
+  44: TransactionType.AtomicTxnsWrapper,
 };
 
 export class Transaction extends BinaryRecord {

@@ -4297,6 +4297,12 @@ export interface SubmitTransactionResponse {
   PostEntryResponse: PostEntryResponse | null;
 }
 
+export interface SubmitTransactionAtomicResponse {
+  Transaction: MsgDeSoTxn;
+  TxnHashHex: string;
+  TransactionIDBase58Check: string;
+}
+
 // struct2ts:types/generated/types.UpdateProfileRequest
 export interface UpdateProfileRequest {
   UpdaterPublicKeyBase58Check: string;

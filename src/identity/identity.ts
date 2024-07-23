@@ -12,6 +12,8 @@ import {
   SubmitTransactionResponse,
   type InfuraTx,
   type TransactionSpendingLimitResponse,
+  MsgDeSoTxn,
+  TransactionType,
 } from '../backend-types/index.js';
 import {
   DEFAULT_IDENTITY_URI,
@@ -58,6 +60,11 @@ import {
   type TransactionSpendingLimitResponseOptions,
   type jwtAlgorithm,
 } from './types.js';
+import { bytesToHex, hexToBytes } from '@noble/hashes/utils';
+import {
+  Transaction,
+  TransactionMetadataAtomicTxnWrapper,
+} from './transaction-transcoders.js';
 
 class Deferred {
   #resolve: (args: any) => void;
@@ -761,6 +768,27 @@ export class Identity<T extends StorageProvider> {
     return res;
   }
 
+  async submitAtomicTx(
+    IncompleteAtomicTransactionHex: string,
+    SignedInnerTransactionsHex: string[]
+  ): Promise<{
+    Transaction: MsgDeSoTxn;
+    TxnHashHex: string;
+    TransactionIDBase58Check: string;
+  }> {
+    const res = await this.#api.post(
+      `${this.#nodeURI}/api/v0/submit-atomic-transaction`,
+      {
+        IncompleteAtomicTransactionHex,
+        SignedInnerTransactionsHex,
+      }
+    );
+
+    this.refreshDerivedKeyPermissions();
+
+    return res;
+  }
+
   /**
    * This is a convenience method to sign and submit a transaction in a single
    * step. It receives a transaction object and signs it using the derived key
@@ -780,6 +808,35 @@ export class Identity<T extends StorageProvider> {
     TransactionHex: string;
   }): Promise<SubmitTransactionResponse> {
     return await this.submitTx(await this.signTx(tx.TransactionHex));
+  }
+
+  async signAndSubmitAtomic(tx: { TransactionHex: string }): Promise<{
+    Transaction: MsgDeSoTxn;
+    TxnHashHex: string;
+    TransactionIDBase58Check: string;
+  }> {
+    const txnBytes = hexToBytes(tx.TransactionHex);
+    const [transaction, _] = Transaction.fromBytes(txnBytes);
+    // TODO: better type checking.
+    const atomicTxn = transaction as unknown as Transaction;
+    if (atomicTxn.getTxnTypeString() != TransactionType.AtomicTxnsWrapper) {
+      return Promise.reject('Transaction is not an atomic transaction');
+    }
+
+    const innerTxns = (
+      atomicTxn.metadata as TransactionMetadataAtomicTxnWrapper
+    ).metadata;
+
+    const signedInnerTxns: string[] = [];
+    for (let i = 0; i < innerTxns.length; i++) {
+      const innerTxn = innerTxns[i];
+      const fullTxn = new Transaction(innerTxn);
+      const innerTxnHex = bytesToHex(fullTxn.toBytes());
+      const signedInnerTxn = await this.signTx(innerTxnHex);
+      signedInnerTxns.push(signedInnerTxn);
+    }
+
+    return await this.submitAtomicTx(tx.TransactionHex, signedInnerTxns);
   }
 
   /**

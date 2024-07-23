@@ -215,6 +215,7 @@ export interface NFTOperationLimitMap {
   };
 }
 
+// TODO: add types for coin lockups spending limits
 export enum TransactionType {
   BasicTransfer = 'BASIC_TRANSFER',
   BitcoinExchange = 'BITCOIN_EXCHANGE',
@@ -257,6 +258,7 @@ export enum TransactionType {
   UpdateCoinLockupParams = 'UPDATE_COIN_LOCKUP_PARAMS',
   CoinLockupTransfer = 'COIN_LOCKUP_TRANSFER',
   CoinUnlock = 'COIN_UNLOCK',
+  AtomicTxnsWrapper = 'ATOMIC_TXNS_WRAPPER',
 }
 
 export interface IdentityDeriveParams {
@@ -469,4 +471,64 @@ export interface UploadVideoV2Response {
   };
   tusEndpoint: string;
   url: string;
+}
+
+export enum OperationTypeWithFee {
+  BID = 'BID',
+  ASK = 'ASK',
+}
+
+export enum FillTypeWithFee {
+  GOOD_TILL_CANCELLED = 'GOOD_TILL_CANCELLED',
+  FILL_OR_KILL = 'FILL_OR_KILL',
+  IMMEDIATE_OR_CANCEL = 'IMMEDIATE_OR_CANCEL',
+}
+
+export enum CurrencyType {
+  usd = 'usd',
+  base = 'base',
+  quote = 'quote',
+}
+
+export interface DeSoTokenMarketOrderWithFeeRequest {
+  TransactorPublicKeyBase58Check: string;
+  QuoteCurrencyPublicKeyBase58Check: string;
+  BaseCurrencyPublicKeyBase58Check: string;
+  OperationType: OperationTypeWithFee;
+  FillType: FillTypeWithFee;
+  Price: string;
+  PriceCurrencyType: CurrencyType;
+  Quantity: string;
+  QuantityCurrencyType: CurrencyType;
+  MinFeeRateNanosPerKB: number;
+  TransactionFees: TransactionFee[] | null;
+  OptionalPrecedingTransactions: Array<MsgDeSoTxn> | null;
+}
+
+export interface DeSoTokenMarketOrderWithFeeResponse {
+  FeeNanos: number;
+  Transaction: MsgDeSoTxn;
+  TransactionHex: string;
+  TxnHashHex: string;
+  LimitAmount: string;
+  LimitAmountCurrencyType: string;
+  LimitAmountInUsd: string;
+  LimitReceiveAmount: string;
+  LimitReceiveAmountCurrencyType: string;
+  LimitReceiveAmountInUsd: string;
+  LimitPriceInQuoteCurrency: string;
+  LimitPriceInUsd: string;
+  ExecutionAmount: string;
+  ExecutionAmountCurrencyType: string;
+  ExecutionAmountUsd: string;
+  ExecutionReceiveAmount: string;
+  ExecutionReceiveAmountCurrencyType: string;
+  ExecutionReceiveAmountUsd: string;
+  ExecutionPriceInQuoteCurrency: string;
+  ExecutionPriceInUsd: string;
+  ExecutionFeePercentage: string;
+  ExecutionFeeAmountInQuoteCurrency: string;
+  ExecutionFeeAmountInUsd: string;
+  MarketTotalTradingFeeBasisPoints: string;
+  MarketTradingFeeBasisPointsByUserPkid: Record<string, number>;
 }
