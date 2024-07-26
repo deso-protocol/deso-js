@@ -463,21 +463,6 @@ export const createDeSoTokenMarketOrderWithFee = async (
   ConstructedAndSubmittedTxAtomic<DeSoTokenMarketOrderWithFeeResponse>
 > => {
   if (options?.checkPermissions !== false) {
-    // TODO: we know it's not perfectly right, but we just use it to calculate arbitrary fees
-    const txWithFee = getTxWithFeeNanos(
-      params.TransactorPublicKeyBase58Check,
-      new TransactionMetadataTransferDAOCoin(),
-      {
-        // TODO: I'm not sure exactly what outputs are needed here... for the time
-        // being I'm just adding a static 1500 nanos to make sure the derived key
-        // transaction can be submitted.
-        // Outputs: ...,
-        ExtraData: params.ExtraData,
-        MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
-        TransactionFees: params.TransactionFees,
-      }
-    );
-
     if (!isMaybeDeSoPublicKey(params.TransactorPublicKeyBase58Check)) {
       return Promise.reject(
         'must provide profile public key, not username for ProfilePublicKeyBase58CheckOrUsername when checking dao coin transfer permissions'

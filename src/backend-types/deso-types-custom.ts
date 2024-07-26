@@ -215,7 +215,6 @@ export interface NFTOperationLimitMap {
   };
 }
 
-// TODO: add types for coin lockups spending limits
 export enum TransactionType {
   BasicTransfer = 'BASIC_TRANSFER',
   BitcoinExchange = 'BITCOIN_EXCHANGE',
