@@ -112,7 +112,10 @@ export const handleSignAndSubmitAtomic = async <
   // we always broadcast by default, but consumers can optionally disable it.
   options: RequestOptions = { broadcast: true }
 ): Promise<{
-  constructedTransactionResponse: T;
+  constructedTransactionResponse: T & {
+    InnerTransactionHexes: string[];
+    TransactionHex: string;
+  };
   submittedTransactionResponse: SubmitTransactionAtomicResponse | null;
 }> => {
   const constructedTransactionResponse = await ((options.localConstruction ||

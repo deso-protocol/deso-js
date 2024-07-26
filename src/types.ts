@@ -4,6 +4,7 @@ import {
   SubmitTransactionResponse,
   TransactionFee,
 } from './backend-types/index.js';
+import { TransactionSpendingLimitResponseOptions } from './identity/index.js';
 export interface OptionalFeesAndExtraData {
   MinFeeRateNanosPerKB?: number;
   TransactionFees?: TransactionFee[] | null;
@@ -31,4 +32,5 @@ export interface ConstructedAndSubmittedTxAtomic<T> {
 export type TxRequestOptions = RequestOptions & {
   txLimitCount?: number | 'UNLIMITED';
   checkPermissions?: boolean;
+  spendingLimit?: TransactionSpendingLimitResponseOptions;
 };

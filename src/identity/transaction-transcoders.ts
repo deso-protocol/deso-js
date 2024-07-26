@@ -488,6 +488,9 @@ export class TransactionMetadataDAOCoinLimitOrder extends BinaryRecord {
 
   @Transcode(ArrayOf(DeSoInputsByTransactorRecord))
   bidderInputs: DeSoInputsByTransactorRecord[] = [];
+
+  @Transcode(Uvarint64)
+  feeNanos = 0;
 }
 
 export class TransactionMetadataCreateUserAssociation extends BinaryRecord {

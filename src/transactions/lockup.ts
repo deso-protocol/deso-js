@@ -28,7 +28,7 @@ import {
   handleSignAndSubmit,
   sumTransactionFees,
 } from '../internal.js';
-import { guardTxPermission } from './utils.js';
+import { guardTxPermission, stripHexPrefix } from './utils.js';
 
 type CoinLockupRequestParams =
   TypeWithOptionalFeesAndExtraData<CoinLockupRequest>;
@@ -43,7 +43,7 @@ const buildCoinLockupMetadata = (params: CoinLockupRequestParams) => {
   );
   // TODO: make sure this replace is correct.
   metadata.lockupAmountBaseUnits = hexToBytes(
-    params.LockupAmountBaseUnits.replace('0x', 'x')
+    stripHexPrefix(params.LockupAmountBaseUnits)
   );
   metadata.unlockTimestampNanoSecs = params.UnlockTimestampNanoSecs;
   metadata.vestingEndTimestampNanoSecs = params.VestingEndTimestampNanoSecs;
@@ -70,17 +70,17 @@ export const coinLockup = async (
 ): Promise<
   ConstructedAndSubmittedTx<CoinLockResponse | ConstructedTransactionResponse>
 > => {
-  const txWithFee = getTxWithFeeNanos(
-    params.TransactorPublicKeyBase58Check,
-    buildCoinLockupMetadata(params),
-    {
-      ExtraData: params.ExtraData,
-      MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
-      TransactionFees: params.TransactionFees,
-    }
-  );
-
   if (options?.checkPermissions !== false) {
+    const txWithFee = getTxWithFeeNanos(
+      params.TransactorPublicKeyBase58Check,
+      buildCoinLockupMetadata(params),
+      {
+        ExtraData: params.ExtraData,
+        MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+        TransactionFees: params.TransactionFees,
+      }
+    );
+
     await guardTxPermission({
       GlobalDESOLimit:
         txWithFee.feeNanos + sumTransactionFees(params.TransactionFees),

@@ -213,6 +213,10 @@ export function buildTransactionSpendingLimitResponse(
     result.StakeLimitMap = Object.values(result.StakeLimitMap);
   }
 
+  if (result.LockupLimitMap) {
+    result.LockupLimitMap = Object.values(result.LockupLimitMap);
+  }
+
   if (result.UnstakeLimitMap) {
     result.UnstakeLimitMap = Object.values(result.UnstakeLimitMap);
   }

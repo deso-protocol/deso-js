@@ -531,4 +531,5 @@ export interface DeSoTokenMarketOrderWithFeeResponse {
   ExecutionFeeAmountInUsd: string;
   MarketTotalTradingFeeBasisPoints: string;
   MarketTradingFeeBasisPointsByUserPkid: Record<string, number>;
+  InnerTransactionHexes: string[];
 }

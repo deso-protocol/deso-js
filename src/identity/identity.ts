@@ -810,29 +810,17 @@ export class Identity<T extends StorageProvider> {
     return await this.submitTx(await this.signTx(tx.TransactionHex));
   }
 
-  async signAndSubmitAtomic(tx: { TransactionHex: string }): Promise<{
+  async signAndSubmitAtomic(tx: {
+    TransactionHex: string;
+    InnerTransactionHexes: string[];
+  }): Promise<{
     Transaction: MsgDeSoTxn;
     TxnHashHex: string;
     TransactionIDBase58Check: string;
   }> {
-    const txnBytes = hexToBytes(tx.TransactionHex);
-    const [transaction, _] = Transaction.fromBytes(txnBytes);
-    // TODO: better type checking.
-    const atomicTxn = transaction as unknown as Transaction;
-    if (atomicTxn.getTxnTypeString() != TransactionType.AtomicTxnsWrapper) {
-      return Promise.reject('Transaction is not an atomic transaction');
-    }
-
-    const innerTxns = (
-      atomicTxn.metadata as TransactionMetadataAtomicTxnWrapper
-    ).metadata;
-
     const signedInnerTxns: string[] = [];
-    for (let i = 0; i < innerTxns.length; i++) {
-      const innerTxn = innerTxns[i];
-      const fullTxn = new Transaction(innerTxn);
-      const innerTxnHex = bytesToHex(fullTxn.toBytes());
-      const signedInnerTxn = await this.signTx(innerTxnHex);
+    for (let i = 0; i < tx.InnerTransactionHexes.length; i++) {
+      const signedInnerTxn = await this.signTx(tx.InnerTransactionHexes[i]);
       signedInnerTxns.push(signedInnerTxn);
     }
 
