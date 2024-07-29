@@ -5,6 +5,7 @@ import {
   OptionalFeesAndExtraData,
   RequestOptions,
   SubmitTransactionResponse,
+  SubmitTransactionAtomicResponse,
   TransactionFee,
   TransactionType,
 } from './backend-types/index.js';
@@ -54,13 +55,13 @@ export const globalConfigOptions = {
  * @param params tx specific params for the endpoint + optional fees and extra data
  * @param options options for the request, including whether to broadcast
  */
-export const handleSignAndSubmit = async (
+export const handleSignAndSubmit = async <T = ConstructedTransactionResponse>(
   endpoint: string,
   params: OptionalFeesAndExtraData & any,
   // we always broadcast by default, but consumers can optionally disable it.
   options: RequestOptions = { broadcast: true }
 ): Promise<{
-  constructedTransactionResponse: ConstructedTransactionResponse;
+  constructedTransactionResponse: T;
   submittedTransactionResponse: SubmitTransactionResponse | null;
 }> => {
   const constructedTransactionResponse = await ((options.localConstruction ||
@@ -85,6 +86,60 @@ export const handleSignAndSubmit = async (
   const submittedTransactionResponse =
     options.broadcast !== false
       ? await identity.signAndSubmit(constructedTransactionResponse)
+      : null;
+
+  return {
+    constructedTransactionResponse,
+    submittedTransactionResponse,
+  };
+};
+
+/**
+ * Wraps signing and submit to include the configurable fee, and add defaults
+ * for optional params.
+ *
+ * @param endpoint the endpoint for constructing the transaction
+ * @param params tx specific params for the endpoint + optional fees and extra data
+ * @param options options for the request, including whether to broadcast
+ */
+
+// TODO: Note that this function assumes that all the transactions in the atomic have the primary user as a transactor
+export const handleSignAndSubmitAtomic = async <
+  T = ConstructedTransactionResponse
+>(
+  endpoint: string,
+  params: OptionalFeesAndExtraData & any,
+  // we always broadcast by default, but consumers can optionally disable it.
+  options: RequestOptions = { broadcast: true }
+): Promise<{
+  constructedTransactionResponse: T & {
+    InnerTransactionHexes: string[];
+    TransactionHex: string;
+  };
+  submittedTransactionResponse: SubmitTransactionAtomicResponse | null;
+}> => {
+  const constructedTransactionResponse = await ((options.localConstruction ||
+    globalConfigOptions.LocalConstruction) &&
+  options.constructionFunction
+    ? options.constructionFunction(params)
+    : api.post(
+        options.nodeURI ? `${cleanURL(options.nodeURI, endpoint)}` : endpoint,
+        {
+          ...params,
+          MinFeeRateNanosPerKB:
+            params.MinFeeRateNanosPerKB ??
+            globalConfigOptions.MinFeeRateNanosPerKB,
+        }
+      ));
+  if (
+    (options.localConstruction || globalConfigOptions.LocalConstruction) &&
+    options.constructionFunction
+  ) {
+    console.log(constructedTransactionResponse);
+  }
+  const submittedTransactionResponse =
+    options.broadcast !== false
+      ? await identity.signAndSubmitAtomic(constructedTransactionResponse)
       : null;
 
   return {

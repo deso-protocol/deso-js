@@ -7,6 +7,9 @@ import {
   DAOCoinOrderResponse,
   DAOCoinRequest,
   DAOCoinResponse,
+  DeSoTokenMarketOrderWithFeeRequest,
+  DeSoTokenMarketOrderWithFeeResponse,
+  OperationTypeWithFee,
   RequestOptions,
   TransferDAOCoinRequest,
   TransferDAOCoinResponse,
@@ -14,20 +17,25 @@ import {
 } from '../backend-types/index.js';
 import { PartialWithRequiredFields } from '../data/index.js';
 import {
-  TransactionMetadataDAOCoin,
-  TransactionMetadataTransferDAOCoin,
   bs58PublicKeyToCompressedBytes,
   identity,
+  TransactionMetadataDAOCoin,
+  TransactionMetadataTransferDAOCoin,
 } from '../identity/index.js';
 import {
   constructBalanceModelTx,
   getTxWithFeeNanos,
   handleSignAndSubmit,
+  handleSignAndSubmitAtomic,
   isMaybeDeSoPublicKey,
   sumTransactionFees,
 } from '../internal.js';
-import { ConstructedAndSubmittedTx, TxRequestOptions } from '../types.js';
-import { guardTxPermission } from './utils.js';
+import {
+  ConstructedAndSubmittedTx,
+  ConstructedAndSubmittedTxAtomic,
+  TxRequestOptions,
+} from '../types.js';
+import { guardTxPermission, stripHexPrefix } from './utils.js';
 
 /**
  * https://docs.deso.org/deso-backend/construct-transactions/dao-transactions-api#create-deso-token-dao-coin
@@ -41,10 +49,51 @@ export type ConstructBurnDeSoTokenRequestParams =
       | 'CoinsToBurnNanos'
     >
   >;
-export const burnDeSoToken = (
+export const burnDeSoToken = async (
   params: ConstructBurnDeSoTokenRequestParams,
-  options?: RequestOptions
+  options?: TxRequestOptions
 ): Promise<ConstructedAndSubmittedTx<DAOCoinResponse>> => {
+  if (options?.checkPermissions !== false) {
+    const txWithFee = getTxWithFeeNanos(
+      params.UpdaterPublicKeyBase58Check,
+      new TransactionMetadataDAOCoin(),
+      {
+        // TODO: I'm not sure exactly what outputs are needed here... for the time
+        // being I'm just adding a static 1500 nanos to make sure the derived key
+        // transaction can be submitted.
+        // Outputs: ...,
+        ExtraData: params.ExtraData,
+        MinFeeRateNanosPerKB: params.MinFeeRateNanosPerKB,
+        TransactionFees: params.TransactionFees,
+      }
+    );
+
+    if (!isMaybeDeSoPublicKey(params.ProfilePublicKeyBase58CheckOrUsername)) {
+      return Promise.reject(
+        'must provide profile public key, not username for ProfilePublicKeyBase58CheckOrUsername when checking dao coin transfer permissions'
+      );
+    }
+
+    const txnLimitCount =
+      options?.txLimitCount ??
+      identity.transactionSpendingLimitOptions?.DAOCoinOperationLimitMap?.[
+        params.ProfilePublicKeyBase58CheckOrUsername
+      ].burn ??
+      1;
+
+    await guardTxPermission({
+      GlobalDESOLimit:
+        // TODO: when I figure out how to properly calculate the fee for this transaction
+        // we can remove this static 1500 buffer.
+        txWithFee.feeNanos + sumTransactionFees(params.TransactionFees) + 1500,
+      DAOCoinOperationLimitMap: {
+        [params.ProfilePublicKeyBase58CheckOrUsername]: {
+          burn: txnLimitCount,
+        },
+      },
+    });
+  }
+
   return handleSignAndSubmit(
     'api/v0/dao-coin',
     {
@@ -67,7 +116,7 @@ export const constructBurnDeSoTokenTransaction = (
     );
   }
   metadata.coinsToBurnNanos = hexToBytes(
-    params.CoinsToBurnNanos.replace('0x', 'x')
+    stripHexPrefix(params.CoinsToBurnNanos)
   );
   metadata.profilePublicKey = bs58PublicKeyToCompressedBytes(
     params.ProfilePublicKeyBase58CheckOrUsername
@@ -117,7 +166,7 @@ export const constructMintDeSoTokenTransaction = (
     );
   }
   metadata.coinsToMintNanos = hexToBytes(
-    params.CoinsToMintNanos.replace('0x', 'x')
+    stripHexPrefix(params.CoinsToMintNanos)
   );
   metadata.profilePublicKey = bs58PublicKeyToCompressedBytes(
     params.ProfilePublicKeyBase58CheckOrUsername
@@ -266,21 +315,22 @@ export const transferDeSoToken = async (
         'must provide profile public key, not username for ProfilePublicKeyBase58CheckOrUsername when checking dao coin transfer permissions'
       );
     }
+
+    const txnLimitCount =
+      options?.txLimitCount ??
+      identity.transactionSpendingLimitOptions?.DAOCoinOperationLimitMap?.[
+        params.ProfilePublicKeyBase58CheckOrUsername
+      ].transfer ??
+      1;
+
     await guardTxPermission({
       GlobalDESOLimit:
         // TODO: when I figure out how to properly calculate the fee for this transaction
         // we can remove this static 1500 buffer.
         txWithFee.feeNanos + sumTransactionFees(params.TransactionFees) + 1500,
-      TransactionCountLimitMap: {
-        DAO_COIN_TRANSFER:
-          options?.txLimitCount ??
-          identity.transactionSpendingLimitOptions.TransactionCountLimitMap
-            ?.DAO_COIN_TRANSFER ??
-          1,
-      },
       DAOCoinOperationLimitMap: {
         [params.ProfilePublicKeyBase58CheckOrUsername]: {
-          transfer: 1,
+          transfer: txnLimitCount,
         },
       },
     });
@@ -302,7 +352,7 @@ export const constructTransferDeSoToken = (
   }
   const metadata = new TransactionMetadataTransferDAOCoin();
   metadata.daoCoinToTransferNanos = hexToBytes(
-    params.DAOCoinToTransferNanos.replace('0x', 'x')
+    stripHexPrefix(params.DAOCoinToTransferNanos)
   );
   metadata.profilePublicKey = bs58PublicKeyToCompressedBytes(
     params.ProfilePublicKeyBase58CheckOrUsername
@@ -402,6 +452,77 @@ export const cancelDeSoTokenLimitOrder = (
 ): Promise<ConstructedAndSubmittedTx<DAOCoinOrderResponse>> => {
   return handleSignAndSubmit(
     'api/v0/cancel-dao-coin-limit-order',
+    params,
+    options
+  );
+};
+
+export const createDeSoTokenMarketOrderWithFee = async (
+  params: TxRequestWithOptionalFeesAndExtraData<DeSoTokenMarketOrderWithFeeRequest>,
+  options?: TxRequestOptions
+): Promise<
+  ConstructedAndSubmittedTxAtomic<DeSoTokenMarketOrderWithFeeResponse>
+> => {
+  if (options?.checkPermissions !== false) {
+    if (!isMaybeDeSoPublicKey(params.TransactorPublicKeyBase58Check)) {
+      return Promise.reject(
+        'must provide profile public key, not username for ProfilePublicKeyBase58CheckOrUsername when checking dao coin transfer permissions'
+      );
+    }
+
+    const DAOCoinLimitOrderLimitMap =
+      params.OperationType === OperationTypeWithFee.BID
+        ? {
+            [params.BaseCurrencyPublicKeyBase58Check]: {
+              [params.QuoteCurrencyPublicKeyBase58Check]: 1,
+            },
+          }
+        : {
+            [params.QuoteCurrencyPublicKeyBase58Check]: {
+              [params.BaseCurrencyPublicKeyBase58Check]: 1,
+            },
+          };
+
+    await guardTxPermission({
+      GlobalDESOLimit:
+        // TODO: there is no way to calculate how much we are spending so this is going to fail
+        1000 * 1e9,
+      DAOCoinLimitOrderLimitMap: DAOCoinLimitOrderLimitMap,
+
+      /*
+      This is hideous, however if we are not providing the spending limits
+      we need to assume that this transaction may contain many dao coin transfers
+      and basic transfers.
+
+      Any users of this function should preview the transaction first and construct
+      appropriate spending limits and pass them in options.spendingLimits.
+      */
+      ...((identity.transactionSpendingLimitOptions?.DAOCoinOperationLimitMap?.[
+        params.QuoteCurrencyPublicKeyBase58Check
+      ]?.transfer || 0) < 10
+        ? {
+            DAOCoinOperationLimitMap: {
+              [params.QuoteCurrencyPublicKeyBase58Check]: {
+                transfer: 'UNLIMITED',
+              },
+            },
+          }
+        : {}),
+      ...((identity.transactionSpendingLimitOptions?.TransactionCountLimitMap
+        ?.BASIC_TRANSFER || 0) < 10
+        ? {
+            TransactionCountLimitMap: {
+              BASIC_TRANSFER: 'UNLIMITED',
+            },
+          }
+        : {}),
+
+      ...(options?.spendingLimit || {}),
+    });
+  }
+
+  return handleSignAndSubmitAtomic<DeSoTokenMarketOrderWithFeeResponse>(
+    'api/v0/create-dao-coin-limit-order-with-fee',
     params,
     options
   );
