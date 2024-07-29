@@ -179,7 +179,7 @@ const buildCoinLockupTransferMetadata = (
   metadata.unlockTimestampNanoSecs = params.UnlockTimestampNanoSecs;
   // TODO: make sure this replace is correct.
   metadata.lockedCoinsToTransferBaseUnits = hexToBytes(
-    params.LockedCoinsToTransferBaseUnits.replace('0x', 'x')
+    stripHexPrefix(params.LockedCoinsToTransferBaseUnits)
   );
   return metadata;
 };

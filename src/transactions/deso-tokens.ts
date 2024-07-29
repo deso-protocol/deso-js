@@ -35,7 +35,7 @@ import {
   ConstructedAndSubmittedTxAtomic,
   TxRequestOptions,
 } from '../types.js';
-import { guardTxPermission } from './utils.js';
+import { guardTxPermission, stripHexPrefix } from './utils.js';
 
 /**
  * https://docs.deso.org/deso-backend/construct-transactions/dao-transactions-api#create-deso-token-dao-coin
@@ -76,8 +76,9 @@ export const burnDeSoToken = async (
 
     const txnLimitCount =
       options?.txLimitCount ??
-      identity.transactionSpendingLimitOptions.TransactionCountLimitMap
-        ?.DAO_COIN ??
+      identity.transactionSpendingLimitOptions?.DAOCoinOperationLimitMap?.[
+        params.ProfilePublicKeyBase58CheckOrUsername
+      ].burn ??
       1;
 
     await guardTxPermission({
@@ -115,7 +116,7 @@ export const constructBurnDeSoTokenTransaction = (
     );
   }
   metadata.coinsToBurnNanos = hexToBytes(
-    params.CoinsToBurnNanos.replace('0x', 'x')
+    stripHexPrefix(params.CoinsToBurnNanos)
   );
   metadata.profilePublicKey = bs58PublicKeyToCompressedBytes(
     params.ProfilePublicKeyBase58CheckOrUsername
@@ -165,7 +166,7 @@ export const constructMintDeSoTokenTransaction = (
     );
   }
   metadata.coinsToMintNanos = hexToBytes(
-    params.CoinsToMintNanos.replace('0x', 'x')
+    stripHexPrefix(params.CoinsToMintNanos)
   );
   metadata.profilePublicKey = bs58PublicKeyToCompressedBytes(
     params.ProfilePublicKeyBase58CheckOrUsername
@@ -351,7 +352,7 @@ export const constructTransferDeSoToken = (
   }
   const metadata = new TransactionMetadataTransferDAOCoin();
   metadata.daoCoinToTransferNanos = hexToBytes(
-    params.DAOCoinToTransferNanos.replace('0x', 'x')
+    stripHexPrefix(params.DAOCoinToTransferNanos)
   );
   metadata.profilePublicKey = bs58PublicKeyToCompressedBytes(
     params.ProfilePublicKeyBase58CheckOrUsername
