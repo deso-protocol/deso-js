@@ -7,13 +7,12 @@ import {
   ChatType,
   DecryptedMessageEntryResponse,
   InfuraResponse,
+  MsgDeSoTxn,
   NewMessageEntryResponse,
   QueryETHRPCRequest,
   SubmitTransactionResponse,
   type InfuraTx,
   type TransactionSpendingLimitResponse,
-  MsgDeSoTxn,
-  TransactionType,
 } from '../backend-types/index.js';
 import {
   DEFAULT_IDENTITY_URI,
@@ -60,11 +59,6 @@ import {
   type TransactionSpendingLimitResponseOptions,
   type jwtAlgorithm,
 } from './types.js';
-import { bytesToHex, hexToBytes } from '@noble/hashes/utils';
-import {
-  Transaction,
-  TransactionMetadataAtomicTxnWrapper,
-} from './transaction-transcoders.js';
 
 class Deferred {
   #resolve: (args: any) => void;
@@ -1801,12 +1795,14 @@ export class Identity<T extends StorageProvider> {
           });
         break;
       case 'login':
-        await this.#handleLoginMethod(payload as IdentityLoginPayload).catch(
-          (e) => {
+        await this.#handleLoginMethod(payload as IdentityLoginPayload)
+          .then(() => {
+            this.#pendingWindowRequest?.resolve(payload);
+          })
+          .catch((e) => {
             // propagate any error to the external caller
             this.#pendingWindowRequest?.reject(this.#getErrorInstance(e));
-          }
-        );
+          });
         break;
       default:
         throw new Error(`Unknown method: ${method}`);
