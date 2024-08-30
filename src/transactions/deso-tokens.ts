@@ -590,6 +590,6 @@ export const createNewCoin = async (
   return handleSignAndSubmitAtomic<CreateNewCoinResponse>(
     'api/v0/create-new-coin',
     params,
-    options
+    { ...options, jwt: true }
   );
 };

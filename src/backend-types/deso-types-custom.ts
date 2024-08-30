@@ -408,6 +408,8 @@ export interface RequestOptions {
   constructionFunction?: (
     params: any // TODO: I actually think we want any to be TxRequestWithOptionalFeesAndExtraData
   ) => Promise<ConstructedTransactionResponse>;
+
+  jwt?: boolean;
 }
 
 export type ConstructedTransactionResponse = {
@@ -586,6 +588,8 @@ export interface AmmConfig {
   MaxOrdersPerSide: number;
   CreatedAt: Date | null;
   UpdatedAt: Date | null;
+  BaseCurrencyPkid: string;
+  QuoteCurrencyPkid: string;
 }
 
 export interface AmmLevel {
