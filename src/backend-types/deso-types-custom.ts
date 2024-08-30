@@ -532,3 +532,124 @@ export interface DeSoTokenMarketOrderWithFeeResponse {
   MarketTradingFeeBasisPointsByUserPkid: Record<string, number>;
   InnerTransactionHexes: string[];
 }
+
+export interface CreateNewCoinRequest {
+  UpdaterPublicKey: string;
+  DryRun: boolean;
+  AmmConfig: AmmConfig | null;
+  AuctionDurationSeconds: number;
+  OwnershipPercentageBasisPoints: number;
+  CreatorRevsharePercentageBasisPoints: number | null;
+  TradingFeeBasisPoints: number | null;
+  CoinApyBasisPoints: number | null;
+  LockPercentageOfCreatorMintedCoinsBasisPoints: number;
+  LockDurationNanoSeconds: number;
+  DisableCreatorRevshareUpdate: boolean;
+  DisableMintingOfNewCoins: boolean;
+  DisableTradingFeeUpdate: boolean;
+  EnablePermanentlyUnrestrictedTransfers: boolean;
+  NewProfileUsername: string;
+  NewCoinCategory: string;
+}
+
+export interface CreateNewCoinResponse {
+  ConfigureMarketResponse: ConfigureMarketResponse | null;
+  PreExistingCoins: number;
+  CoinsInAmm: number;
+  UnlockedFounderCoins: number;
+  LockedFounderCoins: number;
+  TotalCoinsAfterAmmStart: number;
+  Transaction: MsgDeSoTxn | null;
+  SignedAmmMetadataTxnHexes: string[];
+  UnsignedUserTxnHexes: string[];
+  TransactionHex: string;
+  InnerTransactionHexes: string[];
+}
+
+export interface AmmConfig {
+  AmmConfigId: number;
+  OwnerPkid: string;
+  AmmPublicKey: string;
+  AmmConfigType: AMMConfigType;
+  MarketStatus: MarketStatus;
+  StartPriceUsd: number;
+  StartPriceInQuoteCurrency: number;
+  OrderSpacingBasisPoints: number;
+  SpreadFeeBasisPoints: number;
+  BaseAmountPerLevelUsd: number;
+  IncreaseBaseAmountByBasisPointsEachLevel: number;
+  IncreaseBaseAmountByUsdEachLevel: number;
+  TerminalPriceUsd: number;
+  TerminalAmountUsd: number;
+  FinalPriceUsd: number;
+  MakeBidLevelsDownToPriceUsd: number;
+  MaxOrdersPerSide: number;
+  CreatedAt: Date | null;
+  UpdatedAt: Date | null;
+}
+
+export interface AmmLevel {
+  AmmConfigId: number;
+  Level: number;
+  PriceInQuoteCurrency: number;
+  PriceInUsdAtSetup: number;
+  AmountInQuoteCurrency: number;
+  AmountInUsdAtSetup: number;
+  CreatedAt: Date | null;
+  UpdatedAt: Date | null;
+}
+
+export interface AmmOrder {
+  AmmConfigId: number;
+  OrderStatus: AmmOrderStatus;
+  PriceInQuoteCurrency: number;
+  AmountInBaseCurrency: number;
+  Side: string;
+  OrderIdHex: string | null;
+  TxnIdHex: string | null;
+  CreatedAt: Date | null;
+  UpdatedAt: Date | null;
+}
+
+export interface MarketInfo {
+  BaseCurrencyPkid: string;
+  QuoteCurrencyPkid: string;
+}
+
+export enum AMMConfigType {
+  NewMarket = 'NewMarket',
+  ExistingMarket = 'ExistingMarket',
+  Custom = 'Custom',
+}
+
+export enum MarketStatus {
+  None = 'None',
+  Configured = 'Configured',
+  PlacingInitialOrders = 'PlacingInitialOrders',
+  Started = 'Started',
+  CancelingOrders = 'CancelingOrders',
+  OrdersCancelled = 'OrdersCancelled',
+  UncancelingOrders = 'UncancelingOrders',
+}
+
+export enum AmmOrderStatus {
+  None = 'None',
+  Open = 'Open',
+  Filled = 'Filled',
+  Canceled = 'Canceled',
+}
+
+export interface ConfigureMarketResponse {
+  LevelsToCreate: AmmLevel[] | null;
+  InitialOrders: AmmOrder[] | null;
+  MarketOpenTime: Date | null;
+  AmmConfigId: number;
+  AmmPublicKey: string;
+  QuoteCurrencyPriceInUsd: number;
+  InitialBaseCurrencyAmount: number;
+  BaseCurrencyBalance: number;
+  BaseCurrencyNeeded: number;
+  InitialQuoteCurrencyAmount: number;
+  QuoteCurrencyBalance: number;
+  QuoteCurrencyNeeded: number;
+}

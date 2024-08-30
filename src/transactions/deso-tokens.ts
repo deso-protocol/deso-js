@@ -1,6 +1,8 @@
 import { hexToBytes } from '@noble/hashes/utils';
 import {
   ConstructedTransactionResponse,
+  CreateNewCoinRequest,
+  CreateNewCoinResponse,
   DAOCoinLimitOrderRequest,
   DAOCoinLimitOrderWithCancelOrderIDRequest,
   DAOCoinMarketOrderRequest,
@@ -9,8 +11,12 @@ import {
   DAOCoinResponse,
   DeSoTokenMarketOrderWithFeeRequest,
   DeSoTokenMarketOrderWithFeeResponse,
+  LockupLimitMapItem,
+  LockupLimitOperationString,
+  LockupLimitScopeType,
   OperationTypeWithFee,
   RequestOptions,
+  TransactionType,
   TransferDAOCoinRequest,
   TransferDAOCoinResponse,
   TxRequestWithOptionalFeesAndExtraData,
@@ -523,6 +529,66 @@ export const createDeSoTokenMarketOrderWithFee = async (
 
   return handleSignAndSubmitAtomic<DeSoTokenMarketOrderWithFeeResponse>(
     'api/v0/create-dao-coin-limit-order-with-fee',
+    params,
+    options
+  );
+};
+
+export const createNewCoin = async (
+  params: TxRequestWithOptionalFeesAndExtraData<CreateNewCoinRequest>,
+  options?: TxRequestOptions
+): Promise<ConstructedAndSubmittedTxAtomic<CreateNewCoinResponse>> => {
+  if (options?.checkPermissions !== false) {
+    if (!isMaybeDeSoPublicKey(params.UpdaterPublicKey)) {
+      return Promise.reject(
+        'must provide profile public key, not username for UpdaterPublicKey when checking your transfer permissions'
+      );
+    }
+
+    const lockupLimitMapParam = {
+      LockupLimitMap: [] as LockupLimitMapItem[],
+    };
+
+    if (params.CoinApyBasisPoints) {
+      lockupLimitMapParam.LockupLimitMap.push({
+        ProfilePublicKeyBase58Check: params.UpdaterPublicKey,
+        Operation: LockupLimitOperationString.UPDATE_COIN_LOCKUP_YIELD_CURVE,
+        ScopeType: LockupLimitScopeType.SCOPED,
+        OpCount: 1,
+      });
+    }
+
+    if (params.OwnershipPercentageBasisPoints) {
+      lockupLimitMapParam.LockupLimitMap.push({
+        ProfilePublicKeyBase58Check: params.UpdaterPublicKey,
+        Operation: LockupLimitOperationString.COIN_LOCKUP,
+        ScopeType: LockupLimitScopeType.SCOPED,
+        OpCount: 1,
+      });
+    }
+
+    await guardTxPermission({
+      GlobalDESOLimit:
+        // TODO: there is no way to calculate how much we are spending so this is going to fail
+        1 * 1e9,
+      DAOCoinOperationLimitMap: {
+        [params.UpdaterPublicKey]: {
+          disable_minting: params.DisableMintingOfNewCoins ? 1 : 0,
+          update_transfer_restriction_status:
+            params.EnablePermanentlyUnrestrictedTransfers ? 1 : 0,
+          mint: 1,
+          transfer: 1,
+        },
+      },
+      TransactionCountLimitMap: {
+        [TransactionType.UpdateProfile]: params.NewProfileUsername ? 2 : 1,
+      },
+      ...(lockupLimitMapParam.LockupLimitMap.length ? lockupLimitMapParam : {}),
+    });
+  }
+
+  return handleSignAndSubmitAtomic<CreateNewCoinResponse>(
+    'api/v0/create-new-coin',
     params,
     options
   );
