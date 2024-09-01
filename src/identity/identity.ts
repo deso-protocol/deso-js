@@ -194,11 +194,11 @@ export class Identity<T extends StorageProvider> {
   #isAutoDeriveLogin = false;
 
   /**
-   * Defaults to 10 years. These login keys should essentially never expire
+   * Defaults to 99999999. These login keys should essentially never expire
    * unless a user explicitly de-authorizes them.
    * @private
    */
-  #defaultNumDaysBeforeExpiration = 3650;
+  #defaultNumDaysBeforeExpiration = 99999999;
 
   /**
    * The current internal state of identity. This is a combination of the
