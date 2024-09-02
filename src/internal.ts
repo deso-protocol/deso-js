@@ -118,6 +118,10 @@ export const handleSignAndSubmitAtomic = async <
   };
   submittedTransactionResponse: SubmitTransactionAtomicResponse | null;
 }> => {
+  let jwt: string | undefined;
+  if (options.jwt) {
+    jwt = await identity.jwt();
+  }
   const constructedTransactionResponse = await ((options.localConstruction ||
     globalConfigOptions.LocalConstruction) &&
   options.constructionFunction
@@ -129,6 +133,15 @@ export const handleSignAndSubmitAtomic = async <
           MinFeeRateNanosPerKB:
             params.MinFeeRateNanosPerKB ??
             globalConfigOptions.MinFeeRateNanosPerKB,
+        },
+        {
+          ...(jwt
+            ? {
+                headers: {
+                  Authorization: `Bearer ${jwt}`,
+                },
+              }
+            : {}),
         }
       ));
   if (

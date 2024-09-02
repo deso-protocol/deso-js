@@ -50,7 +50,10 @@ class APIClient {
   post(
     endpoint: string,
     data: Record<string, any>,
-    options: { contentType?: 'multipart/form-data' } = {}
+    options: {
+      contentType?: 'multipart/form-data';
+      headers?: { [k: string]: string };
+    } = {}
   ): Promise<any> {
     const contentType = options.contentType ?? 'application/json';
     let body: FormData | string;
@@ -80,6 +83,7 @@ class APIClient {
         ...(contentType !== 'multipart/form-data' && {
           'Content-Type': contentType,
         }),
+        ...options.headers,
       },
       ...options,
     });
