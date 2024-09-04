@@ -576,7 +576,7 @@ export const createNewCoin = async (
           disable_minting: params.DisableMintingOfNewCoins ? 1 : 0,
           update_transfer_restriction_status:
             params.EnablePermanentlyUnrestrictedTransfers ? 1 : 0,
-          mint: 1,
+          mint: 2,
           transfer: 1,
         },
       },
