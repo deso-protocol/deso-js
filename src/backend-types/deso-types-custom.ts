@@ -4,6 +4,7 @@ import {
   DAOCoinLimitOrderSimulatedExecutionResult,
   DeSoNonce,
   MsgDeSoTxn,
+  ProfileEntryResponse,
   SubmitTransactionResponse,
   TransactionFee,
   TransactionSpendingLimitResponse,
@@ -568,6 +569,72 @@ export interface CreateNewCoinResponse {
   InnerTransactionHexes: string[];
 }
 
+export interface UpdateCoinPropertiesRequest {
+  UpdaterPublicKey: string;
+  CreatorRevsharePercentageBasisPoints?: number;
+  TradingFeeBasisPoints: number | null;
+  CoinApyBasisPoints: number | null;
+  NewProfileUsername: string;
+  NewCoinCategory: string;
+  DisableCreatorRevshareUpdate: boolean;
+  DisableMintingOfNewCoins: boolean;
+  DisableTradingFeeUpdate: boolean;
+}
+
+export interface UpdateCoinPropertiesResponse {
+  Transaction: MsgDeSoTxn | null;
+  SignedAmmMetadataTxnHexes: string[];
+  UnsignedUserTxnHexes: string[];
+  TransactionHex: string;
+  InnerTransactionHexes: string[];
+}
+
+export interface GetCoinPropertiesRequest {
+  BaseCurrencyPublicKey: string;
+}
+
+export interface GetCoinPropertiesResponse {
+  AmmConfigs: AmmConfig[];
+  BaseCurrencyTotal: number;
+  CirculatingCoinsLocked: number;
+  CirculatingCoinsTotal: number;
+  CirculatingCoinsUnlocked: number;
+  CoinApyBasisPoints: number;
+  CoinsInAmmAsks: number[];
+  CoinsInAmmAsksTotal: number;
+  CoinsInAmmPubkeys: number[];
+  CoinsInAmmPubkeysTotal: number;
+  CreatorRevsharePercentageBasisPoints: number;
+  DisableCreatorRevshareUpdate: boolean;
+  DisableMintingOfNewCoins: boolean;
+  DisableTradingFeeUpdate: boolean;
+  EnablePermanentlyUnrestrictedTransfers: boolean;
+  FeeProfiles: { [key: string]: ProfileEntryResponse };
+  FounderCoinsLocked: number;
+  FounderCoinsTotal: number;
+  FounderCoinsUnlocked: number;
+  Levels: AmmLevel[];
+  MinLockupDurationNanos: number;
+  NextCirculatingUnlockTimeNanos: number;
+  NextFounderUnlockTimeNanos: number;
+  OrdersPlaced: AmmOrder[];
+  Profile: ProfileEntryResponse;
+  QuoteCurrencyInAmmBids: number[];
+  QuoteCurrencyInAmmBidsTotal: number;
+  TradingFeeMap: {
+    [key: string]: number;
+  };
+  UsdInAmmBids: number[];
+  UsdInAmmBidsTotal: number;
+  YieldCurvePoints: YieldCurvePoint[];
+}
+
+export interface YieldCurvePoint {
+  ProfileEntryResponse: ProfileEntryResponse | null;
+  LockupDurationNanoSecs: number;
+  LockupYieldAPYBasisPoints: number;
+  ProfilePublicKeyBase58Check: string;
+}
 export interface AmmConfig {
   AmmConfigId: number;
   OwnerPkid: string;

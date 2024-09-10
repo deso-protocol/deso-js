@@ -20,6 +20,8 @@ import {
   TransferDAOCoinRequest,
   TransferDAOCoinResponse,
   TxRequestWithOptionalFeesAndExtraData,
+  UpdateCoinPropertiesRequest,
+  UpdateCoinPropertiesResponse,
 } from '../backend-types/index.js';
 import { PartialWithRequiredFields } from '../data/index.js';
 import {
@@ -589,6 +591,67 @@ export const createNewCoin = async (
 
   return handleSignAndSubmitAtomic<CreateNewCoinResponse>(
     'api/v0/create-new-coin',
+    params,
+    { ...options, jwt: true }
+  );
+};
+
+export const updateCoinProperties = async (
+  params: TxRequestWithOptionalFeesAndExtraData<UpdateCoinPropertiesRequest>,
+  options?: TxRequestOptions
+): Promise<ConstructedAndSubmittedTxAtomic<UpdateCoinPropertiesResponse>> => {
+  if (options?.checkPermissions !== false) {
+    if (!isMaybeDeSoPublicKey(params.UpdaterPublicKey)) {
+      return Promise.reject(
+        'must provide profile public key, not username for UpdaterPublicKey when checking your transfer permissions'
+      );
+    }
+
+    const lockupLimitMapParam = {
+      LockupLimitMap: [] as LockupLimitMapItem[],
+    };
+
+    if (params.CoinApyBasisPoints) {
+      lockupLimitMapParam.LockupLimitMap.push({
+        ProfilePublicKeyBase58Check: params.UpdaterPublicKey,
+        Operation: LockupLimitOperationString.UPDATE_COIN_LOCKUP_YIELD_CURVE,
+        ScopeType: LockupLimitScopeType.SCOPED,
+        OpCount: 1,
+      });
+    }
+
+    await guardTxPermission({
+      GlobalDESOLimit: 1 * 1e9,
+      DAOCoinOperationLimitMap: {
+        [params.UpdaterPublicKey]: {
+          disable_minting: params.DisableMintingOfNewCoins ? 1 : 0,
+          update_transfer_restriction_status: 1,
+          mint: 2,
+          transfer: 1,
+        },
+      },
+      TransactionCountLimitMap: {
+        [TransactionType.UpdateProfile]: params.NewProfileUsername ? 2 : 1,
+      },
+      LockupLimitMap: [
+        {
+          ProfilePublicKeyBase58Check: params.UpdaterPublicKey,
+          Operation: LockupLimitOperationString.UPDATE_COIN_LOCKUP_YIELD_CURVE,
+          ScopeType: LockupLimitScopeType.SCOPED,
+          OpCount: 1,
+        },
+        {
+          ProfilePublicKeyBase58Check: params.UpdaterPublicKey,
+          Operation: LockupLimitOperationString.COIN_LOCKUP,
+          ScopeType: LockupLimitScopeType.SCOPED,
+          OpCount: 1,
+        },
+      ],
+    });
+  }
+
+  return handleSignAndSubmitAtomic<UpdateCoinPropertiesResponse>(
+    '/api/v0/update-coin-properties',
     params,
     { ...options, jwt: true }
   );
