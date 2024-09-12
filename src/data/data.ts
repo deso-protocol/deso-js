@@ -21,6 +21,8 @@ import {
   GetBlockTemplateResponse,
   GetBulkAccessGroupEntriesRequest,
   GetBulkAccessGroupEntriesResponse,
+  GetCoinPropertiesRequest,
+  GetCoinPropertiesResponse,
   GetDiamondsForPostRequest,
   GetDiamondsForPostResponse,
   GetDiamondsForPublicKeyRequest,
@@ -1280,6 +1282,17 @@ export const getPostAssociations = (
   options?: RequestOptions
 ): Promise<PostAssociationsResponse> => {
   const endpoint = 'api/v0/post-associations/query';
+  return api.post(
+    options?.nodeURI ? cleanURL(options.nodeURI, endpoint) : endpoint,
+    params
+  );
+};
+
+export const getCoinProperties = async (
+  params: GetCoinPropertiesRequest,
+  options?: RequestOptions
+): Promise<GetCoinPropertiesResponse> => {
+  const endpoint = '/api/v0/get-coin-properties';
   return api.post(
     options?.nodeURI ? cleanURL(options.nodeURI, endpoint) : endpoint,
     params
