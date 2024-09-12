@@ -1,6 +1,6 @@
 import { hexToBytes } from '@noble/hashes/utils';
 import {
-  TransferRestrictionStatusByOperation,
+  CoinTransferRestrictionStatusByOperation,
   ConstructedTransactionResponse,
   CreateNewCoinRequest,
   CreateNewCoinResponse,
@@ -197,7 +197,7 @@ export type UpdateDeSoTokenTransferRestrictionStatusRequestParams =
       Omit<DAOCoinRequest, 'OperationType' | 'TransferRestrictionStatus'>,
       'UpdaterPublicKeyBase58Check' | 'ProfilePublicKeyBase58CheckOrUsername'
     > & {
-      TransferRestrictionStatus: keyof typeof TransferRestrictionStatusByOperation;
+      TransferRestrictionStatus: keyof typeof CoinTransferRestrictionStatusByOperation;
     }
   >;
 

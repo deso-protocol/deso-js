@@ -216,14 +216,14 @@ export interface NFTOperationLimitMap {
   };
 }
 
-export enum ConfigureTransferRestrictionStatus {
+export enum CoinTransferRestrictionStatus {
   Unrestricted = 'unrestricted',
   ProfileOwnerOnly = 'profile_owner_only',
   DAOMembersOnly = 'dao_members_only',
   PermanentlyUnrestricted = 'permanently_unrestricted',
 }
 
-export enum TransferRestrictionStatusByOperation {
+export enum CoinTransferRestrictionStatusByOperation {
   'unrestricted' = 0,
   'profile_owner_only' = 1,
   'dao_members_only' = 2,
