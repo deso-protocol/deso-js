@@ -641,6 +641,7 @@ export interface GetCoinPropertiesResponse {
   UsdInAmmBids: number[];
   UsdInAmmBidsTotal: number;
   YieldCurvePoints: YieldCurvePoint[];
+  RunAt: Date[];
 }
 
 export interface YieldCurvePoint {
