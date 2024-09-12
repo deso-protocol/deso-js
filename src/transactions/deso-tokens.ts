@@ -213,8 +213,12 @@ export const updateDeSoTokenTransferRestrictionStatus = async (
     }
 
     await guardTxPermission({
-      IsUnlimited: true,
       GlobalDESOLimit: 1 * 1e9,
+      DAOCoinOperationLimitMap: {
+        [params.UpdaterPublicKeyBase58Check]: {
+          update_transfer_restriction_status: 1,
+        },
+      },
     });
   }
 
