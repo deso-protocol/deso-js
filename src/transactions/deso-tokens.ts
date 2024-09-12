@@ -1,5 +1,6 @@
 import { hexToBytes } from '@noble/hashes/utils';
 import {
+  TransferRestrictionStatusByOperation,
   ConstructedTransactionResponse,
   CreateNewCoinRequest,
   CreateNewCoinResponse,
@@ -193,14 +194,30 @@ export const constructMintDeSoTokenTransaction = (
 export type UpdateDeSoTokenTransferRestrictionStatusRequestParams =
   TxRequestWithOptionalFeesAndExtraData<
     PartialWithRequiredFields<
-      Omit<DAOCoinRequest, 'OperationType'>,
+      Omit<DAOCoinRequest, 'OperationType' | 'TransferRestrictionStatus'>,
       'UpdaterPublicKeyBase58Check' | 'ProfilePublicKeyBase58CheckOrUsername'
-    >
+    > & {
+      TransferRestrictionStatus: keyof typeof TransferRestrictionStatusByOperation;
+    }
   >;
-export const updateDeSoTokenTransferRestrictionStatus = (
+
+export const updateDeSoTokenTransferRestrictionStatus = async (
   params: UpdateDeSoTokenTransferRestrictionStatusRequestParams,
-  options?: RequestOptions
+  options?: TxRequestOptions
 ): Promise<ConstructedAndSubmittedTx<DAOCoinResponse>> => {
+  if (options?.checkPermissions !== false) {
+    if (!isMaybeDeSoPublicKey(params.UpdaterPublicKeyBase58Check)) {
+      return Promise.reject(
+        'must provide profile public key, not username for UpdaterPublicKeyBase58Check when checking dao coin token transfer restriction status permissions'
+      );
+    }
+
+    await guardTxPermission({
+      IsUnlimited: true,
+      GlobalDESOLimit: 1 * 1e9,
+    });
+  }
+
   return handleSignAndSubmit(
     'api/v0/dao-coin',
     {

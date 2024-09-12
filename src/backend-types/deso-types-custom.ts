@@ -216,6 +216,20 @@ export interface NFTOperationLimitMap {
   };
 }
 
+export enum ConfigureTransferRestrictionStatus {
+  Unrestricted = 'unrestricted',
+  ProfileOwnerOnly = 'profile_owner_only',
+  DAOMembersOnly = 'dao_members_only',
+  PermanentlyUnrestricted = 'permanently_unrestricted',
+}
+
+export enum TransferRestrictionStatusByOperation {
+  'unrestricted' = 0,
+  'profile_owner_only' = 1,
+  'dao_members_only' = 2,
+  'permanently_unrestricted' = 3,
+}
+
 export enum TransactionType {
   BasicTransfer = 'BASIC_TRANSFER',
   BitcoinExchange = 'BITCOIN_EXCHANGE',
