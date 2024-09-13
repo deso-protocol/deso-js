@@ -191,33 +191,19 @@ export const constructMintDeSoTokenTransaction = (
 /**
  * https://docs.deso.org/deso-backend/construct-transactions/dao-transactions-api#create-deso-token-dao-coin
  */
+
 export type UpdateDeSoTokenTransferRestrictionStatusRequestParams =
   TxRequestWithOptionalFeesAndExtraData<
     PartialWithRequiredFields<
-      Omit<DAOCoinRequest, 'OperationType' | 'TransferRestrictionStatus'>,
+      Omit<DAOCoinRequest, 'OperationType'>,
       'UpdaterPublicKeyBase58Check' | 'ProfilePublicKeyBase58CheckOrUsername'
-    > & {
-      TransferRestrictionStatus: keyof typeof CoinTransferRestrictionStatusByOperation;
-    }
+    >
   >;
 
-export const updateDeSoTokenTransferRestrictionStatus = async (
+export const updateDeSoTokenTransferRestrictionStatus = (
   params: UpdateDeSoTokenTransferRestrictionStatusRequestParams,
-  options?: TxRequestOptions
+  options?: RequestOptions
 ): Promise<ConstructedAndSubmittedTx<DAOCoinResponse>> => {
-  if (options?.checkPermissions !== false) {
-    if (!isMaybeDeSoPublicKey(params.UpdaterPublicKeyBase58Check)) {
-      return Promise.reject(
-        'must provide profile public key, not username for UpdaterPublicKeyBase58Check when checking dao coin token transfer restriction status permissions'
-      );
-    }
-
-    await guardTxPermission({
-      IsUnlimited: true,
-      GlobalDESOLimit: 1 * 1e9,
-    });
-  }
-
   return handleSignAndSubmit(
     'api/v0/dao-coin',
     {

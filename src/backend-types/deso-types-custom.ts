@@ -585,14 +585,17 @@ export interface CreateNewCoinResponse {
 
 export interface UpdateCoinPropertiesRequest {
   UpdaterPublicKey: string;
-  CreatorRevsharePercentageBasisPoints?: number;
+  CreatorRevsharePercentageBasisPoints?: number | null;
   TradingFeeBasisPoints: number | null;
   CoinApyBasisPoints: number | null;
   NewProfileUsername: string;
   NewCoinCategory: string;
-  DisableCreatorRevshareUpdate: boolean;
-  DisableMintingOfNewCoins: boolean;
-  DisableTradingFeeUpdate: boolean;
+  DisableCreatorRevshareUpdate: boolean | null;
+  DisableMintingOfNewCoins: boolean | null;
+  DisableTradingFeeUpdate: boolean | null;
+  NewTransferRestrictionStatus:
+    | keyof typeof CoinTransferRestrictionStatusByOperation
+    | '';
 }
 
 export interface UpdateCoinPropertiesResponse {
@@ -642,6 +645,7 @@ export interface GetCoinPropertiesResponse {
   UsdInAmmBidsTotal: number;
   YieldCurvePoints: YieldCurvePoint[];
   RunAt: Date[];
+  TotalTradingFeeBasisPoints: number;
 }
 
 export interface YieldCurvePoint {
