@@ -149,10 +149,20 @@ export type MintDeSoTokenRequestParams = TxRequestWithOptionalFeesAndExtraData<
     | 'CoinsToMintNanos'
   >
 >;
-export const mintDeSoToken = (
+
+export const mintDeSoToken = async (
   params: MintDeSoTokenRequestParams,
   options?: RequestOptions
 ): Promise<ConstructedAndSubmittedTx<DAOCoinResponse>> => {
+  await guardTxPermission({
+    GlobalDESOLimit: 1 * 1e9,
+    DAOCoinOperationLimitMap: {
+      [params.UpdaterPublicKeyBase58Check]: {
+        mint: 1,
+      },
+    },
+  });
+
   return handleSignAndSubmit(
     'api/v0/dao-coin',
     {
