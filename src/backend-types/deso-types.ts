@@ -1200,6 +1200,60 @@ export interface UpdateNFTTxindexMetadata {
   IsForSale: boolean;
 }
 
+export interface RegisterAsValidatorTxindexMetadata {
+  ValidatorPublicKeyBase58Check: string;
+  Domains: string[];
+  DisableDelegatedStake: boolean;
+  DelegatedStakeCommissionBasisPoints: number;
+  VotingPublicKey: string;
+  VotingAuthorization: string;
+}
+
+export interface UnstakedStakerTxindexMetadata {
+  StakerPublicKeyBase58Check: string;
+  UnstakeAmountNanos: string;
+}
+
+export interface UnregisterAsValidatorTxindexMetadata {
+  ValidatorPublicKeyBase58Check: string;
+  UnstakedStakers: UnstakedStakerTxindexMetadata[];
+}
+
+// export interface UnjailValidatorTxindexMetadata {}
+
+export interface StakeTxindexMetadata {
+  StakerPublicKeyBase58Check: string;
+  ValidatorPublicKeyBase58Check: string;
+  RewardMethod: number;
+  StakeAmountNanos: string;
+}
+
+export interface UnstakeTxindexMetadata {
+  StakerPublicKeyBase58Check: string;
+  ValidatorPublicKeyBase58Check: string;
+  UnstakeAmountNanos: string;
+}
+
+export interface UnlockStakeTxindexMetadata {
+  StakerPublicKeyBase58Check: string;
+  ValidatorPublicKeyBase58Check: string;
+  StartEpochNumber: number;
+  EndEpochNumber: number;
+  TotalUnlockedAmountNanos: string;
+}
+
+// export interface CoinLockupTxindexMetadata {}
+//
+// export interface CoinUnlockTxindexMetadata {}
+//
+// export interface CoinLockupTransferTxindexMetadata {}
+//
+// export interface UpdateCoinLockupParamsTxindexMetadata {}
+
+export interface AtomicTxnsWrapperTxindexMetadata {
+  InnerTxnsTransactionMetadata: TransactionMetadata[];
+}
+
 // struct2ts:types/generated/types.TransactionMetadata
 export interface TransactionMetadata {
   BlockHashHex: string;
@@ -1235,6 +1289,17 @@ export interface TransactionMetadata {
   AccessGroupTxindexMetadata: AccessGroupTxindexMetadata | null;
   AccessGroupMembersTxindexMetadata: AccessGroupMembersTxindexMetadata | null;
   NewMessageTxindexMetadata: NewMessageTxindexMetadata | null;
+  RegisterAsValidatorTxindexMetadata: RegisterAsValidatorTxindexMetadata | null;
+  UnregisterAsValidatorTxindexMetadata: UnregisterAsValidatorTxindexMetadata | null;
+  UnjailValidatorTxindexMetadata: {} | null;
+  StakeTxindexMetadata: StakeTxindexMetadata | null;
+  UnstakeTxindexMetadata: UnstakeTxindexMetadata | null;
+  UnlockStakeTxindexMetadata: UnlockStakeTxindexMetadata | null;
+  CoinLockupTxindexMetadata: {} | null;
+  CoinUnlockTxindexMetadata: {} | null;
+  CoinLockupTransferTxindexMetadata: {} | null;
+  UpdateCoinLockupParamsTxindexMetadata: {} | null;
+  AtomicTxnsWrapperTxindexMetadata: AtomicTxnsWrapperTxindexMetadata | null;
 }
 
 // struct2ts:types/generated/types.TransactionEvent
