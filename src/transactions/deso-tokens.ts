@@ -152,16 +152,24 @@ export type MintDeSoTokenRequestParams = TxRequestWithOptionalFeesAndExtraData<
 
 export const mintDeSoToken = async (
   params: MintDeSoTokenRequestParams,
-  options?: RequestOptions
+  options?: TxRequestOptions
 ): Promise<ConstructedAndSubmittedTx<DAOCoinResponse>> => {
-  await guardTxPermission({
-    GlobalDESOLimit: 1 * 1e9,
-    DAOCoinOperationLimitMap: {
-      [params.UpdaterPublicKeyBase58Check]: {
-        mint: 1,
+  if (options?.checkPermissions !== false) {
+    if (!isMaybeDeSoPublicKey(params.ProfilePublicKeyBase58CheckOrUsername)) {
+      return Promise.reject(
+        'must provide profile public key, not username for local transaction construction'
+      );
+    }
+
+    await guardTxPermission({
+      GlobalDESOLimit: 1 * 1e9,
+      DAOCoinOperationLimitMap: {
+        [params.UpdaterPublicKeyBase58Check]: {
+          mint: 1,
+        },
       },
-    },
-  });
+    });
+  }
 
   return handleSignAndSubmit(
     'api/v0/dao-coin',
