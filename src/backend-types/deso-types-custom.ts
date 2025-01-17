@@ -612,10 +612,6 @@ export interface GetCoinPropertiesRequest {
 
 export interface GetCoinPropertiesResponse {
   AmmConfigs: AmmConfig[];
-  BaseCurrencyTotal: number;
-  CirculatingCoinsLocked: number;
-  CirculatingCoinsTotal: number;
-  CirculatingCoinsUnlocked: number;
   CoinApyBasisPoints: number;
   CoinsInAmmAsks: number[];
   CoinsInAmmAsksTotal: number;
@@ -627,13 +623,8 @@ export interface GetCoinPropertiesResponse {
   DisableTradingFeeUpdate: boolean;
   EnablePermanentlyUnrestrictedTransfers: boolean;
   FeeProfiles: { [key: string]: ProfileEntryResponse };
-  FounderCoinsLocked: number;
-  FounderCoinsTotal: number;
-  FounderCoinsUnlocked: number;
   Levels: AmmLevel[];
   MinLockupDurationNanos: number;
-  NextCirculatingUnlockTimeNanos: number;
-  NextFounderUnlockTimeNanos: number;
   OrdersPlaced: AmmOrder[];
   Profile: ProfileEntryResponse;
   QuoteCurrencyInAmmBids: number[];
