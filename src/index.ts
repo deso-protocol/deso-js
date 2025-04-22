@@ -13,3 +13,4 @@ export * from './transactions/social.js';
 export * from './transactions/validator.js';
 export * from './transactions/stake.js';
 export * from './transactions/lockup.js';
+export * from './transactions/twap.js';
