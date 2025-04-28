@@ -1,32 +1,35 @@
 import { api, cleanURL } from 'src/data/index.js';
-import {
-  RequestOptions,
-  TxRequestWithOptionalFeesAndExtraData,
-} from '../backend-types/index.js';
+import { RequestOptions } from '../backend-types/index.js';
 import { TxRequestOptions } from '../types.js';
 
-/**
- * https://docs.deso.org/deso-backend/construct-transactions/twap-orders-api#create-twap-order
- */
-export type CreateTwapOrderRequestParams =
-  TxRequestWithOptionalFeesAndExtraData<{
-    DerivedPubKey: string;
-    Side: 'BID' | 'ASK';
-    QuoteCurrencyPubKey: string;
-    BaseCurrencyPubKey: string;
-    AmountInQuoteCurrency?: string;
-    AmountInBaseCurrency?: string;
-    AmountSuborderJitterBasisPoints?: number;
-    AmountSuborderMaxScalingBasisPoints?: number;
-    StartAt?: string;
-    DurationSeconds?: number;
-    EndAt?: string | null;
-    SuborderIntervalSeconds?: number;
-    SuborderIntervalMaxJitterSeconds?: number;
-    LimitPriceInUsd?: string;
-    LimitPriceInQuoteCurrency?: string;
-    LimitPriceMaxSlippageBasisPoints?: number;
-  }>;
+interface BaseTwapOrder {
+  DerivedPubKey: string;
+  Side: 'BID' | 'ASK';
+  QuoteCurrencyPubKey: string;
+  BaseCurrencyPubKey: string;
+  AmountInQuoteCurrency: string;
+  AmountInBaseCurrency: string;
+  AmountSuborderJitterBasisPoints?: number;
+  AmountSuborderMaxScalingBasisPoints?: number;
+  StartAt: string;
+  DurationSeconds: number;
+  EndAt: string | null;
+  SuborderIntervalSeconds: number;
+  SuborderIntervalMaxJitterSeconds?: number;
+  LimitPriceInUsd: string;
+  LimitPriceInQuoteCurrency: string;
+  LimitPriceMaxSlippageBasisPoints?: number;
+}
+
+export type CreateTwapOrderRequestParams = BaseTwapOrder;
+
+export type TwapOrderResponse = BaseTwapOrder & {
+  TwapConfigId: number;
+  Status: string;
+  CreatedAt: string;
+  UpdatedAt: string;
+  TwapOperations: Array<TwapOrderOperation>;
+};
 
 export type TwapOrderOperation = {
   TwapOperationId: number;
@@ -60,30 +63,6 @@ export type TwapOrderOperation = {
   TwapOperationError: null;
 };
 
-export type TwapOrderResponse = {
-  TwapConfigId: number;
-  DerivedPubKey: string;
-  Status: string;
-  Side: string;
-  QuoteCurrencyPubKey: string;
-  BaseCurrencyPubKey: string;
-  AmountInQuoteCurrency: string;
-  AmountInBaseCurrency: string;
-  AmountSuborderJitterBasisPoints: number;
-  AmountSuborderMaxScalingBasisPoints: number;
-  StartAt: string;
-  DurationSeconds: number;
-  EndAt: string;
-  SuborderIntervalSeconds: number;
-  SuborderIntervalMaxJitterSeconds: number;
-  LimitPriceInUsd: string;
-  LimitPriceInQuoteCurrency: string;
-  LimitPriceMaxSlippageBasisPoints: number;
-  CreatedAt: string;
-  UpdatedAt: string;
-  TwapOperations: Array<TwapOrderOperation>;
-};
-
 export const createTwapOrder = async (
   params: CreateTwapOrderRequestParams,
   options?: TxRequestOptions
@@ -95,9 +74,6 @@ export const createTwapOrder = async (
   );
 };
 
-/**
- * https://docs.deso.org/deso-backend/construct-transactions/twap-orders-api#get-my-twap-orders
- */
 export type GetMyTwapOrdersResponse = {
   TwapOrders: Array<TwapOrderResponse>;
   TotalCount: number;
@@ -114,9 +90,6 @@ export const getMyTwapOrders = (
   );
 };
 
-/**
- * https://docs.deso.org/deso-backend/construct-transactions/twap-orders-api#cancel-twap-order
- */
 export type CancelTwapOrderRequestParams = {
   OwnerPublicKey: string;
   TwapConfigId: number;
