@@ -120,7 +120,7 @@ export const createTwapOrder = async (
   params: CreateTwapOrderRequestParams,
   options?: TxRequestOptions
 ): Promise<TwapOrderResponse> => {
-  const jwt = identity.jwt();
+  const jwt = await identity.jwt();
   const endpoint = cleanURL(options?.nodeURI ?? '', 'api/v0/twaps/create');
   return amm.post(endpoint, params, {
     headers: {
@@ -134,11 +134,11 @@ export type GetMyTwapOrdersResponse = {
   TotalCount: number;
 };
 
-export const getMyTwapOrders = (
+export const getMyTwapOrders = async (
   params: { publicKey: string; limit?: number; offset?: number },
   options?: RequestOptions
 ): Promise<GetMyTwapOrdersResponse> => {
-  const jwt = identity.jwt();
+  const jwt = await identity.jwt();
   const endpoint = cleanURL(
     options?.nodeURI ?? '',
     `api/v0/twaps/${params.publicKey}?limit=${params.limit ?? 0}&offset=${
@@ -208,7 +208,7 @@ export interface AuthorizeDerivedKeyAMMResponse {
 export async function createDerivedKeyAMM(
   request: CreateDerivedKeyRequest
 ): Promise<CreateDerivedKeyAMMResponse> {
-  const jwt = identity.jwt();
+  const jwt = await identity.jwt();
   const endpoint = cleanURL('', 'api/v0/derived-keys/create');
   return await amm.post(endpoint, request, {
     headers: {
@@ -226,7 +226,7 @@ export async function authorizeDerivedKeyAMM(
     numSubOrders: number;
   }
 ) {
-  const jwt = identity.jwt();
+  const jwt = await identity.jwt();
   const deriveResponse = await identity.derive(
     {
       GlobalDESOLimit:
