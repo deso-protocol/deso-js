@@ -89,8 +89,20 @@ class APIClient {
     });
   }
 
-  get(endpoint: string): Promise<any> {
-    return wrappedFetch(this.#url(endpoint), { method: 'GET' });
+  get(
+    endpoint: string,
+    options: {
+      contentType?: 'multipart/form-data';
+      headers?: { [k: string]: string };
+    } = {}
+  ): Promise<any> {
+    return wrappedFetch(this.#url(endpoint), {
+      method: 'GET',
+      headers: {
+        ...options.headers,
+      },
+      ...options,
+    });
   }
 
   /**
@@ -124,6 +136,20 @@ class DeSoNodeClient extends APIClient {
   }
 }
 
+class DeSoAMMClient extends APIClient {
+  override uri = 'https://amm.deso.com';
+
+  get nodeURI() {
+    return this.uri;
+  }
+
+  configure(options: DesoNodeClientConfig) {
+    if (typeof options.nodeURI === 'string') {
+      this.uri = options.nodeURI;
+    }
+  }
+}
+
 class DeSoMediaClient extends APIClient {
   override uri = 'https://media.deso.org';
 
@@ -140,3 +166,4 @@ class DeSoMediaClient extends APIClient {
 
 export const media = new DeSoMediaClient();
 export const api = new DeSoNodeClient();
+export const amm = new DeSoAMMClient();

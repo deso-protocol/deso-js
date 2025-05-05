@@ -606,39 +606,6 @@ export interface UpdateCoinPropertiesResponse {
   InnerTransactionHexes: string[];
 }
 
-export interface GetCoinPropertiesRequest {
-  BaseCurrencyPublicKey: string;
-}
-
-export interface GetCoinPropertiesResponse {
-  AmmConfigs: AmmConfig[];
-  CoinApyBasisPoints: number;
-  CoinsInAmmAsks: number[];
-  CoinsInAmmAsksTotal: number;
-  CoinsInAmmPubkeys: number[];
-  CoinsInAmmPubkeysTotal: number;
-  CreatorRevsharePercentageBasisPoints: number;
-  DisableCreatorRevshareUpdate: boolean;
-  DisableMintingOfNewCoins: boolean;
-  DisableTradingFeeUpdate: boolean;
-  EnablePermanentlyUnrestrictedTransfers: boolean;
-  FeeProfiles: { [key: string]: ProfileEntryResponse };
-  Levels: AmmLevel[];
-  MinLockupDurationNanos: number;
-  OrdersPlaced: AmmOrder[];
-  Profile: ProfileEntryResponse;
-  QuoteCurrencyInAmmBids: number[];
-  QuoteCurrencyInAmmBidsTotal: number;
-  TradingFeeMap: {
-    [key: string]: number;
-  };
-  UsdInAmmBids: number[];
-  UsdInAmmBidsTotal: number;
-  YieldCurvePoints: YieldCurvePoint[];
-  RunAt: Date[];
-  TotalTradingFeeBasisPoints: number;
-}
-
 export interface YieldCurvePoint {
   ProfileEntryResponse: ProfileEntryResponse | null;
   LockupDurationNanoSecs: number;
