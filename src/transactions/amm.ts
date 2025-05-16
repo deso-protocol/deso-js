@@ -82,6 +82,16 @@ export type TwapOrderResponse = BaseTwapOrder & {
   CreatedAt: string;
   UpdatedAt: string;
   TwapOperations: Array<TwapOrderOperation>;
+  TwapStats: {
+    TwapConfigId: number;
+    TargetQuantity: number;
+    TradedQuantity: number;
+    RemainingQuantity: number;
+    TotalOrders: number;
+    RemainingOrders: number;
+    AvgPriceQuoteCurrency: number;
+    AvgPriceUsd: number;
+  };
 };
 
 export type TwapOrderOperation = {
@@ -157,12 +167,18 @@ export type CancelTwapOrderRequestParams = {
   TwapConfigId: number;
 };
 
-export const cancelTwapOrder = (
+export const cancelTwapOrder = async (
   params: CancelTwapOrderRequestParams,
   options?: RequestOptions
 ): Promise<TwapOrderResponse> => {
+  const jwt = await identity.jwt();
+
   const endpoint = cleanURL(options?.nodeURI ?? '', `api/v0/twaps/cancel`);
-  return amm.post(endpoint, params);
+  return amm.post(endpoint, params, {
+    headers: {
+      Authorization: `Bearer ${jwt}`,
+    },
+  });
 };
 
 export interface CreateDerivedKeyRequest {
