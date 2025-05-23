@@ -145,16 +145,30 @@ export type GetMyTwapOrdersResponse = {
 };
 
 export const getMyTwapOrders = async (
-  params: { publicKey: string; limit?: number; offset?: number },
+  params: {
+    publicKey: string;
+    limit?: number;
+    offset?: number;
+    baseCurrencyPubKey?: string;
+    status?: string;
+  },
   options?: RequestOptions
 ): Promise<GetMyTwapOrdersResponse> => {
   const jwt = await identity.jwt();
+  const queryParams = new URLSearchParams({
+    limit: (params.limit ?? 0).toString(),
+    offset: (params.offset ?? 0).toString(),
+    ...(params.baseCurrencyPubKey
+      ? { baseCurrencyPubKey: params.baseCurrencyPubKey }
+      : {}),
+    ...(params.status ? { status: params.status } : {}),
+  });
+
   const endpoint = cleanURL(
     options?.nodeURI ?? '',
-    `api/v0/twaps/${params.publicKey}?limit=${params.limit ?? 0}&offset=${
-      params.offset ?? 0
-    }`
+    `api/v0/twaps/${params.publicKey}?${queryParams.toString()}`
   );
+
   return amm.get(endpoint, {
     headers: {
       Authorization: `Bearer ${jwt}`,
