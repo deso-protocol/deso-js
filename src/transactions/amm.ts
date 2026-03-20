@@ -253,7 +253,7 @@ export async function authorizeDerivedKeyAMM(
     BuyingDAOCoinCreatorPublicKey: string;
     SellingDAOCoinCreatorPublicKey: string;
     QuoteCurrencyPublicKey: string;
-    NumSubOrders: number;
+    numSubOrders: number;
     /**
      * When buying or selling raw DESO (i.e. QuoteCurrencyPublicKey === 'DESO'),
      * set this to the total DESO amount (in nanos) that will be spent/received
@@ -278,7 +278,7 @@ export async function authorizeDerivedKeyAMM(
         // DAO_COIN_TRANSFER: payload.numSubOrders,
         // DAO_COIN_LIMIT_ORDER: payload.numSubOrders,
         ...(payload.QuoteCurrencyPublicKey === 'DESO'
-          ? { BASIC_TRANSFER: payload.NumSubOrders * 4 }
+          ? { BASIC_TRANSFER: payload.numSubOrders * 4 }
           : {}),
       },
       AssociationLimitMap: [
@@ -288,12 +288,12 @@ export async function authorizeDerivedKeyAMM(
           AppScopeType: 'Any',
           AppPublicKeyBase58Check: '',
           AssociationOperation: 'Create',
-          OpCount: payload.NumSubOrders,
+          OpCount: payload.numSubOrders,
         },
       ],
       DAOCoinLimitOrderLimitMap: {
         [payload.BuyingDAOCoinCreatorPublicKey]: {
-          [payload.SellingDAOCoinCreatorPublicKey]: payload.NumSubOrders,
+          [payload.SellingDAOCoinCreatorPublicKey]: payload.numSubOrders,
         },
       },
       ...(payload.QuoteCurrencyPublicKey === 'DESO'
@@ -301,7 +301,7 @@ export async function authorizeDerivedKeyAMM(
         : {
             DAOCoinOperationLimitMap: {
               [payload.QuoteCurrencyPublicKey]: {
-                transfer: 4 * payload.NumSubOrders,
+                transfer: 4 * payload.numSubOrders,
               },
             },
           }),
