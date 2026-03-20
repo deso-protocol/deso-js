@@ -253,21 +253,32 @@ export async function authorizeDerivedKeyAMM(
     BuyingDAOCoinCreatorPublicKey: string;
     SellingDAOCoinCreatorPublicKey: string;
     QuoteCurrencyPublicKey: string;
-    numSubOrders: number;
+    NumSubOrders: number;
+    /**
+     * When buying or selling raw DESO (i.e. QuoteCurrencyPublicKey === 'DESO'),
+     * set this to the total DESO amount (in nanos) that will be spent/received
+     * across all sub-orders so the derived key limit covers the full trade.
+     * Falls back to a hardcoded default when not provided.
+     */
+    GlobalDESOLimitNanos?: number;
   }
 ) {
   const jwt = await identity.jwt();
   const deriveResponse = await identity.derive(
     {
       GlobalDESOLimit:
-        payload.QuoteCurrencyPublicKey === 'DESO' ? 100000 * 1e9 : 1e9,
+        payload.GlobalDESOLimitNanos !== undefined
+          ? payload.GlobalDESOLimitNanos
+          : payload.QuoteCurrencyPublicKey === 'DESO'
+          ? 100000 * 1e9
+          : 1e9,
       TransactionCountLimitMap: {
         AUTHORIZE_DERIVED_KEY: 1,
         // CREATE_USER_ASSOCIATION: payload.numSubOrders,
         // DAO_COIN_TRANSFER: payload.numSubOrders,
         // DAO_COIN_LIMIT_ORDER: payload.numSubOrders,
         ...(payload.QuoteCurrencyPublicKey === 'DESO'
-          ? { BASIC_TRANSFER: payload.numSubOrders * 4 }
+          ? { BASIC_TRANSFER: payload.NumSubOrders * 4 }
           : {}),
       },
       AssociationLimitMap: [
@@ -277,12 +288,12 @@ export async function authorizeDerivedKeyAMM(
           AppScopeType: 'Any',
           AppPublicKeyBase58Check: '',
           AssociationOperation: 'Create',
-          OpCount: payload.numSubOrders,
+          OpCount: payload.NumSubOrders,
         },
       ],
       DAOCoinLimitOrderLimitMap: {
         [payload.BuyingDAOCoinCreatorPublicKey]: {
-          [payload.SellingDAOCoinCreatorPublicKey]: payload.numSubOrders,
+          [payload.SellingDAOCoinCreatorPublicKey]: payload.NumSubOrders,
         },
       },
       ...(payload.QuoteCurrencyPublicKey === 'DESO'
@@ -290,7 +301,7 @@ export async function authorizeDerivedKeyAMM(
         : {
             DAOCoinOperationLimitMap: {
               [payload.QuoteCurrencyPublicKey]: {
-                transfer: 4 * payload.numSubOrders,
+                transfer: 4 * payload.NumSubOrders,
               },
             },
           }),
